@@ -154,7 +154,7 @@ dialog { max-height: 92vh; overflow-y: auto; }
   header.bar h1 { flex: 1; min-width: 0; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .switch-text { display: none; }
   #offline { position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 1200; white-space: nowrap; box-shadow: var(--shadow); }
-  .legend { position: fixed; left: 8px; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 1200; gap: 10px;
+  .legend { position: fixed; left: 8px; bottom: calc(104px + env(safe-area-inset-bottom)); z-index: 1200; gap: 10px;
     background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; box-shadow: var(--shadow); }
   .actions { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1300; justify-content: space-around; gap: 0;
     background: var(--panel); border-top: 1px solid var(--line); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); }
@@ -202,8 +202,7 @@ path.pending { animation: dash 1.2s linear infinite; }
 @keyframes dash { to { stroke-dashoffset: -32; } }
 @media (prefers-reduced-motion: reduce) { path.pending { animation: none; } }
 @media (max-width: 640px) {
-  .house-sheet { left: 8px; right: 8px; width: auto; bottom: calc(70px + env(safe-area-inset-bottom)); }
-  body.editing .legend { display: none; }
+  .house-sheet { left: 8px; right: 8px; width: auto; bottom: calc(146px + env(safe-area-inset-bottom)); }
 }
 
 /* meldingen voor de beheerder */

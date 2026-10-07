@@ -161,17 +161,14 @@
   document.addEventListener('click', (e) => { if (!pop.hidden && !pop.contains(e.target)) closeMore(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) { closeMore(); moreBtn.focus(); } });
 
+  // PDF opslaan/bekijken en Installeer app staan altijd onder "Meer".
+  moved.forEach((b) => pop.append(b));
+  moreBtn.hidden = false;
+
   function setEditing(on) {
     document.body.classList.toggle('edit-mode', on);
     $('house-edit').hidden = !on;
-    moreBtn.hidden = !on;
-    if (on) {
-      moved.forEach((b) => pop.append(b)); // PDF opslaan (en Installeer app) onder "Meer"
-    } else {
-      closeMore();
-      moved.forEach((b) => bar.insertBefore(b, moreBtn)); // terug in de menubalk, in dezelfde volgorde
-      Wijk.leaveResident?.(); // wijzigmodus en venster sluiten
-    }
+    if (!on) Wijk.leaveResident?.(); // wijzigmodus en venster sluiten
   }
   // De beheerder kan Bewerken in de browser uitzetten (alleen de geïnstalleerde app mag dan wijzigen).
   $('edit-switch').onchange = () => setEditing($('edit-switch').checked);

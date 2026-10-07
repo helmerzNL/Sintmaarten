@@ -66,7 +66,7 @@ Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen.
 
 ## Bewoners: huis wijzigen
 - In de **geïnstalleerde app** (PWA) staat in de menubalk altijd een knop **Huis wijzigen**, plus een knop **Sync** (🔄) waarmee je de huizen direct bijwerkt (de app ververst ook zelf elke 30 seconden).
-- In een **gewone browser** staat bovenin een schakelaar **Bewerken** (✏️). Zet je die aan, dan verschijnt de knop *Huis wijzigen* in de menubalk en verhuizen *PDF opslaan* en *Installeer app* naar een menu **Meer** (⋯) dat omhoog opent. Zet je de schakelaar uit, dan staat alles weer zoals het was. In de app is deze schakelaar verborgen.
+- In een **gewone browser** staat bovenin een schakelaar **Bewerken** (✏️). Zet je die aan, dan verschijnt de knop *Huis wijzigen* in de menubalk. *PDF opslaan*, *PDF bekijken* en *Installeer app* staan altijd onder het menu **Meer** (⋯), ook in de app. Het balkje met de statuskleuren zweeft op een klein scherm altijd net boven de menubalk. In de app is deze schakelaar verborgen.
 
 ![Bewerken en Meer-menu](docs/screenshots/bewerken-meer-mobiel.png)
 
