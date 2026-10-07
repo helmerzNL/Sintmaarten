@@ -39,3 +39,38 @@ test('vreemde origin wordt geweigerd', async () => {
   const r = await j('/api/auth/logout', { method: 'POST', headers: { Origin: 'https://evil.example' } });
   assert.equal(r.status, 403);
 });
+
+const crypto = require('node:crypto');
+const exp = String(Date.now() + 3600e3);
+const cookie = `sm_session=${exp}.${crypto.createHmac('sha256', 'test-session-secret-123').update(exp).digest('base64url')}`;
+const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(32)]);
+
+test('uitleg opslaan en publiek tonen', async () => {
+  const put = await j('/api/admin/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json', cookie }, body: JSON.stringify({ intro: 'Hallo\r\n\r\nwijk ' }) });
+  assert.equal(put.status, 200);
+  assert.equal((await (await j('/api/map')).json()).intro, 'Hallo\n\nwijk');
+  const tooLong = await j('/api/admin/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json', cookie }, body: JSON.stringify({ intro: 'x'.repeat(5001) }) });
+  assert.equal(tooLong.status, 400);
+});
+
+test('logo upload controleert inhoud en kan verwijderd worden', async () => {
+  const bad = await j('/api/admin/logo', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', cookie }, body: Buffer.from('<svg onload=alert(1)>') });
+  assert.equal(bad.status, 400);
+  const ok = await j('/api/admin/logo', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', cookie }, body: PNG });
+  assert.equal(ok.status, 200);
+  const { logo } = await ok.json();
+  assert.match(logo.url, /^\/uploads\/logo-\d+\.png$/);
+  assert.equal((await j(logo.url)).status, 200);
+  assert.equal((await (await j('/api/map')).json()).logo.url, logo.url);
+  assert.equal((await j('/api/admin/logo', { method: 'DELETE', headers: { cookie } })).status, 200);
+  assert.equal((await (await j('/api/map')).json()).logo, null);
+});
+
+test('manifest en service worker zijn beschikbaar', async () => {
+  const m = await (await j('/manifest.webmanifest')).json();
+  assert.equal(m.display, 'standalone');
+  assert.ok(m.icons.some((i) => i.sizes === '512x512'));
+  const sw = await j('/sw.js');
+  assert.equal(sw.status, 200);
+  assert.equal(sw.headers.get('cache-control'), 'no-cache');
+});
