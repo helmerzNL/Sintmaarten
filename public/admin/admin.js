@@ -99,8 +99,6 @@
       $('pk-list').append(row);
     }
   }
-  $('pk-open').onclick = () => { $('pk-err').textContent = ''; renderPasskeys(); $('pk-dialog').showModal(); };
-  $('pk-close').onclick = () => $('pk-dialog').close();
   // Wachtwoord instellen/verwijderen: altijd bevestigen met een passkey (vingerafdruk/pincode).
   async function confirmWithPasskey() {
     const { challengeId, options } = await post('/api/admin/password/options');
@@ -145,15 +143,13 @@
     $('org-remove').disabled = !org.logo;
     $('org-count').textContent = $('org-intro').value.length;
   }
-  $('org-open').onclick = () => {
+  function fillOrg() {
     $('org-err').textContent = '';
     $('org-intro').value = org.intro;
     $('org-appname').value = org.appName;
     $('org-short').value = org.appShortName;
     renderOrg();
-    $('org-dialog').showModal();
-  };
-  $('org-close').onclick = () => $('org-dialog').close();
+  }
   $('org-intro').oninput = renderOrg;
   $('org-upload').onclick = () => $('org-file').click();
   $('org-file').onchange = async () => {
@@ -178,9 +174,108 @@
     try {
       const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ intro: $('org-intro').value, appName: $('org-appname').value, appShortName: $('org-short').value }), expectAuth: true });
       org.intro = res.intro; org.appName = res.appName; org.appShortName = res.appShortName;
-      $('org-dialog').close();
       toast('Opgeslagen ✔');
     } catch (e) { $('org-err').textContent = e.message; }
+  };
+
+  // ---------- instellingen (uitschuifbaar menu) ----------
+  const drawer = () => $('settings');
+  const drawerOpen = () => drawer().classList.contains('open');
+  const fmtDate = (iso) => new Date(iso).toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'medium' });
+
+  function openTab(name) {
+    document.querySelectorAll('#settings [data-tab]').forEach((b) => {
+      const on = b.dataset.tab === name;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on);
+    });
+    document.querySelectorAll('#settings [data-panel]').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== name));
+    if (name === 'security') { $('pk-err').textContent = ''; renderPasskeys().catch((e) => ($('pk-err').textContent = e.message)); }
+    if (name === 'backups') renderBackups();
+    if (name === 'org') fillOrg();
+  }
+  function openSettings(tab) {
+    drawer().classList.add('open');
+    drawer().setAttribute('aria-hidden', 'false');
+    $('scrim').classList.add('show');
+    openTab(tab || document.querySelector('#settings [data-tab].active')?.dataset.tab || 'security');
+    $('settings-close').focus();
+  }
+  function closeSettings() {
+    drawer().classList.remove('open');
+    drawer().setAttribute('aria-hidden', 'true');
+    $('scrim').classList.remove('show');
+    $('settings-open').focus();
+  }
+  $('settings-open').onclick = () => (drawerOpen() ? closeSettings() : openSettings());
+  $('settings-close').onclick = closeSettings;
+  $('scrim').onclick = closeSettings;
+  document.querySelectorAll('#settings [data-tab]').forEach((b) => (b.onclick = () => openTab(b.dataset.tab)));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && drawerOpen() && !document.querySelector('dialog[open]')) closeSettings();
+  });
+
+  // ---------- backups ----------
+  const selectedBackups = () => [...document.querySelectorAll('#bk-list input[type=checkbox]:checked')].map((c) => c.value);
+  const syncBackupButtons = () => { $('bk-delete').disabled = selectedBackups().length === 0; };
+
+  async function renderBackups() {
+    $('bk-err').textContent = '';
+    let list;
+    try { list = await api('/api/admin/backups'); } catch (e) { $('bk-err').textContent = e.message; return; }
+    const box = $('bk-list');
+    box.replaceChildren();
+    if (!list.length) {
+      const p = document.createElement('p');
+      p.className = 'muted';
+      p.textContent = 'Er zijn nog geen backups. Na de eerstvolgende keer opslaan verschijnt hier de eerste.';
+      box.append(p);
+    }
+    for (const b of list) {
+      const row = document.createElement('div');
+      row.className = 'bk-row';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.value = b.id; cb.setAttribute('aria-label', `Selecteer backup van ${fmtDate(b.createdAt)}`);
+      cb.onchange = syncBackupButtons;
+      const info = document.createElement('div');
+      info.className = 'bk-info';
+      const t = document.createElement('strong'); t.textContent = fmtDate(b.createdAt);
+      const d = document.createElement('span');
+      d.textContent = `${b.reason}${b.ok ? '' : ' (mislukt)'} · ${b.houses} huizen${b.textLength ? ` · uitleg ${b.textLength} tekens` : ''}`;
+      info.append(t, d);
+      const restore = document.createElement('button');
+      restore.textContent = 'Terugzetten';
+      restore.onclick = () => restoreBackup(b);
+      const dl = document.createElement('a');
+      dl.className = 'btn'; dl.textContent = '⬇'; dl.title = 'Downloaden'; dl.href = `/api/admin/backups/${b.id}`; dl.download = `backup-${b.id}.json`;
+      row.append(cb, info, restore, dl);
+      box.append(row);
+    }
+    syncBackupButtons();
+  }
+
+  async function restoreBackup(b) {
+    if (!confirm(`Backup van ${fmtDate(b.createdAt)} terugzetten?\nDe huidige staat wordt eerst zelf als backup bewaard.${dirty ? '\n\nLet op: niet-opgeslagen wijzigingen gaan verloren.' : ''}`)) return;
+    try {
+      await post(`/api/admin/backups/${b.id}/restore`, {}, { expectAuth: true });
+      await reloadFromServer();
+      toast('Backup teruggezet ✔');
+      renderBackups();
+    } catch (e) { $('bk-err').textContent = e.message; }
+  }
+
+  $('bk-delete').onclick = async () => {
+    const ids = selectedBackups();
+    if (!ids.length) return;
+    if (!confirm(`${ids.length} backup(s) definitief verwijderen? Je moet dit bevestigen met je passkey.`)) return;
+    $('bk-err').textContent = '';
+    try {
+      const { challengeId, options } = await post('/api/admin/confirm/options');
+      const response = await SimpleWebAuthnBrowser.startAuthentication({ optionsJSON: options });
+      const res = await post('/api/admin/backups/delete', { ids, challengeId, response });
+      toast(`${res.deleted} backup(s) verwijderd`);
+      renderBackups();
+    } catch (e) { $('bk-err').textContent = friendly(e); }
   };
 
   // ---------- editor ----------
@@ -418,7 +513,7 @@
       document.addEventListener('keydown', (e) => {
         if (!map) return;
         if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) && e.key !== 'Escape') return;
-        if (document.querySelector('dialog[open]')) return;
+        if (document.querySelector('dialog[open]') || drawerOpen()) return;
         const k = e.key.toLowerCase();
         if ((e.ctrlKey || e.metaKey) && k === 's') { e.preventDefault(); save(); }
         else if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -444,6 +539,17 @@
     if (!h || !confirm(`"${nameOf(h, houses.indexOf(h))}" verwijderen?`)) return;
     houses = houses.filter((x) => x !== h);
     selectedId = null; setDirty(); render();
+  }
+
+  async function reloadFromServer() {
+    const data = await api('/api/map');
+    houses = data.houses;
+    savedView = data.view;
+    org = { intro: data.intro || '', logo: data.logo, appName: data.appName || '', appShortName: data.appShortName || '' };
+    selectedId = null; draft = [];
+    setDirty(false);
+    render();
+    if (data.view) map.setView(data.view.center, data.view.zoom);
   }
 
   async function openEditor() {

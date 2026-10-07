@@ -137,3 +137,52 @@ test('kaartweergave instellen, valideren en wissen', async () => {
   assert.equal((await j('/api/admin/view', { method: 'DELETE', headers: { cookie } })).status, 200);
   assert.equal((await (await j('/api/map')).json()).view, null);
 });
+
+const backups = require('../server/backups');
+const H = [{ id: 'a1', label: '1', status: 'green', note: '', points: [[52, 5], [52.001, 5], [52.001, 5.001]] }];
+
+test('na elke opslagpoging komt er een backup (layout + teksten)', async () => {
+  const before = backups.list().length;
+  const putHouses = (houses) => j('/api/admin/houses', { method: 'PUT', headers: jsonH(cookie), body: JSON.stringify({ houses }) });
+  assert.equal((await putHouses(H)).status, 200);
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(backups.list().length, before + 1);
+  const latest = backups.read(backups.list()[0].id);
+  assert.equal(latest.houses.length, 1);
+  assert.equal(latest.reason, 'Layout opgeslagen');
+  assert.ok('intro' in latest.texts && 'appName' in latest.texts);
+
+  // identieke staat -> geen dubbele backup; mislukte poging verandert niets
+  assert.equal((await putHouses(H)).status, 200);
+  assert.equal((await putHouses([{ points: [[1, 1]] }])).status, 400);
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(backups.list().length, before + 1);
+
+  // tekstwijziging -> nieuwe backup
+  await j('/api/admin/settings', { method: 'PUT', headers: jsonH(cookie), body: JSON.stringify({ intro: 'Nieuwe uitleg' }) });
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(backups.list().length, before + 2);
+});
+
+test('backups: lijst, terugzetten en verwijderen vereist passkey-bevestiging', async () => {
+  assert.equal((await j('/api/admin/backups')).status, 401);
+  const list = await (await j('/api/admin/backups', { headers: { cookie } })).json();
+  const oldest = list[list.length - 1];
+  // terugzetten: layout van die backup terug, en eerst een backup van de huidige staat
+  await j('/api/admin/houses', { method: 'PUT', headers: jsonH(cookie), body: JSON.stringify({ houses: [] }) });
+  const target = list.find((b) => b.houses === 1 && b.reason === 'Layout opgeslagen');
+  const r = await j(`/api/admin/backups/${target.id}/restore`, { method: 'POST', headers: jsonH(cookie), body: '{}' });
+  assert.equal(r.status, 200);
+  assert.equal((await (await j('/api/map')).json()).houses.length, 1);
+  assert.equal((await j('/api/admin/backups/onzin/restore', { method: 'POST', headers: jsonH(cookie), body: '{}' })).status, 404);
+
+  // verwijderen zonder geldige passkey-bevestiging mislukt en laat alles intact
+  const n = backups.list().length;
+  const del = await j('/api/admin/backups/delete', { method: 'POST', headers: jsonH(cookie), body: JSON.stringify({ ids: [oldest.id] }) });
+  assert.equal(del.status, 400);
+  const badIds = await j('/api/admin/backups/delete', { method: 'POST', headers: jsonH(cookie), body: JSON.stringify({ ids: ['../../etc/passwd'] }) });
+  assert.equal(badIds.status, 400);
+  assert.equal(backups.list().length, n);
+  assert.equal((await j('/api/admin/backups/delete', { method: 'POST', headers: jsonH(), body: '{}' })).status, 401);
+  assert.ok(backups.read(oldest.id));
+});
