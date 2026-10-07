@@ -8,6 +8,10 @@ COPY server ./server
 COPY public ./public
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && mkdir -p /data && chown node:node /data
+# Versie en commit van deze build (door de GitHub Action meegegeven)
+ARG APP_VERSION=dev
+ARG GIT_SHA=onbekend
+ENV APP_VERSION=$APP_VERSION GIT_SHA=$GIT_SHA
 VOLUME /data
 EXPOSE 9888
 HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1:${PORT}/api/auth/status >/dev/null || exit 1

@@ -13,6 +13,7 @@ const store = require('./store');
 const auth = require('./auth');
 const { hashPassword, verifyPassword } = require('./password');
 const backups = require('./backups');
+const appVersion = require('./version');
 
 const app = express();
 app.set('trust proxy', true);
@@ -270,6 +271,11 @@ admin.post('/confirm/options', asyncRoute(async (req, res) => {
   res.json({ challengeId: putChallenge({ challenge: options.challenge, kind: 'confirm' }), options });
 }));
 
+admin.get('/info', (req, res) => {
+  const { version, build, buildFull, label } = appVersion;
+  res.json({ version, build, buildFull, label });
+});
+
 admin.get('/backups', (req, res) => res.json(backups.list()));
 
 admin.get('/backups/:id', (req, res) => {
@@ -434,6 +440,12 @@ const nm = (...p) => path.join(__dirname, '..', 'node_modules', ...p);
 app.get('/vendor/webauthn.js', (req, res) => res.sendFile(nm('@simplewebauthn', 'browser', 'dist', 'bundle', 'index.umd.min.js')));
 app.get('/vendor/jspdf.js', (req, res) => res.sendFile(nm('jspdf', 'dist', 'jspdf.umd.min.js')));
 app.use('/vendor/leaflet', express.static(nm('leaflet', 'dist'), { index: false }));
+// De service worker krijgt de buildversie in zijn cachenaam, zodat een nieuwe build de oude caches opruimt.
+app.get('/sw.js', (req, res) => {
+  const tag = `${appVersion.version}-${appVersion.build}`.replace(/[^\w.-]/g, '');
+  const src = fs.readFileSync(path.join(pub, 'sw.js'), 'utf8').replace(/const VERSION = '[^']*';/, `const VERSION = '${tag}';`);
+  res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }).send(src);
+});
 app.use(express.static(pub, {
   extensions: ['html'],
   setHeaders: (res, file) => { if (file.endsWith('sw.js')) res.set('Cache-Control', 'no-cache'); },
@@ -445,6 +457,7 @@ module.exports = app;
 if (require.main === module) {
   app.listen(config.port, () => {
     console.log(`Sint Maarten draait op poort ${config.port} (${config.origin}, rpID ${config.rpID})`);
+    console.log(`Versie ${appVersion.label}`);
     if (config.setupTokenGenerated && !store.db().passkeys.length) {
       console.log(`\nINSTALLATIE: er is geen SETUP_TOKEN ingesteld. Tijdelijke code voor de eerste passkey:\n  ${config.setupToken}\n`);
     }

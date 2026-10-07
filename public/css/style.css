@@ -120,3 +120,6 @@ dialog { max-height: 92vh; overflow-y: auto; }
 .bk-info span { color: var(--muted); }
 .bk-row input[type=checkbox] { width: 18px; height: 18px; }
 .bk-row button, .bk-row .btn { padding: 4px 8px; font-size: .85rem; }
+
+.drawer-foot { padding: 10px 16px; border-top: 1px solid var(--line); font-size: .85rem; color: var(--muted); background: var(--panel); }
+.drawer-foot strong { color: var(--text); font-variant-numeric: tabular-nums; }
