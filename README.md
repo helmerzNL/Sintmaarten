@@ -11,17 +11,31 @@ Voorbeeld met willekeurige huizen (kaartgegevens © OpenStreetMap-bijdragers).
 
 ![Publieke kaart](docs/screenshots/publiek.png)
 
-**Beheer** – vlakken tekenen en bewerken, kleur kiezen, huisnummer en notitie invullen.
-
-![Beheerscherm](docs/screenshots/beheer.png)
-
-**PDF-export** – A4 liggend met legenda en aantallen (pagina 2 bevat een overzicht van de huizen).
-
-![PDF-export](docs/screenshots/pdf.png)
+### Beheer (`/beheer`)
 
 **Onboarding** – de eerste keer maak je een passkey aan met de installatiecode.
 
 ![Onboarding](docs/screenshots/onboarding.png)
+
+**Inloggen** – alleen met passkey (vingerafdruk, gezicht, pincode of beveiligingssleutel).
+
+![Inloggen](docs/screenshots/beheer-login.png)
+
+**Huis tekenen** – kies een kleur en klik de hoekpunten van het huis; sluit af met het gele beginpunt, dubbelklik of Enter.
+
+![Huis tekenen](docs/screenshots/beheer-tekenen.png)
+
+**Huis bewerken** – selecteer een huis om de kleur, het huisnummer en de notitie aan te passen, of sleep de hoekpunten.
+
+![Beheerscherm](docs/screenshots/beheer.png)
+
+**Passkeys beheren** – voeg extra apparaten toe zodat je niet buitengesloten raakt.
+
+![Passkeys](docs/screenshots/beheer-passkeys.png)
+
+**PDF-export** – A4 liggend met legenda en aantallen (pagina 2 bevat een overzicht van de huizen).
+
+![PDF-export](docs/screenshots/pdf.png)
 
 ## Hoe werkt het
 - **Kaart**: OpenStreetMap (via Leaflet), geen API-sleutel nodig. Google Maps is bewust niet gebruikt: dat vereist een betaalde sleutel en de voorwaarden staan het overtekenen en exporteren naar PDF niet toe.
