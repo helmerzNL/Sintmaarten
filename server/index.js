@@ -11,6 +11,7 @@ const {
 const config = require('./config');
 const store = require('./store');
 const auth = require('./auth');
+const { hashPassword, verifyPassword } = require('./password');
 
 const app = express();
 app.set('trust proxy', true);
@@ -45,7 +46,7 @@ function takeChallenge(id) {
 const asyncRoute = (fn) => (req, res) =>
   Promise.resolve(fn(req, res)).catch((err) => {
     console.error(err);
-    res.status(400).json({ error: err.message || 'Er ging iets mis' });
+    res.status(err.status || 400).json({ error: err.message || 'Er ging iets mis' });
   });
 
 function userId() {
@@ -58,17 +59,24 @@ function userId() {
 app.get('/api/map', (req, res) => {
   const { view, houses, settings } = store.db();
   res.set('Cache-Control', 'no-cache');
-  res.json({ title: config.siteTitle, view, houses, intro: settings?.intro || '', logo: settings?.logo || null });
+  res.json({
+    title: config.siteTitle, view, houses,
+    intro: settings?.intro || '', logo: settings?.logo || null,
+    appName: settings?.appName || '', appShortName: settings?.appShortName || '',
+  });
 });
 
 app.use('/uploads', express.static(store.uploadDir, { immutable: true, maxAge: '365d', index: false }));
 
 // PWA-manifest met de naam van de site
 app.get('/manifest.webmanifest', (req, res) => {
+  const st = store.db().settings || {};
+  const name = st.appName || config.siteTitle;
+  const shortName = st.appShortName || (name.length > 12 ? name.slice(0, 12) : name);
   res.type('application/manifest+json').json({
-    name: config.siteTitle,
-    short_name: config.siteTitle.length > 12 ? config.siteTitle.slice(0, 12) : config.siteTitle,
-    description: `Kaart van ${config.siteTitle}`,
+    name,
+    short_name: shortName,
+    description: `Kaart van ${name}`,
     lang: 'nl',
     start_url: '/',
     scope: '/',
@@ -85,12 +93,15 @@ app.get('/manifest.webmanifest', (req, res) => {
 
 // ---------- auth ----------
 app.get('/api/auth/status', (req, res) => {
-  res.json({ configured: store.db().passkeys.length > 0, loggedIn: auth.isLoggedIn(req) });
+  const db = store.db();
+  const method = auth.sessionMethod(req);
+  res.json({ configured: db.passkeys.length > 0, loggedIn: !!method, method, passwordEnabled: !!db.password });
 });
 
 app.post('/api/auth/register/options', asyncRoute(async (req, res) => {
   const db = store.db();
   const loggedIn = auth.isLoggedIn(req);
+  if (loggedIn && auth.sessionMethod(req) !== 'pk') return res.status(403).json({ error: 'Log in met een passkey om dit te wijzigen' });
   if (!loggedIn) {
     if (db.passkeys.length > 0) return res.status(401).json({ error: 'Niet ingelogd' });
     if (auth.limiter.blocked(req.ip)) return res.status(429).json({ error: 'Te veel pogingen, probeer later opnieuw' });
@@ -120,7 +131,7 @@ app.post('/api/auth/register/verify', asyncRoute(async (req, res) => {
   const db = store.db();
   // Een eerste setup mag alleen lukken zolang er nog geen passkey is.
   if (c.firstSetup && db.passkeys.length > 0) return res.status(403).json({ error: 'Er is al een passkey ingesteld' });
-  if (!c.firstSetup && !auth.isLoggedIn(req)) return res.status(401).json({ error: 'Niet ingelogd' });
+  if (!c.firstSetup && auth.sessionMethod(req) !== 'pk') return res.status(401).json({ error: 'Niet ingelogd met een passkey' });
 
   const v = await verifyRegistrationResponse({
     response: req.body.response,
@@ -156,37 +167,58 @@ app.post('/api/auth/login/options', asyncRoute(async (req, res) => {
   res.json({ challengeId: putChallenge({ challenge: options.challenge, kind: 'login' }), options });
 }));
 
-app.post('/api/auth/login/verify', asyncRoute(async (req, res) => {
-  if (auth.limiter.blocked(req.ip)) return res.status(429).json({ error: 'Te veel pogingen, probeer later opnieuw' });
+// Controleert een passkey-antwoord op een eerder uitgegeven uitdaging ("login" of "confirm").
+async function verifyAssertion(req, kind) {
   const c = takeChallenge(req.body.challengeId);
-  if (!c || c.kind !== 'login') return res.status(400).json({ error: 'Sessie verlopen, begin opnieuw' });
+  if (!c || c.kind !== kind) throw Object.assign(new Error('Sessie verlopen, begin opnieuw'), { status: 400 });
   const db = store.db();
   const pk = db.passkeys.find((p) => p.id === req.body.response?.id);
-  if (!pk) { auth.limiter.fail(req.ip); return res.status(400).json({ error: 'Onbekende passkey' }); }
-  let v;
+  if (!pk) throw Object.assign(new Error('Onbekende passkey'), { status: 400 });
+  const v = await verifyAuthenticationResponse({
+    response: req.body.response,
+    expectedChallenge: c.challenge,
+    expectedOrigin: config.origin,
+    expectedRPID: config.rpID,
+    requireUserVerification: true,
+    credential: { id: pk.id, publicKey: Buffer.from(pk.publicKey, 'base64url'), counter: pk.counter, transports: pk.transports },
+  });
+  if (!v.verified) throw Object.assign(new Error('Passkey kon niet worden geverifieerd'), { status: 400 });
+  pk.counter = v.authenticationInfo.newCounter;
+  pk.lastUsed = new Date().toISOString();
+  store.save();
+}
+
+app.post('/api/auth/login/verify', asyncRoute(async (req, res) => {
+  if (auth.limiter.blocked(req.ip)) return res.status(429).json({ error: 'Te veel pogingen, probeer later opnieuw' });
   try {
-    v = await verifyAuthenticationResponse({
-      response: req.body.response,
-      expectedChallenge: c.challenge,
-      expectedOrigin: config.origin,
-      expectedRPID: config.rpID,
-      credential: {
-        id: pk.id,
-        publicKey: Buffer.from(pk.publicKey, 'base64url'),
-        counter: pk.counter,
-        transports: pk.transports,
-      },
-    });
+    await verifyAssertion(req, 'login');
   } catch (err) {
     auth.limiter.fail(req.ip);
     throw err;
   }
-  if (!v.verified) { auth.limiter.fail(req.ip); return res.status(400).json({ error: 'Inloggen mislukt' }); }
-  pk.counter = v.authenticationInfo.newCounter;
-  pk.lastUsed = new Date().toISOString();
-  store.save();
   auth.limiter.reset(req.ip);
-  auth.startSession(res);
+  auth.startSession(res, 'pk');
+  res.json({ ok: true });
+}));
+
+// Inloggen met wachtwoord (alleen als dat in het beheer is ingesteld).
+const PW_GLOBAL = '*password';
+app.post('/api/auth/password-login', asyncRoute(async (req, res) => {
+  const db = store.db();
+  if (auth.limiter.blocked(req.ip) || auth.limiter.blocked(PW_GLOBAL, 30)) {
+    return res.status(429).json({ error: 'Te veel pogingen, probeer later opnieuw' });
+  }
+  const password = typeof req.body.password === 'string' ? req.body.password.slice(0, 200) : '';
+  // Ook zonder ingesteld wachtwoord rekenen we, zodat de responstijd niets verklapt.
+  const stored = db.password || await hashPassword('x');
+  const ok = await verifyPassword(password, stored);
+  if (!db.password || !ok) {
+    auth.limiter.fail(req.ip);
+    auth.limiter.fail(PW_GLOBAL);
+    return res.status(401).json({ error: 'Onjuist wachtwoord' });
+  }
+  auth.limiter.reset(req.ip);
+  auth.startSession(res, 'pw');
   res.json({ ok: true });
 }));
 
@@ -196,11 +228,42 @@ app.post('/api/auth/logout', (req, res) => { auth.endSession(res); res.json({ ok
 const admin = express.Router();
 admin.use(auth.requireAdmin);
 
+const pwError = (res, err) => res.status(err.status || 400).json({ error: err.message });
+
+// Wachtwoord instellen of verwijderen moet met een passkey worden bevestigd.
+admin.post('/password/options', auth.requirePasskeySession, asyncRoute(async (req, res) => {
+  const db = store.db();
+  const options = await generateAuthenticationOptions({
+    rpID: config.rpID,
+    userVerification: 'required',
+    allowCredentials: db.passkeys.map((p) => ({ id: p.id, transports: p.transports })),
+  });
+  res.json({ challengeId: putChallenge({ challenge: options.challenge, kind: 'confirm' }), options });
+}));
+
+admin.put('/password', auth.requirePasskeySession, asyncRoute(async (req, res) => {
+  const password = req.body.password;
+  if (typeof password !== 'string' || password.length < 10 || password.length > 200) {
+    return res.status(400).json({ error: 'Het wachtwoord moet 10 tot 200 tekens lang zijn' });
+  }
+  try { await verifyAssertion(req, 'confirm'); } catch (err) { return pwError(res, err); }
+  store.db().password = await hashPassword(password);
+  store.save();
+  res.json({ ok: true });
+}));
+
+admin.post('/password/remove', auth.requirePasskeySession, asyncRoute(async (req, res) => {
+  try { await verifyAssertion(req, 'confirm'); } catch (err) { return pwError(res, err); }
+  store.db().password = null;
+  store.save();
+  res.json({ ok: true });
+}));
+
 admin.get('/passkeys', (req, res) => {
   res.json(store.db().passkeys.map(({ id, name, createdAt, lastUsed }) => ({ id, name, createdAt, lastUsed })));
 });
 
-admin.delete('/passkeys/:id', (req, res) => {
+admin.delete('/passkeys/:id', auth.requirePasskeySession, (req, res) => {
   const db = store.db();
   if (db.passkeys.length <= 1) return res.status(400).json({ error: 'Je kunt de laatste passkey niet verwijderen' });
   db.passkeys = db.passkeys.filter((p) => p.id !== req.params.id);
@@ -243,12 +306,25 @@ admin.delete('/logo', (req, res) => {
 });
 
 admin.put('/settings', (req, res) => {
-  const intro = String(req.body?.intro ?? '').replace(/\r\n?/g, '\n').trim();
-  if (intro.length > 5000) return res.status(400).json({ error: 'De uitleg mag maximaal 5000 tekens zijn' });
+  const body = req.body || {};
   const db = store.db();
-  db.settings.intro = intro;
+  if ('intro' in body) {
+    const intro = String(body.intro ?? '').replace(/\r\n?/g, '\n').trim();
+    if (intro.length > 5000) return res.status(400).json({ error: 'De uitleg mag maximaal 5000 tekens zijn' });
+    db.settings.intro = intro;
+  }
+  if ('appName' in body) {
+    const name = String(body.appName ?? '').trim();
+    if (name.length > 45) return res.status(400).json({ error: 'De naam van de app mag maximaal 45 tekens zijn' });
+    db.settings.appName = name;
+  }
+  if ('appShortName' in body) {
+    const short = String(body.appShortName ?? '').trim();
+    if (short.length > 12) return res.status(400).json({ error: 'De korte naam mag maximaal 12 tekens zijn (past onder het icoon)' });
+    db.settings.appShortName = short;
+  }
   store.save();
-  res.json({ intro });
+  res.json({ intro: db.settings.intro, appName: db.settings.appName, appShortName: db.settings.appShortName });
 });
 
 admin.put('/view', (req, res) => {

@@ -55,6 +55,12 @@
     $('l-err').textContent = '';
     try { await login(); boot(); } catch (e) { $('l-err').textContent = friendly(e); }
   };
+  $('pw-form').onsubmit = async (e) => {
+    e.preventDefault();
+    $('l-pw-err').textContent = '';
+    try { await post('/api/auth/password-login', { password: $('l-pw').value }); $('l-pw').value = ''; boot(); }
+    catch (err) { $('l-pw-err').textContent = err.message; }
+  };
   $('logout').onclick = async () => {
     if (dirty && !confirm('Er zijn niet-opgeslagen wijzigingen. Toch uitloggen?')) return;
     dirty = false;
@@ -63,7 +69,18 @@
   };
 
   // ---------- passkeys dialoog ----------
+  let session = { method: null, passwordEnabled: false };
+  const locked = () => session.method === 'pw';
+
   async function renderPasskeys() {
+    session = await api('/api/auth/status');
+    $('pw-status').textContent = session.passwordEnabled ? 'Er is een wachtwoord ingesteld.' : 'Er is nog geen wachtwoord ingesteld; inloggen kan alleen met een passkey.';
+    $('pw-set').textContent = session.passwordEnabled ? 'Wachtwoord wijzigen (bevestig met passkey)' : 'Wachtwoord instellen (bevestig met passkey)';
+    $('pw-remove').classList.toggle('hidden', !session.passwordEnabled);
+    $('pw-edit').classList.toggle('hidden', locked());
+    $('pw-locked').classList.toggle('hidden', !locked());
+    $('pk-add').disabled = locked();
+    $('pk-name').disabled = locked();
     const list = await api('/api/admin/passkeys');
     $('pk-list').innerHTML = '';
     for (const p of list) {
@@ -72,7 +89,7 @@
       const s = document.createElement('span');
       s.textContent = `${p.name} · ${new Date(p.createdAt).toLocaleDateString('nl-NL')}`;
       const del = document.createElement('button');
-      del.className = 'danger'; del.textContent = 'Verwijder'; del.disabled = list.length < 2;
+      del.className = 'danger'; del.textContent = 'Verwijder'; del.disabled = list.length < 2 || locked();
       del.onclick = async () => {
         if (!confirm(`Passkey "${p.name}" verwijderen?`)) return;
         try { await api(`/api/admin/passkeys/${encodeURIComponent(p.id)}`, { method: 'DELETE' }); renderPasskeys(); }
@@ -84,6 +101,36 @@
   }
   $('pk-open').onclick = () => { $('pk-err').textContent = ''; renderPasskeys(); $('pk-dialog').showModal(); };
   $('pk-close').onclick = () => $('pk-dialog').close();
+  // Wachtwoord instellen/verwijderen: altijd bevestigen met een passkey (vingerafdruk/pincode).
+  async function confirmWithPasskey() {
+    const { challengeId, options } = await post('/api/admin/password/options');
+    const response = await SimpleWebAuthnBrowser.startAuthentication({ optionsJSON: options });
+    return { challengeId, response };
+  }
+  $('pw-set').onclick = async () => {
+    $('pw-err').textContent = '';
+    const pw = $('pw-new').value;
+    if (pw.length < 10) { $('pw-err').textContent = 'Kies een wachtwoord van minimaal 10 tekens.'; return; }
+    if (pw !== $('pw-new2').value) { $('pw-err').textContent = 'De twee wachtwoorden zijn niet gelijk.'; return; }
+    try {
+      const proof = await confirmWithPasskey();
+      await api('/api/admin/password', { method: 'PUT', body: JSON.stringify({ ...proof, password: pw }) });
+      $('pw-new').value = ''; $('pw-new2').value = '';
+      toast('Wachtwoord opgeslagen ✔');
+      renderPasskeys();
+    } catch (e) { $('pw-err').textContent = friendly(e); }
+  };
+  $('pw-remove').onclick = async () => {
+    $('pw-err').textContent = '';
+    if (!confirm('Het wachtwoord verwijderen? Inloggen kan dan alleen nog met een passkey.')) return;
+    try {
+      const proof = await confirmWithPasskey();
+      await post('/api/admin/password/remove', proof);
+      toast('Wachtwoord verwijderd');
+      renderPasskeys();
+    } catch (e) { $('pw-err').textContent = friendly(e); }
+  };
+
   $('pk-add').onclick = async () => {
     $('pk-err').textContent = '';
     try { await registerPasskey({ name: $('pk-name').value }); renderPasskeys(); toast('Passkey toegevoegd'); }
@@ -91,7 +138,7 @@
   };
 
   // ---------- logo & uitleg ----------
-  let org = { intro: '', logo: null };
+  let org = { intro: '', logo: null, appName: '', appShortName: '' };
   function renderOrg() {
     $('org-logo').hidden = !org.logo;
     if (org.logo) $('org-logo').src = org.logo.url;
@@ -101,6 +148,8 @@
   $('org-open').onclick = () => {
     $('org-err').textContent = '';
     $('org-intro').value = org.intro;
+    $('org-appname').value = org.appName;
+    $('org-short').value = org.appShortName;
     renderOrg();
     $('org-dialog').showModal();
   };
@@ -127,10 +176,10 @@
   $('org-save').onclick = async () => {
     $('org-err').textContent = '';
     try {
-      const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ intro: $('org-intro').value }), expectAuth: true });
-      org.intro = res.intro;
+      const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ intro: $('org-intro').value, appName: $('org-appname').value, appShortName: $('org-short').value }), expectAuth: true });
+      org.intro = res.intro; org.appName = res.appName; org.appShortName = res.appShortName;
       $('org-dialog').close();
-      toast('Uitleg opgeslagen ✔');
+      toast('Opgeslagen ✔');
     } catch (e) { $('org-err').textContent = e.message; }
   };
 
@@ -352,7 +401,7 @@
     show('v-edit');
     const data = await api('/api/map');
     houses = data.houses;
-    org = { intro: data.intro || '', logo: data.logo };
+    org = { intro: data.intro || '', logo: data.logo, appName: data.appName || '', appShortName: data.appShortName || '' };
     initEditor(data);
     setDirty(false);
     setMode('select');
@@ -361,7 +410,9 @@
 
   async function boot() {
     const st = await api('/api/auth/status');
+    session = st;
     if (st.loggedIn) return openEditor();
+    $('pw-form').classList.toggle('hidden', !st.passwordEnabled);
     show(st.configured ? 'v-login' : 'v-setup');
   }
   boot().catch((e) => { document.body.textContent = e.message; });
