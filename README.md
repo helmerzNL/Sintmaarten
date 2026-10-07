@@ -11,6 +11,14 @@ Voorbeeld met willekeurige huizen (kaartgegevens © OpenStreetMap-bijdragers).
 
 ![Publieke kaart](docs/screenshots/publiek.png)
 
+**Mobiel** – bovenaan alleen het logo, de titel en de schakelaar voor huisnummers; de acties (uitleg, straten, PDF opslaan) staan onderaan.
+
+![Mobiel](docs/screenshots/mobiel.png)
+
+**Straten** – met het straat-icoon (🛣️) in de menubalk zet je per straat de huizen op de kaart (en in de PDF) aan of uit.
+
+![Straten](docs/screenshots/straten-popup.png)
+
 **Uitleg** – de tekst van de vereniging; wordt de eerste keer automatisch getoond.
 
 ![Uitleg](docs/screenshots/uitleg.png)
@@ -56,6 +64,13 @@ Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen.
 
 ![PDF-toelichting](docs/screenshots/pdf-toelichting.png)
 
+## Huisnummers en straten
+- In het beheer heeft elk huis een **straat** en een **huisnummer** (aparte velden; het straatveld stelt bestaande straten voor). Met *Filter op straat* toon je alleen de huizen van één straat in de lijst; de rest wordt op de kaart gedimd.
+- De schakelaar *Huisnummers op de kaart* toont het nummer midden op elk huis (wit met donkere rand, dus goed leesbaar). Nummers die niet in het huis passen verdwijnen en komen terug bij verder inzoomen.
+- In *Kaartweergave instellen* bepaal je of de nummers voor bezoekers **standaard** aan staan; bezoekers kunnen dat zelf wisselen met de schakelaar in de menubalk (de keuze wordt onthouden).
+- Op de site kun je met het straat-icoon per straat de huizen verbergen of tonen. De PDF volgt die keuzes (huisnummers en zichtbare straten).
+- Oudere gegevens met één veld *huisnummer/naam* worden automatisch omgezet: dat veld wordt het huisnummer.
+
 ## Hoe werkt het
 - **Kaart**: OpenStreetMap (via Leaflet), geen API-sleutel nodig. Google Maps is bewust niet gebruikt: dat vereist een betaalde sleutel en de voorwaarden staan het overtekenen en exporteren naar PDF niet toe.
 - **Publiek (`/`)**: de kaart met gekleurde vlakken over de huizen; klik op een huis voor naam/notitie.
@@ -96,7 +111,7 @@ Identieke staten worden niet dubbel bewaard en de nieuwste 200 blijven staan (`M
 Terugzetten kan in *Instellingen → Backups* (de huidige staat wordt eerst zelf als backup bewaard); verwijderen vraagt een bevestiging met je passkey.
 
 ## Naam van de app
-Bij *Instellingen* (⚙) → *Logo & uitleg* stel je de **naam van de app** en een korte naam (max. 12 tekens, onder het icoon) in. Die worden gebruikt als de site op een telefoon of computer wordt geïnstalleerd.
+Bij *Instellingen* (⚙) → *Logo & uitleg* stel je ook de **naam van de site** in (naast het logo en in de PDF; standaard `SITE_TITLE`) en de **naam van de app** en een korte naam (max. 12 tekens, onder het icoon) in. Die worden gebruikt als de site op een telefoon of computer wordt geïnstalleerd.
 Zonder invoer geldt de sitenaam (`SITE_TITLE`). Een al geïnstalleerde app neemt een nieuwe naam pas na een tijdje over.
 
 ## Installeren als app en offline gebruik
