@@ -69,7 +69,7 @@ Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen.
   2. Kies *Huis tekenen*, kies groen of rood, klik de hoeken van een huis en sluit af (klik op het gele beginpunt, dubbelklik of Enter).
   3. Pas later de kleur aan (knoppen of **G**/**R**), versleep hoekpunten, geef een huisnummer/notitie, en klik *Opslaan* (Ctrl+S).
 - **Onboarding**: de allereerste keer vraagt `/beheer` om de `SETUP_TOKEN` en maakt dan een passkey aan. Daarna kun je
-  via *Passkeys* extra apparaten toevoegen (doe dat zodat je niet buitengesloten raakt).
+  via *Instellingen* (⚙) → *Beveiliging* extra apparaten toevoegen (doe dat zodat je niet buitengesloten raakt).
 
 > De PDF haalt kaarttegels rechtstreeks bij OpenStreetMap op; houd het gebruik bescheiden
 > ([tile usage policy](https://operations.osmfoundation.org/policies/tiles/)).
