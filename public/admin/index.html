@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Beheer</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- Onboarding: eerste passkey -->
+<section id="v-setup" class="card hidden">
+  <h2>Eerste keer instellen</h2>
+  <p class="muted">Maak een passkey aan om het beheer te beveiligen. Voer de installatiecode in (<code>SETUP_TOKEN</code> uit je <code>.env</code>, of uit de containerlog als je die leeg liet).</p>
+  <label for="s-token">Installatiecode</label>
+  <input type="password" id="s-token" autocomplete="off">
+  <label for="s-name">Naam van dit apparaat</label>
+  <input type="text" id="s-name" value="Mijn apparaat" maxlength="60">
+  <p class="error" id="s-err"></p>
+  <button class="primary" id="s-go">Passkey aanmaken</button>
+</section>
+
+<!-- Inloggen -->
+<section id="v-login" class="card hidden">
+  <h2>Beheer</h2>
+  <p class="muted">Log in met je passkey (vingerafdruk, gezicht, pincode of beveiligingssleutel).</p>
+  <p class="error" id="l-err"></p>
+  <button class="primary" id="l-go">Inloggen met passkey</button>
+  <p><a href="/">← Naar de kaart</a></p>
+</section>
+
+<!-- Editor -->
+<div id="v-edit" class="hidden" style="display:contents">
+<header class="bar">
+  <h1>Beheer</h1>
+  <span class="muted" id="dirty"></span>
+  <button class="primary" id="save">Opslaan</button>
+  <button id="pk-open">Passkeys</button>
+  <a class="btn" href="/" target="_blank">Bekijk site</a>
+  <button id="logout">Uitloggen</button>
+</header>
+<div class="editor">
+  <aside class="side">
+    <div>
+      <input type="file" id="file" accept="image/png,image/jpeg,image/webp" hidden>
+      <button id="upload" style="width:100%">📤 Kaart uploaden / vervangen</button>
+    </div>
+    <div class="row">
+      <button id="t-select" class="active">☝ Selecteren</button>
+      <button id="t-draw">✏ Huis tekenen</button>
+    </div>
+    <div>
+      <label style="margin-top:0">Kleur voor nieuwe huizen</label>
+      <div class="row">
+        <button data-newstatus="green" class="active"><i class="dot green"></i>Groen</button>
+        <button data-newstatus="red"><i class="dot red"></i>Rood</button>
+      </div>
+    </div>
+    <div class="hint" id="hint"></div>
+    <div id="props" class="hidden">
+      <label for="p-label">Huisnummer / naam</label>
+      <input type="text" id="p-label" maxlength="100">
+      <label for="p-note">Notitie (zichtbaar bij klik)</label>
+      <textarea id="p-note" rows="2" maxlength="500"></textarea>
+      <label>Status</label>
+      <div class="row" id="p-status">
+        <button data-status="green"><i class="dot green"></i>Groen</button>
+        <button data-status="red"><i class="dot red"></i>Rood</button>
+        <button data-status="none">Geen</button>
+      </div>
+      <p><button class="danger" id="p-del">Huis verwijderen</button></p>
+    </div>
+    <div>
+      <label>Alle huizen (<span id="count">0</span>)</label>
+      <div class="list" id="list"></div>
+    </div>
+  </aside>
+  <div class="viewport" id="vp">
+    <div class="empty" id="empty" hidden>Upload eerst een kaart van de wijk.</div>
+    <div class="zoombtns"><button id="zin">+</button><button id="zout">−</button><button id="zfit" title="Passend">⤢</button></div>
+  </div>
+</div>
+</div>
+
+<dialog id="pk-dialog">
+  <h3>Passkeys</h3>
+  <div id="pk-list"></div>
+  <label for="pk-name">Nieuwe passkey toevoegen</label>
+  <input type="text" id="pk-name" value="Extra apparaat" maxlength="60">
+  <p class="error" id="pk-err"></p>
+  <div class="row"><button id="pk-add" class="primary">Toevoegen</button><button id="pk-close">Sluiten</button></div>
+</dialog>
+
+<script src="/vendor/webauthn.js"></script>
+<script src="/js/mapview.js"></script>
+<script src="/admin/admin.js"></script>
+</body>
+</html>

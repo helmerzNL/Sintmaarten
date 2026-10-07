@@ -1,0 +1,12 @@
+services:
+  sintmaarten:
+    image: ghcr.io/helmerznl/sintmaarten:latest
+    container_name: sintmaarten
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    volumes:
+      - ./data:/data
