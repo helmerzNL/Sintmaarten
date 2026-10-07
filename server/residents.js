@@ -39,6 +39,18 @@ function currentResident(req) {
   return rec && houseOf(rec.houseId) ? rec : null;
 }
 
+// Geblokkeerde apparaten (cookie/token) en IP-adressen mogen niet meer wijzigen of een huis kiezen.
+function isBlocked(req) {
+  const list = db().blocked || [];
+  if (!list.length) return false;
+  const hashes = new Set();
+  const cookie = auth.parseCookies(req.headers.cookie)[COOKIE];
+  if (cookie) hashes.add(sha(cookie));
+  const t = req.body?.token;
+  if (typeof t === 'string' && t) hashes.add(sha(t));
+  return list.some((b) => (b.tokenHash && hashes.has(b.tokenHash)) || (b.ip && b.ip === req.ip));
+}
+
 const proposalOf = (rec) => db().proposals.find((p) => p.residentId === rec.rid);
 
 function view(rec) {
@@ -83,6 +95,10 @@ const resident = express.Router();
 
 resident.use((req, res, next) => {
   if (!enabled()) return res.status(403).json({ error: 'Wijzigen door bewoners staat uit', enabled: false });
+  if (isBlocked(req)) {
+    if (req.method === 'GET') return res.json({ enabled: true, claim: null, blocked: true });
+    return res.status(403).json({ error: 'Dit apparaat is geblokkeerd door de beheerder', blocked: true });
+  }
   if (req.method !== 'GET') {
     // Alleen in de geïnstalleerde app: de app meldt zich met X-App-Mode. Dit is een gebruiksbeperking
     // (de browser stuurt de kop niet); de server kan niet bewijzen dat een client echt een app is.
@@ -108,7 +124,7 @@ resident.post('/claim', (req, res) => {
   if (!house) return res.status(404).json({ error: 'Huis niet gevonden' });
   if (db().residents.length >= MAX_RESIDENTS) return res.status(503).json({ error: 'Op dit moment zijn er te veel aanmeldingen' });
   const token = crypto.randomBytes(32).toString('base64url');
-  const rec = { rid: crypto.randomBytes(6).toString('hex'), tokenHash: sha(token), houseId: house.id, createdAt: new Date().toISOString(), lastActivity: new Date().toISOString(), notice: null };
+  const rec = { rid: crypto.randomBytes(6).toString('hex'), tokenHash: sha(token), houseId: house.id, createdAt: new Date().toISOString(), lastActivity: new Date().toISOString(), ip: req.ip, notice: null };
   db().residents.push(rec);
   store.save();
   setCookie(res, token);
@@ -147,6 +163,7 @@ resident.post('/set', (req, res) => {
     changed = true;
   }
   rec.lastActivity = new Date().toISOString();
+  rec.ip = req.ip;
   rec.notice = null;
   store.save();
   if (changed && status !== house.status) notifyAdmin();
@@ -169,10 +186,11 @@ const list = () => {
   const d = db();
   const rows = d.proposals.map((p) => {
     const h = houseOf(p.houseId);
-    return { id: p.id, houseId: p.houseId, title: titleOf(h), from: p.from, to: p.to, updatedAt: p.updatedAt };
+    return { id: p.id, rid: p.residentId, houseId: p.houseId, title: titleOf(h), from: p.from, to: p.to, updatedAt: p.updatedAt };
   }).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  const residents = d.residents.map((r) => ({ rid: r.rid, houseId: r.houseId, title: titleOf(houseOf(r.houseId)), createdAt: r.createdAt, lastActivity: r.lastActivity }));
-  return { enabled: enabled(), appOnly: appOnly(), pending: rows, residents };
+  const residents = d.residents.map((r) => ({ rid: r.rid, houseId: r.houseId, title: titleOf(houseOf(r.houseId)), createdAt: r.createdAt, lastActivity: r.lastActivity, ip: r.ip || null }));
+  const blocked = (d.blocked || []).map((b) => ({ id: b.id, title: b.title, ip: b.ip || null, at: b.at }));
+  return { enabled: enabled(), appOnly: appOnly(), pending: rows, residents, blocked };
 };
 
 admin.get('/changes', (req, res) => res.json(list()));
@@ -213,6 +231,28 @@ admin.delete('/residents/:rid', (req, res) => {
   d.proposals = d.proposals.filter((p) => p.residentId !== req.params.rid);
   store.save();
   res.json({ removed: before - d.residents.length });
+});
+
+// Een apparaat blokkeren (en optioneel ook het IP-adres); de koppeling en openstaande wijzigingen verdwijnen.
+admin.post('/residents/:rid/block', (req, res) => {
+  const d = db();
+  const rec = d.residents.find((r) => r.rid === req.params.rid);
+  if (!rec) return res.status(404).json({ error: 'Apparaat niet gevonden' });
+  const withIp = req.body?.withIp === true && !!rec.ip;
+  d.blocked = d.blocked || [];
+  d.blocked.push({ id: crypto.randomBytes(6).toString('hex'), tokenHash: rec.tokenHash, ip: withIp ? rec.ip : null, title: titleOf(houseOf(rec.houseId)), at: new Date().toISOString() });
+  d.residents = d.residents.filter((r) => r !== rec);
+  d.proposals = d.proposals.filter((p) => p.residentId !== rec.rid);
+  store.save();
+  res.json({ blocked: true, withIp });
+});
+
+admin.delete('/blocks/:id', (req, res) => {
+  const d = db();
+  const before = (d.blocked || []).length;
+  d.blocked = (d.blocked || []).filter((b) => b.id !== req.params.id);
+  store.save();
+  res.json({ removed: before - d.blocked.length });
 });
 
 // ---- pushmeldingen: apparaten van de beheerder ----

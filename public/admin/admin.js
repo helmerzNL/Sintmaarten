@@ -384,7 +384,9 @@
       const no = document.createElement('button'); no.textContent = 'Afwijzen';
       ok.onclick = () => decideChange(c.id, 'approve');
       no.onclick = () => decideChange(c.id, 'reject');
-      row.append(info, ok, no);
+      const bl = document.createElement('button'); bl.className = 'danger'; bl.textContent = 'Blokkeren';
+      bl.onclick = () => blockDevice(c.rid, c.title);
+      row.append(info, ok, no, bl);
       box.append(row);
     }
     $('pend-all').disabled = !data.pending.length;
@@ -396,7 +398,7 @@
       const row = document.createElement('div'); row.className = 'chg-row';
       const info = document.createElement('div'); info.className = 'chg-info';
       const t = document.createElement('strong'); t.textContent = r.title;
-      const d = document.createElement('span'); d.textContent = `aangemeld ${ago(r.createdAt)} · laatst actief ${ago(r.lastActivity)}`;
+      const d = document.createElement('span'); d.textContent = `aangemeld ${ago(r.createdAt)} · laatst actief ${ago(r.lastActivity)}${r.ip ? ` · ${r.ip}` : ''}`;
       info.append(t, d);
       const del = document.createElement('button'); del.className = 'danger'; del.textContent = 'Verwijderen';
       del.onclick = async () => {
@@ -404,9 +406,37 @@
         try { await api(`/api/admin/residents/${r.rid}`, { method: 'DELETE', expectAuth: true }); renderChanges(); }
         catch (e) { $('chg-err').textContent = e.message; }
       };
-      row.append(info, del);
+      const bl = document.createElement('button'); bl.className = 'danger'; bl.textContent = 'Blokkeren';
+      bl.onclick = () => blockDevice(r.rid, r.title, r.ip);
+      row.append(info, bl, del);
       rl.append(row);
     }
+
+    const bk = $('blk-list');
+    bk.replaceChildren();
+    if (!data.blocked.length) { const p = document.createElement('p'); p.className = 'muted'; p.style.padding = '8px 10px'; p.textContent = 'Geen geblokkeerde apparaten.'; bk.append(p); }
+    for (const b of data.blocked) {
+      const row = document.createElement('div'); row.className = 'chg-row';
+      const info = document.createElement('div'); info.className = 'chg-info';
+      const t = document.createElement('strong'); t.textContent = b.title;
+      const d = document.createElement('span'); d.textContent = `geblokkeerd ${ago(b.at)}${b.ip ? ` · ook IP ${b.ip}` : ' · alleen dit apparaat'}`;
+      info.append(t, d);
+      const un = document.createElement('button'); un.textContent = 'Deblokkeren';
+      un.onclick = async () => {
+        try { await api(`/api/admin/blocks/${b.id}`, { method: 'DELETE', expectAuth: true }); toast('Gedeblokkeerd'); renderChanges(); }
+        catch (e) { $('chg-err').textContent = e.message; }
+      };
+      row.append(info, un);
+      bk.append(row);
+    }
+  }
+
+  async function blockDevice(rid, title, ip) {
+    if (!confirm(`Het apparaat van ${title} blokkeren? De koppeling en openstaande wijzigingen worden verwijderd en dit apparaat kan niet meer wijzigen.`)) return;
+    let withIp = false;
+    if (ip) withIp = confirm(`Ook het IP-adres ${ip} blokkeren?\n\nLet op: bewoners achter hetzelfde netwerk (bijv. dezelfde router) delen vaak een IP-adres en worden dan ook geblokkeerd.\n\nOK = ook IP blokkeren, Annuleren = alleen dit apparaat.`);
+    try { await post(`/api/admin/residents/${rid}/block`, { withIp }, { expectAuth: true }); toast('Geblokkeerd'); await renderChanges(); }
+    catch (e) { $('chg-err').textContent = e.message; }
   }
 
   async function decideChange(id, action) {
