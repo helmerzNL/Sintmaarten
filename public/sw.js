@@ -6,14 +6,16 @@ const TILES = 'sm-tiles-v1'; // blijft bij nieuwe versies bestaan
 const TILE_HOST = 'tile.openstreetmap.org';
 const MAX_TILES = 1500;
 
-const PRECACHE = [
-  '/', '/css/style.css', '/js/wijk.js', '/js/public.js', '/js/pwa.js',
+// Scripts en stijlen worden met ?v=<build> opgevraagd (cache-busting); hier staan de paden zonder versie.
+const VERSIONED = [
+  '/css/style.css', '/js/wijk.js', '/js/public.js', '/js/pwa.js', '/js/resident.js',
   '/vendor/leaflet/leaflet.js', '/vendor/leaflet/leaflet.css', '/vendor/jspdf.js',
-  '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png',
 ];
+const OTHER = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png'];
+const PRECACHE = [...OTHER, ...VERSIONED.map((p) => `${p}?v=${VERSION}`)];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(SHELL).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(SHELL).then((c) => c.addAll(PRECACHE.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -89,7 +91,7 @@ self.addEventListener('fetch', (e) => {
   if (req.mode === 'navigate' && (p === '/' || p === '/index.html')) {
     return e.respondWith(networkFirst(req, SHELL, 3000, '/'));
   }
-  if (PRECACHE.includes(p) || p.startsWith('/vendor/leaflet/') || p.startsWith('/icons/')) {
+  if (VERSIONED.includes(p) || OTHER.includes(p) || p.startsWith('/vendor/leaflet/') || p.startsWith('/icons/')) {
     return e.respondWith(staleWhileRevalidate(req));
   }
   // beheer, auth en overige API's: altijd netwerk
