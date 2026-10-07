@@ -228,7 +228,19 @@
     if (name === 'backups') renderBackups();
     if (name === 'org') fillOrg();
   }
+  let versionShown = false;
+  async function showVersion() {
+    if (versionShown) return;
+    try {
+      const info = await api('/api/admin/info');
+      $('app-version').textContent = info.label;
+      $('app-version').title = `Build (commit): ${info.buildFull}`;
+      versionShown = true;
+    } catch { $('app-version').textContent = 'onbekend'; }
+  }
+
   function openSettings(tab) {
+    showVersion();
     drawer().classList.add('open');
     drawer().setAttribute('aria-hidden', 'false');
     $('scrim').classList.add('show');
