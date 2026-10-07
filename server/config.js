@@ -28,6 +28,5 @@ module.exports = {
   setupToken: setupToken.value,
   setupTokenGenerated: setupToken.generated,
   sessionHours: Number(process.env.SESSION_HOURS) || 12,
-  maxUploadMb: Number(process.env.MAX_UPLOAD_MB) || 15,
   secureCookie: origin.startsWith('https://'),
 };

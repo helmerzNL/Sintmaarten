@@ -42,5 +42,5 @@ npm test
 ## Beveiliging
 Passkeys via WebAuthn (SimpleWebAuthn), sessiecookie `HttpOnly`/`SameSite=Strict`/`Secure`, origin-check op wijzigingen,
 beperking op mislukte pogingen.
-Back-up: kopieer de map `data/`. Passkey kwijt en geen ander apparaat? Verwijder `data/db.json` → passkeys (en huizen) zijn weg;
-verwijder liever alleen het `passkeys`-deel (zet `"passkeys": []`) en doorloop de onboarding opnieuw.
+Back-up: kopieer de map `data/`. Passkey kwijt en geen ander apparaat? Zet in `data/db.json`
+`"passkeys": []` en doorloop de onboarding opnieuw.
