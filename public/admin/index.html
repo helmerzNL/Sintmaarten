@@ -68,10 +68,13 @@
       <button id="t-draw">✏ Huis tekenen</button>
     </div>
     <div>
-      <label style="margin-top:0">Kleur voor nieuwe huizen</label>
+      <label for="active-street" style="margin-top:0">Straat voor nieuwe huizen</label>
+      <input type="text" id="active-street" list="street-list" maxlength="100" placeholder="bijv. Loerikseweg">
+      <label style="margin-top:10px">Status voor nieuwe huizen</label>
       <div class="row">
-        <button data-newstatus="green" class="active"><i class="dot green"></i>Groen</button>
-        <button data-newstatus="red"><i class="dot red"></i>Rood</button>
+        <button data-newstatus="none" class="active"><i class="dot"></i><span data-label="none">Niet gemarkeerd</span></button>
+        <button data-newstatus="green"><i class="dot green"></i><span data-label="green">Groen</span></button>
+        <button data-newstatus="red"><i class="dot red"></i><span data-label="red">Rood</span></button>
       </div>
     </div>
     <div class="hint" id="hint"></div>
@@ -85,9 +88,9 @@
       <textarea id="p-note" rows="2" maxlength="500"></textarea>
       <label>Status</label>
       <div class="row" id="p-status">
-        <button data-status="green"><i class="dot green"></i>Groen</button>
-        <button data-status="red"><i class="dot red"></i>Rood</button>
-        <button data-status="none">Geen</button>
+        <button data-status="green"><i class="dot green"></i><span data-label="green">Groen</span></button>
+        <button data-status="red"><i class="dot red"></i><span data-label="red">Rood</span></button>
+        <button data-status="none"><span data-label="none">Niet gemarkeerd</span></button>
       </div>
       <p><button class="danger" id="p-del">Huis verwijderen</button></p>
     </div>
@@ -200,6 +203,13 @@
       <div class="row"><button id="org-upload">Logo uploaden</button><button id="org-remove" class="danger">Logo verwijderen</button></div>
       <label for="org-title">Naam van de site (staat naast het logo en bovenaan de PDF)</label>
       <input type="text" id="org-title" maxlength="60" placeholder="Standaard: de naam uit de serverinstelling (SITE_TITLE)">
+      <label>Namen van de statussen (zoals bezoekers ze zien)</label>
+      <div class="row">
+        <div><label for="lbl-green" style="margin-top:0">Groen heet</label><input type="text" id="lbl-green" maxlength="24" placeholder="Groen"></div>
+        <div><label for="lbl-red" style="margin-top:0">Rood heet</label><input type="text" id="lbl-red" maxlength="24" placeholder="Rood"></div>
+        <div><label for="lbl-none" style="margin-top:0">Zonder status heet</label><input type="text" id="lbl-none" maxlength="24" placeholder="Niet gemarkeerd"></div>
+      </div>
+      <p class="muted">Bijvoorbeeld "Akkoord" en "Nog niet bezocht". De kleuren blijven groen en rood; leeg laten = standaardnaam.</p>
       <label for="org-appname">Naam van de app (zoals die op het beginscherm van een telefoon komt te staan)</label>
       <input type="text" id="org-appname" maxlength="45" placeholder="Standaard: de sitenaam">
       <label for="org-short">Korte naam onder het icoon (max. 12 tekens)</label>

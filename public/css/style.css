@@ -178,7 +178,10 @@ dialog { max-height: 92vh; overflow-y: auto; }
 .street-row input:checked + .track .thumb { transform: translateX(18px); }
 .street-row input:focus-visible + .track { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
 .street-name { flex: 1; }
-.street-count { order: 1; color: var(--muted); font-size: .8rem; background: var(--bg); border-radius: 999px; padding: 1px 8px; }
+.street-tally { order: 1; display: inline-flex; gap: 10px; font-size: .9rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.street-tally .dot { margin-right: 4px; }
+.streets-total { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: .95rem; color: var(--muted); }
+.streets-total .street-tally { color: var(--text); }
 .street-name { order: 0; }
 
 select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
@@ -214,3 +217,5 @@ path.pending { animation: dash 1.2s linear infinite; }
 .chg-row button { padding: 4px 10px; font-size: .85rem; }
 [hidden] { display: none !important; }
 .secret { -webkit-text-security: disc; text-security: disc; }
+
+.mine-badge { pointer-events: none; font-size: 18px; line-height: 26px; text-align: center; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }

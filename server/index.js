@@ -15,7 +15,7 @@ const { hashPassword, verifyPassword } = require('./password');
 const backups = require('./backups');
 const residents = require('./residents');
 const appVersion = require('./version');
-const { normalizeHouse, STATUSES } = require('./houses');
+const { normalizeHouse, STATUSES, statusLabels } = require('./houses');
 
 const app = express();
 app.set('trust proxy', true);
@@ -71,6 +71,7 @@ app.get('/api/map', (req, res) => {
     intro: settings?.intro || '', logo: settings?.logo || null,
     appName: settings?.appName || '', appShortName: settings?.appShortName || '',
     residentsEnabled: settings?.residentsEnabled !== false,
+    labels: statusLabels(settings),
   });
 });
 
@@ -361,6 +362,17 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     db.settings.intro = intro;
   }
   if ('residentsEnabled' in body) db.settings.residentsEnabled = body.residentsEnabled === true;
+  if (body.labels && typeof body.labels === 'object') {
+    const next = { ...statusLabels(db.settings) };
+    for (const k of STATUSES) {
+      if (k in body.labels) {
+        const v = String(body.labels[k] ?? '').trim();
+        if (v.length > 24) return res.status(400).json({ error: 'Een naam mag maximaal 24 tekens zijn' });
+        next[k] = v || statusLabels(null)[k]; // leeg = standaardnaam
+      }
+    }
+    db.settings.labels = next;
+  }
   if ('siteTitle' in body) {
     const title = String(body.siteTitle ?? '').trim();
     if (title.length > 60) return res.status(400).json({ error: 'De naam van de site mag maximaal 60 tekens zijn' });
@@ -377,7 +389,7 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     db.settings.appShortName = short;
   }
   store.save();
-  res.json({ residentsEnabled: db.settings.residentsEnabled !== false, intro: db.settings.intro, siteTitle: db.settings.siteTitle, appName: db.settings.appName, appShortName: db.settings.appShortName });
+  res.json({ labels: statusLabels(db.settings), residentsEnabled: db.settings.residentsEnabled !== false, intro: db.settings.intro, siteTitle: db.settings.siteTitle, appName: db.settings.appName, appShortName: db.settings.appShortName });
 });
 
 admin.put('/view', backups.afterSave('Kaartweergave opgeslagen'), (req, res) => {

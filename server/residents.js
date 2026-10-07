@@ -8,12 +8,12 @@ const store = require('./store');
 const auth = require('./auth');
 const backups = require('./backups');
 const push = require('./push');
-const { STATUSES } = require('./houses');
+const { STATUSES, statusLabels } = require('./houses');
 
 const COOKIE = 'sm_resident';
 const MAX_RESIDENTS = 3000;
 const MAX_PENDING = 500;
-const STATUS_NAME = { green: 'groen', red: 'rood', none: 'niet gemarkeerd' };
+const statusName = (k) => statusLabels(store.db().settings)[k].toLowerCase();
 
 const db = () => store.db();
 const sha = (t) => crypto.createHash('sha256').update(t).digest('hex');
@@ -70,7 +70,7 @@ function notifyAdmin() {
     const first = pending[0];
     const h = houseOf(first.houseId);
     const body = pending.length === 1 && h
-      ? `${titleOf(h)}: ${STATUS_NAME[first.to]} aangevraagd`
+      ? `${titleOf(h)}: ${statusName(first.to)} aangevraagd`
       : `${pending.length} wijzigingen wachten op goedkeuring`;
     try { await push.send({ title: 'Wijziging ter goedkeuring', body, url: '/beheer#changes', tag: 'wijzigingen' }); }
     catch (err) { console.error('Melding mislukt:', err.message); }
@@ -105,6 +105,17 @@ resident.post('/claim', (req, res) => {
   const rec = { rid: crypto.randomBytes(6).toString('hex'), tokenHash: sha(token), houseId: house.id, createdAt: new Date().toISOString(), lastActivity: new Date().toISOString(), notice: null };
   db().residents.push(rec);
   store.save();
+  setCookie(res, token);
+  res.json({ ...view(rec), deviceToken: token }); // de app bewaart dit ook lokaal, zodat de koppeling een gewiste cookie overleeft
+});
+
+// Koppeling herstellen met het lokaal bewaarde token (als de cookie van de app is verdwenen).
+resident.post('/restore', (req, res) => {
+  const token = typeof req.body?.token === 'string' ? req.body.token : '';
+  if (token.length < 20 || token.length > 100) return res.status(400).json({ error: 'Ongeldig token' });
+  const hash = sha(token);
+  const rec = db().residents.find((r) => auth.safeEqual(r.tokenHash, hash));
+  if (!rec || !houseOf(rec.houseId)) return res.status(404).json({ error: 'Koppeling niet gevonden' });
   setCookie(res, token);
   res.json(view(rec));
 });

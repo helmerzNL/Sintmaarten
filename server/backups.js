@@ -20,7 +20,7 @@ function snapshotData() {
   return {
     houses: JSON.parse(JSON.stringify(houses)),
     view: view ? { ...view } : null,
-    texts: { siteTitle: settings?.siteTitle || '', intro: settings?.intro || '', appName: settings?.appName || '', appShortName: settings?.appShortName || '' },
+    texts: { labels: { ...(settings?.labels || {}) }, siteTitle: settings?.siteTitle || '', intro: settings?.intro || '', appName: settings?.appName || '', appShortName: settings?.appShortName || '' },
   };
 }
 
@@ -72,6 +72,7 @@ function restore(id) {
   db.houses = b.houses.map(normalizeHouse); // ook oude backups met "label" werken
   db.view = b.view;
   db.settings.intro = b.texts.intro;
+  if (b.texts.labels) db.settings.labels = b.texts.labels;
   if ('siteTitle' in b.texts) db.settings.siteTitle = b.texts.siteTitle; // oudere backups kennen dit veld nog niet
   db.settings.appName = b.texts.appName;
   db.settings.appShortName = b.texts.appShortName;

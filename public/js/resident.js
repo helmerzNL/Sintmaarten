@@ -1,9 +1,9 @@
 // "Huis wijzigen": in de geïnstalleerde app kiest een bewoner één huis (per apparaat) en stelt een
-// nieuwe kleur voor (niet gemarkeerd → groen → rood). De beheerder moet dat goedkeuren.
+// nieuwe status voor (niet gemarkeerd → groen → rood; de namen zijn instelbaar). De beheerder moet dat goedkeuren.
 (function () {
   const ORDER = ['none', 'green', 'red'];
   const cycle = (s) => ORDER[(ORDER.indexOf(s) + 1) % ORDER.length];
-  const NAME = { none: 'Niet gemarkeerd', green: 'Groen', red: 'Rood' };
+  const NAME = new Proxy({}, { get: (_, k) => Wijk.STATUS[k]?.name }); // volgt de instelbare namen
   const $ = (id) => document.getElementById(id);
 
   const isInstalledApp = () => window.matchMedia('(display-mode: standalone)').matches
@@ -31,10 +31,27 @@
     if (!btn) return;
     btn.hidden = false;
 
-    const sorted = [...houses].sort(Wijk.compareHouses);
-    const byId = new Map(houses.map((h) => [h.id, h]));
+    let sorted = [...houses].sort(Wijk.compareHouses);
+    let byId = new Map(houses.map((h) => [h.id, h]));
+    const store = {
+      get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+      set: (k, v) => { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} },
+    };
+    const CACHE = 'sm-resident-me', TOKEN = 'sm-resident-token';
+
+    // De koppeling blijft bewaard: op de server (cookie), met een lokale kopie van het token als reserve
+    // en een lokale kopie van de laatste status voor als er even geen verbinding is.
     let me = { claim: null };
-    try { me = await api('/me'); } catch (e) { if (e.status === 403) { btn.hidden = true; return; } }
+    try {
+      me = await api('/me');
+      if (!me.claim && store.get(TOKEN)) { // cookie weg? herstel met het lokaal bewaarde token
+        try { me = await api('/restore', { token: store.get(TOKEN) }); } catch (e) { if (e.status === 404) store.set(TOKEN, null); }
+      }
+      store.set(CACHE, me.claim ? JSON.stringify(me) : null);
+    } catch (e) {
+      if (e.status === 403) { btn.hidden = true; return; }
+      try { me = JSON.parse(store.get(CACHE) || 'null') || { claim: null }; } catch { me = { claim: null }; } // offline
+    }
 
     let on = false, group = null;
     const layers = new Map();
@@ -62,8 +79,29 @@
       }
     }
 
+    // Het eigen huis blijft ook buiten de wijzigmodus zichtbaar (met de nog niet goedgekeurde status).
+    let mine = null;
+    function clearMine() { if (mine) { mine.remove(); mine = null; } }
+    function drawMine() {
+      clearMine();
+      if (on || !me.claim) return;
+      const h = byId.get(me.claim.houseId);
+      if (!h) return;
+      mine = L.layerGroup().addTo(map);
+      const poly = L.polygon(h.points, styleFor(h)).addTo(mine);
+      poly.on('click', (e) => { L.DomEvent.stopPropagation(e); enter(); });
+      const el = poly.getElement && poly.getElement();
+      if (el) el.classList.toggle('pending', !!me.pending);
+      const badge = L.marker(Wijk.labelPoint(h.points), {
+        icon: L.divIcon({ className: 'mine-badge', html: me.pending ? '⏳' : '🏠', iconSize: [26, 26] }),
+        interactive: false, keyboard: false,
+      }).addTo(mine);
+      badge.getElement()?.setAttribute('title', me.pending ? 'Jouw huis: wacht op goedkeuring' : 'Jouw huis');
+    }
+
     function enter() {
       on = true;
+      clearMine();
       document.body.classList.add('editing');
       group = L.layerGroup().addTo(map);
       for (const h of houses) {
@@ -83,12 +121,15 @@
       layers.clear();
       sheet.hidden = true;
       sheet.replaceChildren();
+      drawMine();
     }
 
     async function setStatus(next) {
       try {
         me = { ...me, ...(await api('/set', { status: next })) };
+        store.set(CACHE, JSON.stringify(me));
         restyle();
+        drawMine();
         render();
       } catch (e) { toast(e.message); }
     }
@@ -101,6 +142,8 @@
         if (dlg.returnValue !== 'ja') return;
         try {
           me = await api('/claim', { houseId: h.id });
+          if (me.deviceToken) store.set(TOKEN, me.deviceToken);
+          store.set(CACHE, JSON.stringify(me));
           restyle();
           await setStatus(cycle(h.status)); // de eerste tik wisselt meteen de kleur
         } catch (e) { toast(e.message); }
@@ -162,6 +205,39 @@
       }
       sheet.replaceChildren(...parts);
     }
+
+    // Opnieuw ophalen (periodiek en bij terugkeer naar de app): nieuwe huisgegevens + eigen status/uitslag.
+    let lastNotice = me.notice ? me.notice.at : null;
+    Wijk.refreshResident = async (newHouses) => {
+      if (newHouses) {
+        houses = newHouses;
+        sorted = [...houses].sort(Wijk.compareHouses);
+        byId = new Map(houses.map((h) => [h.id, h]));
+      }
+      try {
+        const next = await api('/me');
+        me = next.claim ? next : { claim: null };
+        store.set(CACHE, me.claim ? JSON.stringify(me) : null);
+      } catch (e) { if (e.status === 403) { btn.hidden = true; leave(); } return; }
+      if (me.notice && me.notice.at !== lastNotice) {
+        toast(me.notice.decision === 'approved' ? 'Je wijziging is goedgekeurd ✔' : 'Je wijziging is niet doorgevoerd');
+      }
+      lastNotice = me.notice ? me.notice.at : null;
+      if (on) { // wijzigmodus open: kaartlaag en venster bijwerken
+        group && group.clearLayers();
+        layers.clear();
+        for (const h of houses) {
+          const layer = L.polygon(h.points, styleFor(h)).addTo(group);
+          layer.on('click', (e) => { L.DomEvent.stopPropagation(e); tap(h); });
+          layers.set(h.id, layer);
+        }
+        restyle();
+        render();
+      } else {
+        drawMine();
+      }
+    };
+    drawMine();
 
     btn.onclick = () => (on ? leave() : enter());
     $('claim-no').onclick = () => $('claim-dialog').close('nee');

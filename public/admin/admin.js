@@ -169,19 +169,21 @@
   };
 
   // ---------- logo & uitleg ----------
-  let org = { intro: '', logo: null, siteTitle: '', appName: '', appShortName: '' };
+  let org = { intro: '', logo: null, siteTitle: '', appName: '', appShortName: '', labels: null };
   function renderOrg() {
     $('org-logo').hidden = !org.logo;
     if (org.logo) $('org-logo').src = org.logo.url;
     $('org-remove').disabled = !org.logo;
     $('org-count').textContent = $('org-intro').value.length;
   }
+  const DEFAULT_LABELS = { green: 'Groen', red: 'Rood', none: 'Niet gemarkeerd' };
   function fillOrg() {
     $('org-err').textContent = '';
     $('org-intro').value = org.intro;
     $('org-title').value = org.siteTitle;
     $('org-appname').value = org.appName;
     $('org-short').value = org.appShortName;
+    for (const k of ['green', 'red', 'none']) $(`lbl-${k}`).value = org.labels && org.labels[k] !== DEFAULT_LABELS[k] ? org.labels[k] : '';
     renderOrg();
   }
   $('org-intro').oninput = renderOrg;
@@ -206,7 +208,9 @@
   $('org-save').onclick = async () => {
     $('org-err').textContent = '';
     try {
-      const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ intro: $('org-intro').value, siteTitle: $('org-title').value, appName: $('org-appname').value, appShortName: $('org-short').value }), expectAuth: true });
+      const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ intro: $('org-intro').value, siteTitle: $('org-title').value, appName: $('org-appname').value, appShortName: $('org-short').value, labels: { green: $('lbl-green').value, red: $('lbl-red').value, none: $('lbl-none').value } }), expectAuth: true });
+      Wijk.setLabels(res.labels); org.labels = res.labels;
+      if (typeof render === 'function' && map) { render(); renderChangesIfOpen(); }
       org.intro = res.intro; org.siteTitle = res.siteTitle; org.appName = res.appName; org.appShortName = res.appShortName;
       toast('Opgeslagen ✔');
     } catch (e) { $('org-err').textContent = e.message; }
@@ -327,7 +331,8 @@
 
   // ---------- wijzigingen van bewoners en meldingen ----------
   let pendingCount = 0;
-  const STATUS_NL = { green: 'groen', red: 'rood', none: 'niet gemarkeerd' };
+  const STATUS_NL = new Proxy({}, { get: (_, k) => (Wijk.STATUS[k] ? Wijk.STATUS[k].name.toLowerCase() : k) }); // volgt de instelbare namen
+  const renderChangesIfOpen = () => { if (drawerOpen() && activeTab() === 'changes') renderChanges(); };
   const ago = (iso) => {
     const m = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000));
     return m < 1 ? 'zojuist' : m < 60 ? `${m} min geleden` : m < 1440 ? `${Math.round(m / 60)} uur geleden` : `${Math.round(m / 1440)} dagen geleden`;
@@ -506,7 +511,7 @@
 
   // ---------- editor ----------
   let map, houses = [], layers = new Map(); // id -> L.polygon
-  let selectedId = null, mode = 'select', newStatus = 'green', draft = [], dirty = false;
+  let selectedId = null, mode = 'select', newStatus = 'none', draft = [], dirty = false;
   let handles = [], draftLayer = null;
   const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -530,7 +535,7 @@
       ? (draft.length
         ? `${draft.length} punt(en). Klik de hoekpunten van het huis; sluit af door op het gele beginpunt te klikken, dubbel te klikken of Enter te drukken. Backspace = laatste punt weg, Esc = annuleren.`
         : 'Zoom ver in en klik op de hoeken van een huis om er een vlak overheen te leggen. Slepen verplaatst de kaart.')
-      : 'Klik op een huis om het te selecteren. Sleep de witte punten om de vorm aan te passen. Sneltoetsen: G = groen, R = rood, Delete = verwijderen.';
+      : 'Klik op een huis om het te selecteren. Sleep de witte punten om de vorm aan te passen. Sneltoetsen: G = ' + Wijk.STATUS.green.name.toLowerCase() + ', R = ' + Wijk.STATUS.red.name.toLowerCase() + ', Delete = verwijderen.';
   }
 
   function syncPolygons() {
@@ -627,7 +632,22 @@
     $('street-list').replaceChildren(...streets.map((x) => Object.assign(document.createElement('option'), { value: x })));
   }
 
-  function select(id) { selectedId = id; render(); }
+  // Actieve (of laatst gebruikte) straat: nieuwe huizen krijgen die straat vooraf ingevuld.
+  let activeStreet = '';
+  function setActiveStreet(v) {
+    activeStreet = String(v || '').trim();
+    if (document.activeElement !== $('active-street')) $('active-street').value = activeStreet;
+  }
+
+  function select(id) {
+    selectedId = id;
+    const h = selected();
+    if (h) {
+      if (h.street) setActiveStreet(h.street);
+      else if (!h.number && activeStreet) { h.street = activeStreet; setDirty(); } // nieuw, nog leeg huis: straat alvast invullen
+    }
+    render();
+  }
 
   function setMode(m) {
     mode = m;
@@ -641,7 +661,7 @@
 
   function finishDraft() {
     if (draft.length < 3) { toast('Een huis heeft minstens 3 punten nodig'); return; }
-    const lastStreet = filterStreet && filterStreet !== NO_STREET ? filterStreet : (houses[houses.length - 1]?.street || '');
+    const lastStreet = activeStreet || (filterStreet && filterStreet !== NO_STREET ? filterStreet : (houses[houses.length - 1]?.street || ''));
     const h = { id: uid(), street: lastStreet, number: '', note: '', status: newStatus, points: draft };
     houses.push(h);
     draft = [];
@@ -754,10 +774,12 @@
       document.querySelectorAll('[data-newstatus]').forEach((x) => x.classList.toggle('active', x === b));
     });
     document.querySelectorAll('#p-status button').forEach((b) => b.onclick = () => setStatus(b.dataset.status));
-    $('p-street').oninput = () => { const s = selected(); if (s) { s.street = $('p-street').value; setDirty(); render(); } };
+    $('p-street').oninput = () => { const s = selected(); if (s) { s.street = $('p-street').value; setActiveStreet(s.street); setDirty(); render(); } };
+    $('active-street').oninput = () => setActiveStreet($('active-street').value);
     $('p-number').oninput = () => { const s = selected(); if (s) { s.number = $('p-number').value; setDirty(); render(); } };
     $('street-filter').onchange = () => {
       filterStreet = $('street-filter').value;
+      if (filterStreet && filterStreet !== NO_STREET) setActiveStreet(filterStreet);
       render();
       const sub = houses.filter(inFilter);
       if (filterStreet && sub.length) map.fitBounds(L.latLngBounds(sub.flatMap((h) => h.points)).pad(0.3), { maxZoom: 19 });
@@ -776,6 +798,7 @@
     $('p-del').onclick = deleteSelected;
     $('save').onclick = save;
     wireView();
+    setActiveStreet(houses.length ? houses[houses.length - 1].street : '');
     $('search-form').onsubmit = (e) => { e.preventDefault(); if ($('search').value.trim()) search($('search').value.trim()); };
 
     if (!window.__keys) {
@@ -810,7 +833,8 @@
     const data = await api('/api/map');
     houses = data.houses;
     savedView = data.view;
-    org = { intro: data.intro || '', logo: data.logo, siteTitle: data.siteTitle || '', appName: data.appName || '', appShortName: data.appShortName || '' };
+    org = { intro: data.intro || '', logo: data.logo, siteTitle: data.siteTitle || '', appName: data.appName || '', appShortName: data.appShortName || '', labels: data.labels };
+    Wijk.setLabels(data.labels);
     selectedId = null; draft = [];
     setDirty(false);
     render();
@@ -821,7 +845,8 @@
     show('v-edit');
     const data = await api('/api/map');
     houses = data.houses;
-    org = { intro: data.intro || '', logo: data.logo, siteTitle: data.siteTitle || '', appName: data.appName || '', appShortName: data.appShortName || '' };
+    org = { intro: data.intro || '', logo: data.logo, siteTitle: data.siteTitle || '', appName: data.appName || '', appShortName: data.appShortName || '', labels: data.labels };
+    Wijk.setLabels(data.labels);
     initEditor(data);
     setDirty(false);
     setMode('select');

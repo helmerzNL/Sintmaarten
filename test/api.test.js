@@ -390,3 +390,44 @@ test('bewoners: uitschakelen, beheerrechten en push-registratie', async () => {
   assert.equal((await (await j('/api/map')).json()).residentsEnabled, false);
   await adminReq('/settings', 'PUT', { residentsEnabled: true });
 });
+
+test('namen van de statussen zijn instelbaar (met terugval op de standaard)', async () => {
+  const put = (labels) => j('/api/admin/settings', { method: 'PUT', headers: jsonH(cookie), body: JSON.stringify({ labels }) });
+  assert.deepEqual((await (await j('/api/map')).json()).labels, { green: 'Groen', red: 'Rood', none: 'Niet gemarkeerd' });
+  const r = await put({ green: ' Akkoord ', red: 'Nog niet bezocht', none: '' });
+  assert.equal(r.status, 200);
+  assert.deepEqual((await (await j('/api/map')).json()).labels, { green: 'Akkoord', red: 'Nog niet bezocht', none: 'Niet gemarkeerd' });
+  assert.equal((await put({ green: 'x'.repeat(25) })).status, 400);
+  await wait(50);
+  assert.equal(backups.read(backups.list()[0].id).texts.labels.green, 'Akkoord');
+  assert.equal((await put({ green: '', red: '' })).status, 200); // leeg = standaard
+  assert.equal((await (await j('/api/map')).json()).labels.red, 'Rood');
+});
+
+test('pushmelding gebruikt de ingestelde statusnaam', async () => {
+  process.env.PUSH_DELAY_MS = '10';
+  const sent = [];
+  push._setSender({ sendNotification: async (sub, payload) => { sent.push(JSON.parse(payload)); } });
+  await adminReq('/settings', 'PUT', { labels: { green: 'Akkoord' }, residentsEnabled: true });
+  await adminReq('/houses', 'PUT', { houses: [{ id: 'q1', street: 'Test', number: '1', status: 'none', points: ptsR }] });
+  await adminReq('/push/subscribe', 'POST', { label: 'T', subscription: { endpoint: 'https://push.example/zzz', keys: { p256dh: 'p'.repeat(20), auth: 'a'.repeat(10) } } });
+  const c = (await post('/claim', { houseId: 'q1' })).headers.get('set-cookie').split(';')[0];
+  await post('/set', { status: 'green' }, c);
+  await wait(80);
+  assert.match(sent[0].body, /akkoord aangevraagd/);
+  await adminReq('/settings', 'PUT', { labels: { green: '' } });
+});
+
+test('koppeling van een bewoner is te herstellen met het lokaal bewaarde token', async () => {
+  await adminReq('/settings', 'PUT', { residentsEnabled: true });
+  await adminReq('/houses', 'PUT', { houses: [{ id: 'r1', street: 'S', number: '1', status: 'none', points: ptsR }] });
+  const claim = await post('/claim', { houseId: 'r1' });
+  const body = await claim.json();
+  assert.ok(body.deviceToken && body.deviceToken.length > 30);
+  assert.equal((await post('/restore', { token: 'x'.repeat(40) })).status, 404);
+  assert.equal((await post('/restore', { token: 'kort' })).status, 400);
+  const back = await post('/restore', { token: body.deviceToken });
+  assert.equal(back.status, 200);
+  const cookieAgain = back.headers.get('set-cookie').split(';')[0];
+  assert.equal((await (await res('/me', { headers: { cookie: cookieAgain } })).json()).claim.houseId, 'r1');
+});

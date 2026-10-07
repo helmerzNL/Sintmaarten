@@ -3,8 +3,21 @@
   const STATUS = {
     green: { color: '#1f9d55', stroke: '#0f6b36', name: 'Groen' },
     red: { color: '#d93a3a', stroke: '#8f1f1f', name: 'Rood' },
-    none: { color: '#888888', stroke: '#555555', name: 'Geen' },
+    none: { color: '#888888', stroke: '#555555', name: 'Niet gemarkeerd' },
   };
+  // Namen van de statussen zijn instelbaar (instellingen); elementen met data-label worden meegenomen.
+  function applyLabels(root = document) {
+    root.querySelectorAll('[data-label]').forEach((el) => {
+      const n = STATUS[el.dataset.label]?.name;
+      if (n) el.textContent = el.hasAttribute('data-lower') ? n.toLowerCase() : n;
+    });
+  }
+  function setLabels(labels) {
+    if (!labels) return;
+    for (const k of ['green', 'red', 'none']) if (labels[k]) STATUS[k].name = labels[k];
+    applyLabels();
+  }
+
   const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
   const ATTRIBUTION = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-bijdragers';
   const DEFAULT_VIEW = { center: [52.1, 5.3], zoom: 8 };
@@ -461,5 +474,5 @@
   ['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) =>
     document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
 
-  window.Wijk = { STATUS, createMap, houseStyle, buildPdf, prefetchTiles, DEFAULT_VIEW, houseTitle, compareHouses, natCompare, labelPoint, createNumberLayer };
+  window.Wijk = { setLabels, applyLabels, STATUS, createMap, houseStyle, buildPdf, prefetchTiles, DEFAULT_VIEW, houseTitle, compareHouses, natCompare, labelPoint, createNumberLayer };
 })();
