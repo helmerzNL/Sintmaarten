@@ -30,14 +30,24 @@
       <text x="12" y="17.2" text-anchor="middle" font-size="9.5" font-weight="800" fill="currentColor" font-family="system-ui,sans-serif">12</text>
     </svg>
   </label>
+  <!-- Alleen in de browser (niet in de geïnstalleerde app): schakelt "Huis wijzigen" in de menubalk in -->
+  <label class="switch" id="edit-switch-wrap" hidden title="Bewerken: jouw huis wijzigen">
+    <input type="checkbox" id="edit-switch" role="switch" aria-label="Bewerken: jouw huis wijzigen">
+    <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+    <span class="switch-text">Bewerken</span>
+    <span class="edit-icon" aria-hidden="true">✏️</span>
+  </label>
   <nav class="actions" aria-label="Acties">
     <button id="intro-btn" hidden aria-label="Uitleg"><span class="ico">ℹ</span><span class="lbl">Uitleg</span></button>
     <button id="house-edit" hidden aria-label="Huis wijzigen"><span class="ico">🏠</span><span class="lbl">Huis wijzigen</span></button>
+    <button id="sync-btn" hidden aria-label="Synchroniseren: huizen bijwerken" title="Huizen bijwerken"><span class="ico">🔄</span><span class="lbl">Sync</span></button>
     <button id="streets-btn" aria-label="Straten tonen of verbergen" aria-haspopup="dialog" hidden><span class="ico">🛣️</span><span class="lbl">Straten</span></button>
     <button id="pdf-view" aria-label="PDF bekijken"><span class="ico">📄</span><span class="lbl">PDF bekijken</span></button>
     <button id="pdf-dl" class="primary" aria-label="PDF opslaan"><span class="ico">⬇</span><span class="lbl">PDF opslaan</span></button>
     <button id="install" hidden aria-label="Installeer app"><span class="ico">📲</span><span class="lbl">Installeer app</span></button>
+    <button id="more-btn" hidden aria-haspopup="menu" aria-expanded="false" aria-controls="more-pop" aria-label="Meer"><span class="ico">⋯</span><span class="lbl">Meer</span></button>
   </nav>
+  <div id="more-pop" class="more-pop" role="menu" aria-label="Meer" hidden></div>
 </header>
 <div class="viewport" id="vp"></div>
 

@@ -71,6 +71,7 @@ app.get('/api/map', (req, res) => {
     intro: settings?.intro || '', logo: settings?.logo || null,
     appName: settings?.appName || '', appShortName: settings?.appShortName || '',
     residentsEnabled: settings?.residentsEnabled !== false,
+    residentsAppOnly: settings?.residentsAppOnly === true,
     labels: statusLabels(settings),
   });
 });
@@ -362,6 +363,7 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     db.settings.intro = intro;
   }
   if ('residentsEnabled' in body) db.settings.residentsEnabled = body.residentsEnabled === true;
+  if ('residentsAppOnly' in body) db.settings.residentsAppOnly = body.residentsAppOnly === true;
   if (body.labels && typeof body.labels === 'object') {
     const next = { ...statusLabels(db.settings) };
     for (const k of STATUSES) {
@@ -389,7 +391,7 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     db.settings.appShortName = short;
   }
   store.save();
-  res.json({ labels: statusLabels(db.settings), residentsEnabled: db.settings.residentsEnabled !== false, intro: db.settings.intro, siteTitle: db.settings.siteTitle, appName: db.settings.appName, appShortName: db.settings.appShortName });
+  res.json({ labels: statusLabels(db.settings), residentsEnabled: db.settings.residentsEnabled !== false, residentsAppOnly: db.settings.residentsAppOnly === true, intro: db.settings.intro, siteTitle: db.settings.siteTitle, appName: db.settings.appName, appShortName: db.settings.appShortName });
 });
 
 admin.put('/view', backups.afterSave('Kaartweergave opgeslagen'), (req, res) => {

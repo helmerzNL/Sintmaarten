@@ -431,3 +431,30 @@ test('koppeling van een bewoner is te herstellen met het lokaal bewaarde token',
   const cookieAgain = back.headers.get('set-cookie').split(';')[0];
   assert.equal((await (await res('/me', { headers: { cookie: cookieAgain } })).json()).claim.houseId, 'r1');
 });
+
+test('"alleen in de geïnstalleerde app": wijzigen vereist de app-kop, lezen niet', async () => {
+  await adminReq('/settings', 'PUT', { residentsEnabled: true, residentsAppOnly: false });
+  await adminReq('/houses', 'PUT', { houses: [{ id: 'a1', street: 'S', number: '1', status: 'none', points: ptsR }] });
+  assert.equal((await (await j('/api/map')).json()).residentsAppOnly, false);
+  assert.equal((await adminReq('/settings', 'PUT', { residentsAppOnly: true })).status, 200);
+  assert.equal((await (await j('/api/map')).json()).residentsAppOnly, true);
+  assert.equal((await (await adminReq('/changes')).json()).appOnly, true);
+
+  // browser (zonder kop): wijzigen geweigerd, status lezen mag
+  const noApp = await post('/claim', { houseId: 'a1' });
+  assert.equal(noApp.status, 403);
+  assert.equal((await noApp.json()).appOnly, true);
+  assert.equal((await res('/me')).status, 200);
+
+  // app (met kop): werkt
+  const app = await j('/api/resident/claim', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-App-Mode': 'standalone' }, body: JSON.stringify({ houseId: 'a1' }) });
+  assert.equal(app.status, 200);
+  const c = app.headers.get('set-cookie').split(';')[0];
+  const noHeader = await post('/set', { status: 'green' }, c);
+  assert.equal(noHeader.status, 403);
+  const withHeader = await j('/api/resident/set', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-App-Mode': 'standalone', cookie: c }, body: JSON.stringify({ status: 'green' }) });
+  assert.equal(withHeader.status, 200);
+
+  await adminReq('/settings', 'PUT', { residentsAppOnly: false });
+  assert.equal((await post('/set', { status: 'none' }, c)).status, 200); // weer open voor de browser
+});

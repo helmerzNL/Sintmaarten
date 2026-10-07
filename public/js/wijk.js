@@ -474,5 +474,12 @@
   ['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) =>
     document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
 
-  window.Wijk = { setLabels, applyLabels, STATUS, createMap, houseStyle, buildPdf, prefetchTiles, DEFAULT_VIEW, houseTitle, compareHouses, natCompare, labelPoint, createNumberLayer };
+  function toast(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast'; t.textContent = msg; t.setAttribute('role', 'status');
+    document.body.append(t);
+    setTimeout(() => t.remove(), 2800);
+  }
+
+  window.Wijk = { toast, setLabels, applyLabels, STATUS, createMap, houseStyle, buildPdf, prefetchTiles, DEFAULT_VIEW, houseTitle, compareHouses, natCompare, labelPoint, createNumberLayer };
 })();
