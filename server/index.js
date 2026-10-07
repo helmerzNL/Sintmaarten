@@ -13,6 +13,7 @@ const store = require('./store');
 const auth = require('./auth');
 const { hashPassword, verifyPassword } = require('./password');
 const backups = require('./backups');
+const residents = require('./residents');
 const appVersion = require('./version');
 const { normalizeHouse, STATUSES } = require('./houses');
 
@@ -69,6 +70,7 @@ app.get('/api/map', (req, res) => {
     title: siteTitle(), siteTitle: settings?.siteTitle || '', view, houses,
     intro: settings?.intro || '', logo: settings?.logo || null,
     appName: settings?.appName || '', appShortName: settings?.appShortName || '',
+    residentsEnabled: settings?.residentsEnabled !== false,
   });
 });
 
@@ -358,6 +360,7 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     if (intro.length > 5000) return res.status(400).json({ error: 'De uitleg mag maximaal 5000 tekens zijn' });
     db.settings.intro = intro;
   }
+  if ('residentsEnabled' in body) db.settings.residentsEnabled = body.residentsEnabled === true;
   if ('siteTitle' in body) {
     const title = String(body.siteTitle ?? '').trim();
     if (title.length > 60) return res.status(400).json({ error: 'De naam van de site mag maximaal 60 tekens zijn' });
@@ -374,7 +377,7 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     db.settings.appShortName = short;
   }
   store.save();
-  res.json({ intro: db.settings.intro, siteTitle: db.settings.siteTitle, appName: db.settings.appName, appShortName: db.settings.appShortName });
+  res.json({ residentsEnabled: db.settings.residentsEnabled !== false, intro: db.settings.intro, siteTitle: db.settings.siteTitle, appName: db.settings.appName, appShortName: db.settings.appShortName });
 });
 
 admin.put('/view', backups.afterSave('Kaartweergave opgeslagen'), (req, res) => {
@@ -427,6 +430,7 @@ admin.put('/houses', backups.afterSave('Layout opgeslagen'), (req, res) => {
   try {
     const db = store.db();
     db.houses = validateHouses(req.body.houses);
+    residents.prune();
     store.save();
     res.json({ houses: db.houses });
   } catch (err) {
@@ -434,7 +438,9 @@ admin.put('/houses', backups.afterSave('Layout opgeslagen'), (req, res) => {
   }
 });
 
+admin.use(residents.admin);
 app.use('/api/admin', admin);
+app.use('/api/resident', residents.resident);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Niet gevonden' }));
 
 // ---------- statische bestanden ----------

@@ -258,3 +258,115 @@ test('naam van de site is instelbaar en komt in site, manifest en backups', asyn
   assert.equal((await put({ siteTitle: '' })).status, 200);
   assert.equal((await (await j('/api/map')).json()).title, 'Onze wijk'); // terug naar SITE_TITLE
 });
+
+// ---------- bewoners en pushmeldingen ----------
+const push = require('../server/push');
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const ptsR = [[52, 5], [52.001, 5], [52.001, 5.001]];
+const res = (path, opts = {}) => j(`/api/resident${path}`, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } });
+const post = (path, body, cookieHeader) => res(path, { method: 'POST', body: JSON.stringify(body || {}), headers: cookieHeader ? { cookie: cookieHeader } : {} });
+const adminReq = (path, method = 'GET', body) => j(`/api/admin${path}`, { method, headers: jsonH(cookie), body: body ? JSON.stringify(body) : undefined });
+
+test('bewoners: 1 huis per apparaat, wijziging pas zichtbaar na goedkeuring', async () => {
+  process.env.PUSH_DELAY_MS = '10';
+  const sent = [];
+  push._setSender({ sendNotification: async (sub, payload) => { sent.push({ sub, payload: JSON.parse(payload) }); } });
+  await adminReq('/settings', 'PUT', { residentsEnabled: true });
+  await adminReq('/houses', 'PUT', { houses: [
+    { id: 'h1', street: 'Dorpsstraat', number: '1', status: 'none', points: ptsR },
+    { id: 'h2', street: 'Dorpsstraat', number: '2', status: 'red', points: ptsR },
+  ] });
+  await adminReq('/push/subscribe', 'POST', { label: 'Telefoon', subscription: { endpoint: 'https://push.example/abc', keys: { p256dh: 'p'.repeat(20), auth: 'a'.repeat(10) } } });
+
+  // zonder koppeling kan niets
+  assert.equal((await res('/me')).status, 200);
+  assert.equal((await (await res('/me')).json()).claim, null);
+  assert.equal((await post('/set', { status: 'green' })).status, 401);
+
+  // koppelen: cookie is HttpOnly, 1 jaar, alleen voor één huis
+  const claim = await post('/claim', { houseId: 'h1' });
+  assert.equal(claim.status, 200);
+  const setC = claim.headers.get('set-cookie');
+  assert.match(setC, /sm_resident=[\w-]{40,}/);
+  assert.match(setC, /HttpOnly/);
+  assert.match(setC, /Max-Age=31536000/);
+  const c1 = setC.split(';')[0];
+  assert.equal((await post('/claim', { houseId: 'h2' }, c1)).status, 409);
+  assert.equal((await post('/claim', { houseId: 'nope' })).status, 404);
+
+  // wijzigen: nog niet zichtbaar voor anderen
+  const s1 = await (await post('/set', { status: 'green' }, c1)).json();
+  assert.deepEqual([s1.effective, s1.approved, s1.pending], ['green', 'none', true]);
+  assert.equal((await (await j('/api/map')).json()).houses.find((h) => h.id === 'h1').status, 'none');
+  assert.equal((await post('/set', { status: 'blauw' }, c1)).status, 400);
+  const ch = await (await adminReq('/changes')).json();
+  assert.equal(ch.pending.length, 1);
+  assert.deepEqual([ch.pending[0].title, ch.pending[0].from, ch.pending[0].to], ['Dorpsstraat 1', 'none', 'green']);
+  assert.equal((await (await adminReq('/changes/count')).json()).pending, 1);
+
+  // pushmelding naar de beheerder (samengevoegd)
+  await wait(80);
+  assert.equal(sent.length, 1);
+  assert.match(sent[0].payload.body, /Dorpsstraat 1: groen aangevraagd/);
+  assert.equal(sent[0].payload.url, '/beheer#changes');
+
+  // terug naar de goedgekeurde status haalt het voorstel weg
+  assert.equal((await (await post('/set', { status: 'none' }, c1)).json()).pending, false);
+  assert.equal((await (await adminReq('/changes/count')).json()).pending, 0);
+
+  // opnieuw voorstellen en goedkeuren
+  await post('/set', { status: 'red' }, c1);
+  const pend = (await (await adminReq('/changes')).json()).pending[0];
+  const ap = await (await adminReq(`/changes/${pend.id}/approve`, 'POST')).json();
+  assert.deepEqual(ap.change, { houseId: 'h1', status: 'red' });
+  assert.equal((await (await j('/api/map')).json()).houses.find((h) => h.id === 'h1').status, 'red');
+  const me = await (await res('/me', { headers: { cookie: c1 } })).json();
+  assert.deepEqual([me.approved, me.effective, me.pending, me.notice.decision], ['red', 'red', false, 'approved']);
+  assert.equal((await post('/ack', {}, c1)).status, 200);
+  assert.equal((await (await res('/me', { headers: { cookie: c1 } })).json()).notice, null);
+
+  // afwijzen
+  await post('/set', { status: 'green' }, c1);
+  const p2 = (await (await adminReq('/changes')).json()).pending[0];
+  await adminReq(`/changes/${p2.id}/reject`, 'POST');
+  const me2 = await (await res('/me', { headers: { cookie: c1 } })).json();
+  assert.deepEqual([me2.effective, me2.notice.decision], ['red', 'rejected']);
+  assert.equal((await adminReq(`/changes/${p2.id}/approve`, 'POST')).status, 404);
+
+  // een tweede apparaat heeft een eigen koppeling; alles goedkeuren
+  const c2 = (await post('/claim', { houseId: 'h2' })).headers.get('set-cookie').split(';')[0];
+  await post('/set', { status: 'green' }, c2);
+  await post('/set', { status: 'green' }, c1);
+  const all = await (await adminReq('/changes/approve-all', 'POST')).json();
+  assert.equal(all.changes.length, 2);
+  const houses = (await (await j('/api/map')).json()).houses;
+  assert.deepEqual(houses.map((h) => h.status), ['green', 'green']);
+
+  // koppelingen beheren en opruimen bij verwijderde huizen
+  const rs = (await (await adminReq('/changes')).json()).residents;
+  assert.equal(rs.length, 2);
+  await adminReq(`/residents/${rs[1].rid}`, 'DELETE');
+  assert.equal((await (await res('/me', { headers: { cookie: c2 } })).json()).claim, null);
+  await adminReq('/houses', 'PUT', { houses: [{ id: 'h2', street: 'Dorpsstraat', number: '2', status: 'green', points: ptsR }] });
+  assert.equal((await (await res('/me', { headers: { cookie: c1 } })).json()).claim, null);
+});
+
+test('bewoners: uitschakelen, beheerrechten en push-registratie', async () => {
+  for (const [m, p] of [['GET', '/changes'], ['POST', '/changes/approve-all'], ['DELETE', '/residents/x'], ['GET', '/push/key'], ['POST', '/push/test']]) {
+    assert.equal((await j(`/api/admin${p}`, { method: m, headers: jsonH() })).status, 401, p);
+  }
+  const key = await (await adminReq('/push/key')).json();
+  assert.ok(key.publicKey.length > 60);
+  assert.equal((await adminReq('/push/subscribe', 'POST', { subscription: { endpoint: 'http://onveilig', keys: {} } })).status, 400);
+  // verlopen registraties (410) worden opgeruimd
+  push._setSender({ sendNotification: async () => { throw Object.assign(new Error('gone'), { statusCode: 410 }); } });
+  const r = await (await adminReq('/push/test', 'POST')).json();
+  assert.equal(r.removed >= 1, true);
+  assert.equal((await (await adminReq('/push/devices')).json()).length, 0);
+
+  await adminReq('/settings', 'PUT', { residentsEnabled: false });
+  assert.equal((await res('/me')).status, 403);
+  assert.equal((await post('/claim', { houseId: 'h2' })).status, 403);
+  assert.equal((await (await j('/api/map')).json()).residentsEnabled, false);
+  await adminReq('/settings', 'PUT', { residentsEnabled: true });
+});
