@@ -22,7 +22,7 @@ test('publieke kaart is leeg maar bereikbaar', async () => {
 });
 
 test('beheer-API vereist login', async () => {
-  for (const [m, p] of [['PUT', '/api/admin/houses'], ['POST', '/api/admin/map'], ['GET', '/api/admin/passkeys']]) {
+  for (const [m, p] of [['PUT', '/api/admin/houses'], ['PUT', '/api/admin/view'], ['GET', '/api/admin/passkeys']]) {
     assert.equal((await j(p, { method: m, headers: { 'Content-Type': 'application/json' }, body: m === 'GET' ? undefined : '{}' })).status, 401, p);
   }
 });

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Beheer</title>
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -42,10 +43,10 @@
 </header>
 <div class="editor">
   <aside class="side">
-    <div>
-      <input type="file" id="file" accept="image/png,image/jpeg,image/webp" hidden>
-      <button id="upload" style="width:100%">📤 Kaart uploaden / vervangen</button>
-    </div>
+    <form id="search-form">
+      <div class="row"><input type="text" id="search" placeholder="Zoek adres of plaats…" style="flex:3"><button style="flex:1">Zoek</button></div>
+    </form>
+    <button id="setview" title="Bepaalt waar bezoekers de kaart mee openen">📍 Huidige weergave als startpunt opslaan</button>
     <div class="row">
       <button id="t-select" class="active">☝ Selecteren</button>
       <button id="t-draw">✏ Huis tekenen</button>
@@ -77,8 +78,6 @@
     </div>
   </aside>
   <div class="viewport" id="vp">
-    <div class="empty" id="empty" hidden>Upload eerst een kaart van de wijk.</div>
-    <div class="zoombtns"><button id="zin">+</button><button id="zout">−</button><button id="zfit" title="Passend">⤢</button></div>
   </div>
 </div>
 </div>
@@ -93,7 +92,8 @@
 </dialog>
 
 <script src="/vendor/webauthn.js"></script>
-<script src="/js/mapview.js"></script>
+<script src="/vendor/leaflet/leaflet.js"></script>
+<script src="/js/wijk.js"></script>
 <script src="/admin/admin.js"></script>
 </body>
 </html>

@@ -4,13 +4,19 @@ Publieke kaart van de wijk waarop huizen groen of rood zijn gemarkeerd, met een 
 (`/beheer`) dat beveiligd is met een **passkey**.
 
 ## Hoe werkt het
-- **Publiek (`/`)**: de kaart met gekleurde vlakken over de huizen. Zoomen/slepen (muis, touch, pinch); klik op een huis voor naam/notitie.
+- **Kaart**: OpenStreetMap (via Leaflet), geen API-sleutel nodig. Google Maps is bewust niet gebruikt: dat vereist een betaalde sleutel en de voorwaarden staan het overtekenen en exporteren naar PDF niet toe.
+- **Publiek (`/`)**: de kaart met gekleurde vlakken over de huizen; klik op een huis voor naam/notitie.
+  Knoppen **PDF bekijken** en **PDF downloaden** maken in de browser een A4-liggend PDF van het hele wijkgebied
+  (kaart, legenda met aantallen, bronvermelding, en een tweede pagina met overzicht van de gemarkeerde huizen).
 - **Beheer (`/beheer`)**:
-  1. Upload de kaart (PNG/JPEG/WebP).
+  1. Zoek je straat (zoekveld) en zoom ver in; sla eventueel *Huidige weergave als startpunt* op.
   2. Kies *Huis tekenen*, kies groen of rood, klik de hoeken van een huis en sluit af (klik op het gele beginpunt, dubbelklik of Enter).
   3. Pas later de kleur aan (knoppen of **G**/**R**), versleep hoekpunten, geef een huisnummer/notitie, en klik *Opslaan* (Ctrl+S).
 - **Onboarding**: de allereerste keer vraagt `/beheer` om de `SETUP_TOKEN` en maakt dan een passkey aan. Daarna kun je
   via *Passkeys* extra apparaten toevoegen (doe dat zodat je niet buitengesloten raakt).
+
+> De PDF haalt kaarttegels rechtstreeks bij OpenStreetMap op; houd het gebruik bescheiden
+> ([tile usage policy](https://operations.osmfoundation.org/policies/tiles/)).
 
 ## Draaien op de NAS
 1. Zet `docker-compose.yml` en een `.env` (kopie van `.env.example`) in een map op je NAS.
@@ -35,6 +41,6 @@ npm test
 
 ## Beveiliging
 Passkeys via WebAuthn (SimpleWebAuthn), sessiecookie `HttpOnly`/`SameSite=Strict`/`Secure`, origin-check op wijzigingen,
-beperking op mislukte pogingen, uploads gecontroleerd op echte PNG/JPEG/WebP-inhoud.
+beperking op mislukte pogingen.
 Back-up: kopieer de map `data/`. Passkey kwijt en geen ander apparaat? Verwijder `data/db.json` → passkeys (en huizen) zijn weg;
 verwijder liever alleen het `passkeys`-deel (zet `"passkeys": []`) en doorloop de onboarding opnieuw.

@@ -91,8 +91,9 @@
   };
 
   // ---------- editor ----------
-  let view, houses = [], map = null;
+  let map, houses = [], layers = new Map(); // id -> L.polygon
   let selectedId = null, mode = 'select', newStatus = 'green', draft = [], dirty = false;
+  let handles = [], draftLayer = null;
   const uid = () => Math.random().toString(36).slice(2, 10);
 
   function setDirty(v = true) {
@@ -108,73 +109,63 @@
     $('hint').textContent = mode === 'draw'
       ? (draft.length
         ? `${draft.length} punt(en). Klik de hoekpunten van het huis; sluit af door op het gele beginpunt te klikken, dubbel te klikken of Enter te drukken. Backspace = laatste punt weg, Esc = annuleren.`
-        : 'Klik op de hoeken van een huis om er een vlak overheen te leggen. Slepen verplaatst de kaart, scrollen zoomt.')
+        : 'Zoom ver in en klik op de hoeken van een huis om er een vlak overheen te leggen. Slepen verplaatst de kaart.')
       : 'Klik op een huis om het te selecteren. Sleep de witte punten om de vorm aan te passen. Sneltoetsen: G = groen, R = rood, Delete = verwijderen.';
   }
 
-  function handle(h, idx) {
-    const r = 7 / view.s;
-    const [x, y] = h.points[idx];
-    const c = document.createElementNS(NS, 'circle');
-    c.setAttribute('class', 'handle');
-    c.setAttribute('r', r);
-    c.setAttribute('cx', x * view.W);
-    c.setAttribute('cy', y * view.H);
-    c.dataset.noPan = '1';
-    return c;
+  function syncPolygons() {
+    for (const [id, l] of layers) if (!houses.find((h) => h.id === id)) { l.remove(); layers.delete(id); }
+    for (const h of houses) {
+      let l = layers.get(h.id);
+      if (!l) {
+        l = L.polygon(h.points, {}).addTo(map);
+        l.on('click', (e) => {
+          if (mode !== 'select') return;
+          L.DomEvent.stopPropagation(e);
+          select(h.id);
+        });
+        layers.set(h.id, l);
+      }
+      l.setStyle(Wijk.houseStyle(h.status, h.id === selectedId));
+      if (h.id === selectedId) l.bringToFront();
+    }
+  }
+
+  function syncHandles() {
+    handles.forEach((m) => m.remove());
+    handles = [];
+    const sel = selected();
+    if (!sel || mode !== 'select') return;
+    sel.points.forEach((pt, i) => {
+      const m = L.marker(pt, {
+        draggable: true,
+        icon: L.divIcon({ className: 'vhandle', iconSize: [16, 16] }),
+      }).addTo(map);
+      m.on('drag', () => {
+        const ll = m.getLatLng();
+        sel.points[i] = [ll.lat, ll.lng];
+        layers.get(sel.id).setLatLngs(sel.points);
+        setDirty();
+      });
+      handles.push(m);
+    });
+  }
+
+  function syncDraft() {
+    if (draftLayer) { draftLayer.remove(); draftLayer = null; }
+    if (!draft.length) return;
+    draftLayer = L.layerGroup().addTo(map);
+    const shape = draft.length > 2 ? L.polygon : L.polyline;
+    shape(draft, { color: '#e0a800', fillColor: '#ffd34d', fillOpacity: 0.3, weight: 2, interactive: false }).addTo(draftLayer);
+    draft.forEach((pt, i) => {
+      const c = L.circleMarker(pt, { radius: i === 0 ? 8 : 4, color: '#222', weight: 1.5, fillColor: i === 0 ? '#ffd34d' : '#fff', fillOpacity: 1, interactive: i === 0 && draft.length >= 3 });
+      if (i === 0) c.on('click', (e) => { L.DomEvent.stopPropagation(e); finishDraft(); });
+      c.addTo(draftLayer);
+    });
   }
 
   function render() {
-    if (!view || !map) return;
-    view.svg.replaceChildren();
-    for (const h of houses) {
-      const p = view.polygon(h, `house ${h.status}${h.id === selectedId ? ' selected' : ''}`);
-      p.dataset.id = h.id;
-      view.svg.append(p);
-    }
-    const sel = selected();
-    if (sel && mode === 'select') {
-      sel.points.forEach((_, i) => {
-        const c = handle(sel, i);
-        c.addEventListener('pointerdown', (e) => startDrag(e, sel, i, c));
-        view.svg.append(c);
-      });
-    }
-    if (draft.length) {
-      const pl = document.createElementNS(NS, draft.length > 2 ? 'polygon' : 'polyline');
-      pl.setAttribute('class', 'draft');
-      pl.setAttribute('fill', draft.length > 2 ? '' : 'none');
-      pl.setAttribute('points', draft.map(([x, y]) => `${x * view.W},${y * view.H}`).join(' '));
-      view.svg.append(pl);
-      draft.forEach(([x, y], i) => {
-        const c = document.createElementNS(NS, 'circle');
-        c.setAttribute('class', `handle${i === 0 ? ' first' : ''}`);
-        c.setAttribute('r', (i === 0 ? 9 : 5) / view.s);
-        c.setAttribute('cx', x * view.W);
-        c.setAttribute('cy', y * view.H);
-        c.style.pointerEvents = 'none';
-        view.svg.append(c);
-      });
-    }
-    renderPanel();
-  }
-
-  function startDrag(e, house, idx, circle) {
-    e.stopPropagation();
-    circle.setPointerCapture(e.pointerId);
-    const poly = view.svg.querySelector(`polygon[data-id="${house.id}"]`);
-    const move = (ev) => {
-      const [fx, fy] = view.toFraction(ev.clientX, ev.clientY);
-      const x = Math.min(1, Math.max(0, fx)), y = Math.min(1, Math.max(0, fy));
-      house.points[idx] = [x, y];
-      circle.setAttribute('cx', x * view.W);
-      circle.setAttribute('cy', y * view.H);
-      poly.setAttribute('points', house.points.map(([a, b]) => `${a * view.W},${b * view.H}`).join(' '));
-      setDirty();
-    };
-    circle.addEventListener('pointermove', move);
-    const up = () => { circle.removeEventListener('pointermove', move); circle.removeEventListener('pointerup', up); };
-    circle.addEventListener('pointerup', up);
+    syncPolygons(); syncHandles(); syncDraft(); renderPanel();
   }
 
   function renderPanel() {
@@ -191,7 +182,7 @@
       d.className = h.id === selectedId ? 'sel' : '';
       d.innerHTML = `<i class="dot ${h.status}"></i>`;
       d.append(nameOf(h, i));
-      d.onclick = () => { setMode('select'); select(h.id); };
+      d.onclick = () => { setMode('select'); select(h.id); map.fitBounds(L.latLngBounds(h.points).pad(1.5), { maxZoom: 19 }); };
       return d;
     }));
     hint();
@@ -205,7 +196,7 @@
     $('t-select').classList.toggle('active', m === 'select');
     $('t-draw').classList.toggle('active', m === 'draw');
     $('vp').classList.toggle('drawing', m === 'draw');
-    if (m === 'draw') selectedId = null;
+    if (m === 'draw') { selectedId = null; map.doubleClickZoom.disable(); } else map.doubleClickZoom.enable();
     render();
   }
 
@@ -220,19 +211,14 @@
     if (matchMedia('(pointer: fine)').matches) $('p-label').focus();
   }
 
-  function onTap(e) {
-    if (!map) return;
+  function onMapClick(e) {
     if (mode === 'draw') {
-      const [x, y] = view.toFraction(e.clientX, e.clientY);
-      if (x < 0 || x > 1 || y < 0 || y > 1) return;
-      const px = (a, b) => Math.hypot((a[0] - b[0]) * view.W * view.s, (a[1] - b[1]) * view.H * view.s);
-      if (draft.length >= 3 && px(draft[0], [x, y]) < 14) return finishDraft();
-      if (draft.length && px(draft[draft.length - 1], [x, y]) < 3) return; // dubbele klik
-      draft.push([x, y]);
+      const last = draft[draft.length - 1];
+      if (last && map.latLngToContainerPoint(e.latlng).distanceTo(map.latLngToContainerPoint(last)) < 3) return; // dubbelklik
+      draft.push([e.latlng.lat, e.latlng.lng]);
       render();
     } else {
-      const el = view.houseAt(e);
-      select(el ? el.dataset.id : null);
+      select(null);
     }
   }
 
@@ -246,35 +232,30 @@
     } catch (e) { toast(e.message); }
   }
 
-  async function upload(file) {
-    const url = URL.createObjectURL(file);
+  async function saveView() {
+    const c = map.getCenter();
     try {
-      const dim = await new Promise((resolve, reject) => {
-        const i = new Image();
-        i.onload = () => resolve({ w: i.naturalWidth, h: i.naturalHeight });
-        i.onerror = () => reject(new Error('Dit bestand is geen geldige afbeelding'));
-        i.src = url;
-      });
-      if (houses.length && !confirm('Een nieuwe kaart vervangen? De getekende huizen blijven op dezelfde relatieve plek staan, dus gebruik een kaart met dezelfde uitsnede.')) return;
-      const res = await api(`/api/admin/map?width=${dim.w}&height=${dim.h}`, {
-        method: 'POST', body: file, headers: { 'Content-Type': 'application/octet-stream' }, expectAuth: true,
-      });
-      map = res.map;
-      $('empty').hidden = true;
-      await view.setMap(map);
-      render();
-      toast('Kaart geüpload');
+      await api('/api/admin/view', { method: 'PUT', body: JSON.stringify({ center: [c.lat, c.lng], zoom: map.getZoom() }), expectAuth: true });
+      toast('Startpunt opgeslagen ✔');
     } catch (e) { toast(e.message); }
-    finally { URL.revokeObjectURL(url); }
   }
 
-  function initEditor() {
-    if (view) return;
-    view = new MapView($('vp'));
-    view.on('tap', onTap);
-    let lastS = 0;
-    view.on('view', (sc) => { if (sc !== lastS) { lastS = sc; render(); } });
-    $('vp').addEventListener('dblclick', () => { if (mode === 'draw' && draft.length >= 3) finishDraft(); });
+  async function search(q) {
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=nl&q=${encodeURIComponent(q)}`, { headers: { 'Accept-Language': 'nl' } });
+      const [hit] = await r.json();
+      if (!hit) return toast('Niets gevonden');
+      const bb = hit.boundingbox.map(Number);
+      map.fitBounds([[bb[0], bb[2]], [bb[1], bb[3]]], { maxZoom: 18 });
+    } catch { toast('Zoeken mislukt'); }
+  }
+
+  function initEditor(data) {
+    if (map) { map.remove(); layers.clear(); handles = []; draftLayer = null; }
+    $('vp').replaceChildren();
+    map = Wijk.createMap($('vp'), data.view, data.houses);
+    map.on('click', onMapClick);
+    map.on('dblclick', () => { if (mode === 'draw' && draft.length >= 3) finishDraft(); });
 
     $('t-select').onclick = () => setMode('select');
     $('t-draw').onclick = () => setMode('draw');
@@ -287,30 +268,33 @@
     $('p-note').oninput = () => { const s = selected(); if (s) { s.note = $('p-note').value; setDirty(); } };
     $('p-del').onclick = deleteSelected;
     $('save').onclick = save;
-    $('upload').onclick = () => $('file').click();
-    $('file').onchange = () => { if ($('file').files[0]) upload($('file').files[0]); $('file').value = ''; };
-    $('zin').onclick = () => view.zoomCenter(1.5);
-    $('zout').onclick = () => view.zoomCenter(1 / 1.5);
-    $('zfit').onclick = () => { view.userMoved = false; view.fit(); };
+    $('setview').onclick = saveView;
+    $('search-form').onsubmit = (e) => { e.preventDefault(); if ($('search').value.trim()) search($('search').value.trim()); };
 
-    document.addEventListener('keydown', (e) => {
-      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) && e.key !== 'Escape') return;
-      if ($('pk-dialog').open) return;
-      const k = e.key.toLowerCase();
-      if ((e.ctrlKey || e.metaKey) && k === 's') { e.preventDefault(); save(); }
-      else if (k === 'g' && selected()) setStatus('green');
-      else if (k === 'r' && selected()) setStatus('red');
-      else if (k === 'd') setMode(mode === 'draw' ? 'select' : 'draw');
-      else if ((k === 'delete') && selected()) deleteSelected();
-      else if (k === 'enter' && mode === 'draw') finishDraft();
-      else if (k === 'backspace' && mode === 'draw') { e.preventDefault(); draft.pop(); render(); }
-      else if (k === 'escape') { document.activeElement.blur(); if (draft.length) { draft = []; render(); } else select(null); }
-    });
+    if (!window.__keys) {
+      window.__keys = true;
+      document.addEventListener('keydown', (e) => {
+        if (!map) return;
+        if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) && e.key !== 'Escape') return;
+        if ($('pk-dialog').open) return;
+        const k = e.key.toLowerCase();
+        if ((e.ctrlKey || e.metaKey) && k === 's') { e.preventDefault(); save(); }
+        else if (e.ctrlKey || e.metaKey || e.altKey) return;
+        else if (k === 'g' && selected()) setStatus('green');
+        else if (k === 'r' && selected()) setStatus('red');
+        else if (k === 'd') setMode(mode === 'draw' ? 'select' : 'draw');
+        else if (k === 'delete' && selected()) deleteSelected();
+        else if (k === 'enter' && mode === 'draw') finishDraft();
+        else if (k === 'backspace' && mode === 'draw') { e.preventDefault(); draft.pop(); render(); }
+        else if (k === 'escape') { document.activeElement.blur(); if (draft.length) { draft = []; render(); } else select(null); }
+      });
+    }
   }
 
   function renderListOnly() {
     const sel = selected();
-    $('list').children[houses.indexOf(sel)].lastChild.textContent = nameOf(sel, houses.indexOf(sel));
+    const i = houses.indexOf(sel);
+    $('list').children[i].lastChild.textContent = nameOf(sel, i);
   }
   function setStatus(s) { const h = selected(); if (!h) return; h.status = s; setDirty(); render(); }
   function deleteSelected() {
@@ -322,13 +306,12 @@
 
   async function openEditor() {
     show('v-edit');
-    initEditor();
     const data = await api('/api/map');
-    houses = data.houses; map = data.map;
-    $('empty').hidden = !!map;
-    await view.setMap(map);
+    houses = data.houses;
+    initEditor(data);
     setDirty(false);
     setMode('select');
+    setTimeout(() => map.invalidateSize(), 0);
   }
 
   async function boot() {

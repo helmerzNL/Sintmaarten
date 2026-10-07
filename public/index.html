@@ -4,19 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Onze wijk</title>
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 <header class="bar">
   <h1 id="title">Onze wijk</h1>
   <div class="legend"><span><i class="dot green"></i>Groen</span><span><i class="dot red"></i>Rood</span></div>
+  <button id="pdf-view">📄 PDF bekijken</button>
+  <button id="pdf-dl" class="primary">⬇ PDF downloaden</button>
 </header>
-<div class="viewport" id="vp">
-  <div class="empty" id="empty" hidden>De kaart is nog niet geüpload.</div>
-  <div class="zoombtns"><button id="zin" aria-label="Inzoomen">+</button><button id="zout" aria-label="Uitzoomen">−</button><button id="zfit" aria-label="Passend" title="Passend">⤢</button></div>
-  <div class="popup" id="popup" hidden><button class="close" aria-label="Sluiten">×</button><h3></h3><p></p></div>
-</div>
-<script src="/js/mapview.js"></script>
+<div class="viewport" id="vp"></div>
+<script src="/vendor/leaflet/leaflet.js"></script>
+<script src="/vendor/jspdf.js"></script>
+<script src="/js/wijk.js"></script>
 <script src="/js/public.js"></script>
 </body>
 </html>

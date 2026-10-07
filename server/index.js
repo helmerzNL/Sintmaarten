@@ -1,6 +1,5 @@
 'use strict';
 const crypto = require('node:crypto');
-const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 const {
@@ -18,10 +17,10 @@ app.disable('x-powered-by');
 app.use((req, res, next) => {
   res.set({
     'X-Content-Type-Options': 'nosniff',
-    'Referrer-Policy': 'same-origin',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
     'X-Frame-Options': 'DENY',
     'Content-Security-Policy':
-      "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'",
+      "default-src 'self'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://nominatim.openstreetmap.org; object-src 'self' blob:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'",
   });
   next();
 });
@@ -56,12 +55,10 @@ function userId() {
 
 // ---------- publiek ----------
 app.get('/api/map', (req, res) => {
-  const { map, houses } = store.db();
+  const { view, houses } = store.db();
   res.set('Cache-Control', 'no-cache');
-  res.json({ title: config.siteTitle, map, houses });
+  res.json({ title: config.siteTitle, view, houses });
 });
-
-app.use('/uploads', express.static(store.uploadDir, { immutable: true, maxAge: '365d', index: false }));
 
 // ---------- auth ----------
 app.get('/api/auth/status', (req, res) => {
@@ -188,32 +185,17 @@ admin.delete('/passkeys/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-const IMAGE_TYPES = [
-  { ext: 'png', test: (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) },
-  { ext: 'jpg', test: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
-  { ext: 'webp', test: (b) => b.subarray(0, 4).toString() === 'RIFF' && b.subarray(8, 12).toString() === 'WEBP' },
-];
+admin.put('/view', (req, res) => {
+  const { center, zoom } = req.body || {};
+  if (!validLatLng(center) || !(zoom >= 1 && zoom <= 20)) return res.status(400).json({ error: 'Ongeldige kaartweergave' });
+  const db = store.db();
+  db.view = { center: center.map((n) => Math.round(n * 1e6) / 1e6), zoom: Math.round(zoom * 100) / 100 };
+  store.save();
+  res.json({ view: db.view });
+});
 
-admin.post('/map',
-  express.raw({ type: 'application/octet-stream', limit: `${config.maxUploadMb}mb` }),
-  (req, res) => {
-    const buf = req.body;
-    const type = Buffer.isBuffer(buf) && IMAGE_TYPES.find((t) => t.test(buf));
-    if (!type) return res.status(400).json({ error: 'Alleen PNG, JPEG of WebP is toegestaan' });
-    const width = parseInt(req.query.width, 10);
-    const height = parseInt(req.query.height, 10);
-    if (!(width > 0 && height > 0 && width < 30000 && height < 30000)) {
-      return res.status(400).json({ error: 'Ongeldige afmetingen' });
-    }
-    const db = store.db();
-    const old = db.map?.file;
-    const file = `kaart-${Date.now()}.${type.ext}`;
-    fs.writeFileSync(path.join(store.uploadDir, file), buf);
-    db.map = { file, url: `/uploads/${file}`, width, height, updatedAt: new Date().toISOString() };
-    store.save();
-    if (old) fs.rm(path.join(store.uploadDir, path.basename(old)), () => {});
-    res.json({ map: db.map });
-  });
+const validLatLng = (p) =>
+  Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && Math.abs(p[0]) <= 85.06 && Math.abs(p[1]) <= 180;
 
 const STATUSES = ['green', 'red', 'none'];
 const clean = (s, n) => String(s ?? '').trim().slice(0, n);
@@ -223,8 +205,8 @@ function validateHouses(list) {
   return list.map((h) => {
     if (!Array.isArray(h.points) || h.points.length < 3 || h.points.length > 200) throw new Error('Een huis heeft minimaal 3 punten nodig');
     const points = h.points.map((p) => {
-      if (!Array.isArray(p) || p.length !== 2 || !p.every((n) => Number.isFinite(n))) throw new Error('Ongeldig punt');
-      return p.map((n) => Math.min(1, Math.max(0, Math.round(n * 1e5) / 1e5)));
+      if (!validLatLng(p)) throw new Error('Ongeldig punt');
+      return p.map((n) => Math.round(n * 1e7) / 1e7);
     });
     return {
       id: /^[\w-]{1,40}$/.test(h.id) ? h.id : crypto.randomBytes(6).toString('hex'),
@@ -252,8 +234,10 @@ app.use('/api', (req, res) => res.status(404).json({ error: 'Niet gevonden' }));
 
 // ---------- statische bestanden ----------
 const pub = path.join(__dirname, '..', 'public');
-const webauthnBrowser = path.join(__dirname, '..', 'node_modules', '@simplewebauthn', 'browser', 'dist', 'bundle', 'index.umd.min.js');
-app.get('/vendor/webauthn.js', (req, res) => res.sendFile(webauthnBrowser));
+const nm = (...p) => path.join(__dirname, '..', 'node_modules', ...p);
+app.get('/vendor/webauthn.js', (req, res) => res.sendFile(nm('@simplewebauthn', 'browser', 'dist', 'bundle', 'index.umd.min.js')));
+app.get('/vendor/jspdf.js', (req, res) => res.sendFile(nm('jspdf', 'dist', 'jspdf.umd.min.js')));
+app.use('/vendor/leaflet', express.static(nm('leaflet', 'dist'), { index: false }));
 app.use(express.static(pub, { extensions: ['html'] }));
 app.get('/beheer', (req, res) => res.sendFile(path.join(pub, 'admin', 'index.html')));
 
