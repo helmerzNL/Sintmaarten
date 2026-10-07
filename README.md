@@ -58,7 +58,7 @@ Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen.
   de tekst is op de site te lezen (knop *Uitleg*) en staat op pagina 2 van de PDF.
 - **App (PWA)**: de site is te installeren op een telefoon of computer en werkt offline (zie hieronder).
 - **Beheer (`/beheer`)**:
-  1. Zoek je straat (zoekveld) en zoom ver in; sla eventueel *Huidige weergave als startpunt* op.
+  1. Zoek je straat (zoekveld) en zoom ver in; stel via *Kaartweergave instellen* het midden, de startzoom en de minimale/maximale zoom in (of neem de huidige weergave over). Bezoekers openen de kaart (ook in de app) met precies die weergave; met *Automatisch* toont de site alle huizen.
   2. Kies *Huis tekenen*, kies groen of rood, klik de hoeken van een huis en sluit af (klik op het gele beginpunt, dubbelklik of Enter).
   3. Pas later de kleur aan (knoppen of **G**/**R**), versleep hoekpunten, geef een huisnummer/notitie, en klik *Opslaan* (Ctrl+S).
 - **Onboarding**: de allereerste keer vraagt `/beheer` om de `SETUP_TOKEN` en maakt dan een passkey aan. Daarna kun je

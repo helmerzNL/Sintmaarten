@@ -74,3 +74,16 @@ test('manifest en service worker zijn beschikbaar', async () => {
   assert.equal(sw.status, 200);
   assert.equal(sw.headers.get('cache-control'), 'no-cache');
 });
+
+test('kaartweergave instellen, valideren en wissen', async () => {
+  const h = { 'Content-Type': 'application/json', cookie };
+  const ok = await j('/api/admin/view', { method: 'PUT', headers: h, body: JSON.stringify({ center: [52.02, 5.16], zoom: 17.5, minZoom: 14, maxZoom: 19 }) });
+  assert.equal(ok.status, 200);
+  assert.deepEqual((await (await j('/api/map')).json()).view, { center: [52.02, 5.16], zoom: 17.5, minZoom: 14, maxZoom: 19 });
+  for (const bad of [{ zoom: 25 }, { minZoom: 18, maxZoom: 15 }, { zoom: 10, minZoom: 14 }, { center: [200, 5] }]) {
+    const r = await j('/api/admin/view', { method: 'PUT', headers: h, body: JSON.stringify({ center: [52.02, 5.16], zoom: 17, ...bad }) });
+    assert.equal(r.status, 400, JSON.stringify(bad));
+  }
+  assert.equal((await j('/api/admin/view', { method: 'DELETE', headers: { cookie } })).status, 200);
+  assert.equal((await (await j('/api/map')).json()).view, null);
+});
