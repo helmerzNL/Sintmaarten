@@ -20,6 +20,7 @@ const sha = (t) => crypto.createHash('sha256').update(t).digest('hex');
 const houseOf = (id) => db().houses.find((h) => h.id === id);
 const titleOf = (h) => [h.street, h.number].filter(Boolean).join(' ') || 'Huis';
 const enabled = () => db().settings?.residentsEnabled !== false;
+const appOnly = () => db().settings?.residentsAppOnly === true;
 
 // Verwijdert aanmeldingen en wijzigingen van huizen die niet meer bestaan.
 function prune() {
@@ -83,6 +84,11 @@ const resident = express.Router();
 resident.use((req, res, next) => {
   if (!enabled()) return res.status(403).json({ error: 'Wijzigen door bewoners staat uit', enabled: false });
   if (req.method !== 'GET') {
+    // Alleen in de geïnstalleerde app: de app meldt zich met X-App-Mode. Dit is een gebruiksbeperking
+    // (de browser stuurt de kop niet); de server kan niet bewijzen dat een client echt een app is.
+    if (appOnly() && req.get('X-App-Mode') !== 'standalone') {
+      return res.status(403).json({ error: 'Wijzigen kan alleen in de geïnstalleerde app', appOnly: true });
+    }
     const key = `resident:${req.ip}`;
     if (auth.limiter.blocked(key, 120)) return res.status(429).json({ error: 'Te veel verzoeken, probeer het later opnieuw' });
     auth.limiter.fail(key); // telt elk schrijfverzoek
@@ -166,7 +172,7 @@ const list = () => {
     return { id: p.id, houseId: p.houseId, title: titleOf(h), from: p.from, to: p.to, updatedAt: p.updatedAt };
   }).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const residents = d.residents.map((r) => ({ rid: r.rid, houseId: r.houseId, title: titleOf(houseOf(r.houseId)), createdAt: r.createdAt, lastActivity: r.lastActivity }));
-  return { enabled: enabled(), pending: rows, residents };
+  return { enabled: enabled(), appOnly: appOnly(), pending: rows, residents };
 };
 
 admin.get('/changes', (req, res) => res.json(list()));

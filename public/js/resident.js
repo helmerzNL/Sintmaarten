@@ -11,7 +11,9 @@
 
   async function api(path, body) {
     const res = await fetch(`/api/resident${path}`, body === undefined ? {} : {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(isInstalledApp() ? { 'X-App-Mode': 'standalone' } : {}) },
+      body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw Object.assign(new Error(data.error || `Fout ${res.status}`), { status: res.status });

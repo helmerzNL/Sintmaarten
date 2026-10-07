@@ -173,13 +173,17 @@
       Wijk.leaveResident?.(); // wijzigmodus en venster sluiten
     }
   }
-  if (residentsOn && !inApp) {
-    $('edit-switch-wrap').hidden = false;
-    $('edit-switch').onchange = () => setEditing($('edit-switch').checked);
+  // De beheerder kan Bewerken in de browser uitzetten (alleen de geïnstalleerde app mag dan wijzigen).
+  $('edit-switch').onchange = () => setEditing($('edit-switch').checked);
+  function applyEditUi() {
+    const allowed = data.residentsEnabled !== false && !inApp && !data.residentsAppOnly;
+    $('edit-switch-wrap').hidden = !allowed;
+    if (!allowed && $('edit-switch').checked) { $('edit-switch').checked = false; setEditing(false); }
   }
+  applyEditUi();
 
   // ---------- automatisch verversen (o.a. nadat de beheerder een wijziging goedkeurt) ----------
-  const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.logo, d.appName, d.appShortName]);
+  const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.logo, d.appName, d.appShortName, d.residentsEnabled, d.residentsAppOnly]);
   let lastSig = signature(data);
   let busy = false;
   let lastSync = new Date();
@@ -197,6 +201,7 @@
         data = next;
         applyMeta(false);
         buildHouses();
+        applyEditUi();
         changed = true;
       }
       // ook de eigen status (en een uitslag van de beheerder) opnieuw ophalen

@@ -366,6 +366,8 @@
     let data;
     try { data = await api('/api/admin/changes'); } catch (e) { $('chg-err').textContent = e.message; return; }
     $('res-enabled').checked = data.enabled;
+    $('res-apponly').checked = !!data.appOnly;
+    $('res-apponly').disabled = !data.enabled;
     pendingCount = data.pending.length; setBadge(pendingCount);
     const box = $('pend-list');
     box.replaceChildren();
@@ -425,7 +427,13 @@
     } catch (e) { $('chg-err').textContent = e.message; }
   };
 
+  $('res-apponly').onchange = async () => {
+    try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ residentsAppOnly: $('res-apponly').checked }), expectAuth: true }); toast($('res-apponly').checked ? 'Wijzigen kan nu alleen in de geïnstalleerde app' : 'Wijzigen kan ook in de browser'); }
+    catch (e) { $('chg-err').textContent = e.message; $('res-apponly').checked = !$('res-apponly').checked; }
+  };
+
   $('res-enabled').onchange = async () => {
+    $('res-apponly').disabled = !$('res-enabled').checked;
     try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ residentsEnabled: $('res-enabled').checked }), expectAuth: true }); toast($('res-enabled').checked ? 'Wijzigen door bewoners staat aan' : 'Wijzigen door bewoners staat uit'); }
     catch (e) { $('chg-err').textContent = e.message; $('res-enabled').checked = !$('res-enabled').checked; }
   };
