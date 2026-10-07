@@ -12,6 +12,7 @@ const config = require('./config');
 const store = require('./store');
 const auth = require('./auth');
 const { hashPassword, verifyPassword } = require('./password');
+const backups = require('./backups');
 
 const app = express();
 app.set('trust proxy', true);
@@ -259,6 +260,40 @@ admin.post('/password/remove', auth.requirePasskeySession, asyncRoute(async (req
   res.json({ ok: true });
 }));
 
+// Algemene bevestiging met een passkey (voor o.a. het verwijderen van backups).
+admin.post('/confirm/options', asyncRoute(async (req, res) => {
+  const options = await generateAuthenticationOptions({
+    rpID: config.rpID,
+    userVerification: 'required',
+    allowCredentials: store.db().passkeys.map((p) => ({ id: p.id, transports: p.transports })),
+  });
+  res.json({ challengeId: putChallenge({ challenge: options.challenge, kind: 'confirm' }), options });
+}));
+
+admin.get('/backups', (req, res) => res.json(backups.list()));
+
+admin.get('/backups/:id', (req, res) => {
+  const b = backups.read(req.params.id);
+  if (!b) return res.status(404).json({ error: 'Backup niet gevonden' });
+  res.set('Content-Disposition', `attachment; filename="backup-${b.id}.json"`);
+  res.json(b);
+});
+
+admin.post('/backups/:id/restore', (req, res) => {
+  if (!backups.restore(req.params.id)) return res.status(404).json({ error: 'Backup niet gevonden' });
+  res.json({ ok: true });
+});
+
+// Verwijderen vereist bevestiging met een passkey.
+admin.post('/backups/delete', asyncRoute(async (req, res) => {
+  const idsToDelete = req.body.ids;
+  if (!Array.isArray(idsToDelete) || !idsToDelete.length || idsToDelete.length > 500 || !idsToDelete.every((i) => typeof i === 'string' && backups.ID.test(i))) {
+    return res.status(400).json({ error: 'Geen geldige backups geselecteerd' });
+  }
+  try { await verifyAssertion(req, 'confirm'); } catch (err) { return pwError(res, err); }
+  res.json({ deleted: backups.remove(idsToDelete) });
+}));
+
 admin.get('/passkeys', (req, res) => {
   res.json(store.db().passkeys.map(({ id, name, createdAt, lastUsed }) => ({ id, name, createdAt, lastUsed })));
 });
@@ -305,7 +340,7 @@ admin.delete('/logo', (req, res) => {
   res.json({ ok: true });
 });
 
-admin.put('/settings', (req, res) => {
+admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (req, res) => {
   const body = req.body || {};
   const db = store.db();
   if ('intro' in body) {
@@ -327,7 +362,7 @@ admin.put('/settings', (req, res) => {
   res.json({ intro: db.settings.intro, appName: db.settings.appName, appShortName: db.settings.appShortName });
 });
 
-admin.put('/view', (req, res) => {
+admin.put('/view', backups.afterSave('Kaartweergave opgeslagen'), (req, res) => {
   const { center, zoom } = req.body || {};
   const minZoom = req.body?.minZoom ?? 1;
   const maxZoom = req.body?.maxZoom ?? 19;
@@ -349,7 +384,7 @@ admin.put('/view', (req, res) => {
 });
 
 // Weergave wissen: de site toont dan automatisch alle huizen.
-admin.delete('/view', (req, res) => {
+admin.delete('/view', backups.afterSave('Kaartweergave gewist'), (req, res) => {
   store.db().view = null;
   store.save();
   res.json({ view: null });
@@ -379,7 +414,7 @@ function validateHouses(list) {
   });
 }
 
-admin.put('/houses', (req, res) => {
+admin.put('/houses', backups.afterSave('Layout opgeslagen'), (req, res) => {
   try {
     const db = store.db();
     db.houses = validateHouses(req.body.houses);

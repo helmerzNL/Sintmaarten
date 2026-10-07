@@ -33,13 +33,20 @@ Voorbeeld met willekeurige huizen (kaartgegevens © OpenStreetMap-bijdragers).
 
 ![Beheerscherm](docs/screenshots/beheer.png)
 
-**Logo & uitleg** – upload het logo van de wijkvereniging en plak een stukje uitleg; beide komen op de site en in de PDF.
+**Instellingen** – het tandwiel (⚙) in de balk schuift het instellingen-menu in beeld, met drie onderdelen:
 
-![Logo en uitleg](docs/screenshots/beheer-logo.png)
+- *Beveiliging*: passkeys toevoegen/verwijderen en een optioneel wachtwoord (bevestigen met passkey).
 
-**Passkeys beheren** – voeg extra apparaten toe zodat je niet buitengesloten raakt.
+  ![Instellingen: beveiliging](docs/screenshots/instellingen-beveiliging.png)
 
-![Passkeys](docs/screenshots/beheer-passkeys.png)
+- *Backups*: na elke opslagpoging wordt automatisch een backup gemaakt van de layout en teksten. Je kunt een backup terugzetten of downloaden;
+  verwijderen (één of meer tegelijk) moet je bevestigen met je passkey.
+
+  ![Instellingen: backups](docs/screenshots/instellingen-backups.png)
+
+- *Logo & uitleg*: logo uploaden, naam van de app en de uitlegtekst voor de site en de PDF.
+
+  ![Instellingen: logo en uitleg](docs/screenshots/instellingen-logo.png)
 
 **PDF-export** – A4 liggend met legenda en aantallen (pagina 2 bevat een overzicht van de huizen).
 
@@ -54,7 +61,7 @@ Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen.
 - **Publiek (`/`)**: de kaart met gekleurde vlakken over de huizen; klik op een huis voor naam/notitie.
   Knoppen **PDF bekijken** en **PDF downloaden** maken in de browser een A4-liggend PDF van het hele wijkgebied
   (kaart, legenda met aantallen, bronvermelding, en een tweede pagina met overzicht van de gemarkeerde huizen).
-- **Logo & uitleg**: in het beheer (knop *Logo & uitleg*) upload je het logo (PNG/JPEG/WebP, max 5 MB) en plak je een tekst. Het logo staat in de kop van de site en de PDF;
+- **Logo & uitleg**: in het beheer (*Instellingen* ⚙ → *Logo & uitleg*) upload je het logo (PNG/JPEG/WebP, max 5 MB) en plak je een tekst. Het logo staat in de kop van de site en de PDF;
   de tekst is op de site te lezen (knop *Uitleg*) en staat op pagina 2 van de PDF.
 - **App (PWA)**: de site is te installeren op een telefoon of computer en werkt offline (zie hieronder).
 - **Beheer (`/beheer`)**:
@@ -62,19 +69,24 @@ Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen.
   2. Kies *Huis tekenen*, kies groen of rood, klik de hoeken van een huis en sluit af (klik op het gele beginpunt, dubbelklik of Enter).
   3. Pas later de kleur aan (knoppen of **G**/**R**), versleep hoekpunten, geef een huisnummer/notitie, en klik *Opslaan* (Ctrl+S).
 - **Onboarding**: de allereerste keer vraagt `/beheer` om de `SETUP_TOKEN` en maakt dan een passkey aan. Daarna kun je
-  via *Passkeys* extra apparaten toevoegen (doe dat zodat je niet buitengesloten raakt).
+  via *Instellingen* (⚙) → *Beveiliging* extra apparaten toevoegen (doe dat zodat je niet buitengesloten raakt).
 
 > De PDF haalt kaarttegels rechtstreeks bij OpenStreetMap op; houd het gebruik bescheiden
 > ([tile usage policy](https://operations.osmfoundation.org/policies/tiles/)).
 
 ## Inloggen met wachtwoord (optioneel)
-Standaard kun je alleen met een passkey inloggen. Wil je ook met een wachtwoord kunnen inloggen, stel dat dan in via *Passkeys* → *Wachtwoord*
+Standaard kun je alleen met een passkey inloggen. Wil je ook met een wachtwoord kunnen inloggen, stel dat dan in via *Instellingen* (⚙) → *Beveiliging* → *Wachtwoord*
 (minimaal 10 tekens). Het instellen, wijzigen of verwijderen moet je **bevestigen met een passkey**. Het wachtwoord wordt alleen als `scrypt`-hash opgeslagen.
 Een sessie die met een wachtwoord is gestart kan de kaart en teksten beheren, maar geen passkeys of wachtwoord wijzigen; daarvoor log je in met een passkey.
 Mislukte pogingen worden per IP-adres en globaal beperkt.
 
+## Backups
+Na **elke opslagpoging** (huizen/layout, teksten, kaartweergave) maakt de server een JSON-backup in `data/backups/` van de layout (huizen + kaartweergave) en de teksten (uitleg, appnaam).
+Identieke staten worden niet dubbel bewaard en de nieuwste 200 blijven staan (`MAX_BACKUPS` om dat aan te passen). Het logo valt buiten de backups.
+Terugzetten kan in *Instellingen → Backups* (de huidige staat wordt eerst zelf als backup bewaard); verwijderen vraagt een bevestiging met je passkey.
+
 ## Naam van de app
-Bij *Logo, naam & uitleg* stel je de **naam van de app** en een korte naam (max. 12 tekens, onder het icoon) in. Die worden gebruikt als de site op een telefoon of computer wordt geïnstalleerd.
+Bij *Instellingen* (⚙) → *Logo & uitleg* stel je de **naam van de app** en een korte naam (max. 12 tekens, onder het icoon) in. Die worden gebruikt als de site op een telefoon of computer wordt geïnstalleerd.
 Zonder invoer geldt de sitenaam (`SITE_TITLE`). Een al geïnstalleerde app neemt een nieuwe naam pas na een tijdje over.
 
 ## Installeren als app en offline gebruik
