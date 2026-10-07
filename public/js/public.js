@@ -50,6 +50,26 @@
   const hidden = new Set();
   try { JSON.parse(localStorage.getItem('sm-hidden-streets') || '[]').forEach((x) => streets.includes(x) && hidden.add(x)); } catch {}
   const visibleHouses = () => shownHouses.filter((h) => !hidden.has(streetName(h)));
+  const tally = (list) => ({ green: list.filter((h) => h.status === 'green').length, red: list.filter((h) => h.status === 'red').length });
+  // "● 5 ● 2" met schermlezer-tekst
+  const tallyEl = (t, cls) => {
+    const el = document.createElement('span');
+    el.className = cls;
+    el.setAttribute('aria-label', `${t.green} groen, ${t.red} rood`);
+    for (const k of ['green', 'red']) {
+      const part = document.createElement('span');
+      part.setAttribute('aria-hidden', 'true');
+      const dot = document.createElement('i'); dot.className = `dot ${k}`;
+      part.append(dot, String(t[k]));
+      el.append(part);
+    }
+    return el;
+  };
+  const renderTotal = () => {
+    const box = $('streets-total');
+    if (!box) return;
+    box.replaceChildren('Totaal op de kaart: ', tallyEl(tally(visibleHouses()), 'street-tally'));
+  };
 
   const nums = Wijk.createNumberLayer(map);
   function applyStreets() {
@@ -60,6 +80,7 @@
       if (!show && map.hasLayer(poly)) { poly.closePopup(); map.removeLayer(poly); }
     }
     nums.rebuild(visibleHouses());
+    renderTotal();
     try { localStorage.setItem('sm-hidden-streets', JSON.stringify([...hidden])); } catch {}
   }
 
@@ -68,7 +89,7 @@
     const list = $('streets-list');
     const rows = new Map();
     for (const name of streets) {
-      const count = shownHouses.filter((h) => streetName(h) === name).length;
+      const t = tally(shownHouses.filter((h) => streetName(h) === name));
       const row = document.createElement('label');
       row.className = 'street-row';
       const cb = document.createElement('input');
@@ -77,8 +98,7 @@
       const track = document.createElement('span'); track.className = 'track'; track.setAttribute('aria-hidden', 'true');
       const thumb = document.createElement('span'); thumb.className = 'thumb'; track.append(thumb);
       const text = document.createElement('span'); text.className = 'street-name'; text.textContent = name || 'Overige huizen';
-      const n = document.createElement('span'); n.className = 'street-count'; n.textContent = `${count}`;
-      row.append(cb, track, text, n);
+      row.append(cb, track, text, tallyEl(t, 'street-tally'));
       list.append(row);
       rows.set(name, cb);
     }
