@@ -67,6 +67,16 @@ Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen.
 > De PDF haalt kaarttegels rechtstreeks bij OpenStreetMap op; houd het gebruik bescheiden
 > ([tile usage policy](https://operations.osmfoundation.org/policies/tiles/)).
 
+## Inloggen met wachtwoord (optioneel)
+Standaard kun je alleen met een passkey inloggen. Wil je ook met een wachtwoord kunnen inloggen, stel dat dan in via *Passkeys* → *Wachtwoord*
+(minimaal 10 tekens). Het instellen, wijzigen of verwijderen moet je **bevestigen met een passkey**. Het wachtwoord wordt alleen als `scrypt`-hash opgeslagen.
+Een sessie die met een wachtwoord is gestart kan de kaart en teksten beheren, maar geen passkeys of wachtwoord wijzigen; daarvoor log je in met een passkey.
+Mislukte pogingen worden per IP-adres en globaal beperkt.
+
+## Naam van de app
+Bij *Logo, naam & uitleg* stel je de **naam van de app** en een korte naam (max. 12 tekens, onder het icoon) in. Die worden gebruikt als de site op een telefoon of computer wordt geïnstalleerd.
+Zonder invoer geldt de sitenaam (`SITE_TITLE`). Een al geïnstalleerde app neemt een nieuwe naam pas na een tijdje over.
+
 ## Installeren als app en offline gebruik
 - **Android/Chrome en desktop**: open de site en kies *Installeer app* (knop in de kop) of het browsermenu → *App installeren*.
 - **iPhone/iPad (Safari)**: deel-icoon → *Zet in beginscherm*.

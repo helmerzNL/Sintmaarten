@@ -28,6 +28,14 @@
   <p class="muted">Log in met je passkey (vingerafdruk, gezicht, pincode of beveiligingssleutel).</p>
   <p class="error" id="l-err"></p>
   <button class="primary" id="l-go">Inloggen met passkey</button>
+  <form id="pw-form" class="hidden" autocomplete="on">
+    <p class="muted" style="margin-top:20px">of met je wachtwoord</p>
+    <input type="text" name="username" value="beheerder" autocomplete="username" hidden>
+    <label for="l-pw">Wachtwoord</label>
+    <input type="password" id="l-pw" autocomplete="current-password" maxlength="200">
+    <p class="error" id="l-pw-err"></p>
+    <button id="l-pw-go">Inloggen met wachtwoord</button>
+  </form>
   <p><a href="/">← Naar de kaart</a></p>
 </section>
 
@@ -37,7 +45,7 @@
   <h1>Beheer</h1>
   <span class="muted" id="dirty"></span>
   <button class="primary" id="save">Opslaan</button>
-  <button id="org-open">Logo &amp; uitleg</button>
+  <button id="org-open">Logo, naam &amp; uitleg</button>
   <button id="pk-open">Passkeys</button>
   <a class="btn" href="/" target="_blank">Bekijk site</a>
   <button id="logout">Uitloggen</button>
@@ -103,11 +111,16 @@
 </dialog>
 
 <dialog id="org-dialog">
-  <h3>Logo &amp; uitleg</h3>
+  <h3>Logo, appnaam &amp; uitleg</h3>
   <label>Logo van de wijkvereniging (PNG, JPEG of WebP, max 5 MB)</label>
   <img id="org-logo" class="logo-preview" alt="" hidden>
   <input type="file" id="org-file" accept="image/png,image/jpeg,image/webp" hidden>
   <div class="row"><button id="org-upload">Logo uploaden</button><button id="org-remove" class="danger">Logo verwijderen</button></div>
+  <label for="org-appname">Naam van de app (zoals die op het beginscherm van een telefoon komt te staan)</label>
+  <input type="text" id="org-appname" maxlength="45" placeholder="Standaard: de sitenaam">
+  <label for="org-short">Korte naam onder het icoon (max. 12 tekens)</label>
+  <input type="text" id="org-short" maxlength="12" placeholder="Standaard: de eerste 12 tekens van de naam">
+  <p class="muted">Een al geïnstalleerde app neemt een nieuwe naam pas over na een tijdje (of na opnieuw installeren).</p>
   <label for="org-intro">Uitleg (zichtbaar op de website en in de PDF)</label>
   <textarea id="org-intro" rows="10" maxlength="5000" placeholder="Plak hier de toelichting. Lege regels worden alinea's."></textarea>
   <p class="muted"><span id="org-count">0</span> / 5000 tekens</p>
@@ -116,12 +129,27 @@
 </dialog>
 
 <dialog id="pk-dialog">
-  <h3>Passkeys</h3>
+  <h3>Beveiliging</h3>
+  <h4>Passkeys</h4>
   <div id="pk-list"></div>
   <label for="pk-name">Nieuwe passkey toevoegen</label>
   <input type="text" id="pk-name" value="Extra apparaat" maxlength="60">
   <p class="error" id="pk-err"></p>
-  <div class="row"><button id="pk-add" class="primary">Toevoegen</button><button id="pk-close">Sluiten</button></div>
+  <div class="row"><button id="pk-add" class="primary">Toevoegen</button></div>
+
+  <h4>Wachtwoord</h4>
+  <p class="muted" id="pw-status"></p>
+  <div id="pw-edit">
+    <label for="pw-new">Nieuw wachtwoord (minimaal 10 tekens)</label>
+    <input type="password" id="pw-new" autocomplete="new-password" maxlength="200">
+    <label for="pw-new2">Herhaal wachtwoord</label>
+    <input type="password" id="pw-new2" autocomplete="new-password" maxlength="200">
+    <p class="muted">Het instellen, wijzigen en verwijderen van het wachtwoord moet je bevestigen met een passkey.</p>
+    <p class="error" id="pw-err"></p>
+    <div class="row"><button id="pw-set" class="primary">Wachtwoord instellen (bevestig met passkey)</button><button id="pw-remove" class="danger">Wachtwoord verwijderen</button></div>
+  </div>
+  <p class="muted hidden" id="pw-locked">Je bent met een wachtwoord ingelogd. Log in met een passkey om passkeys of het wachtwoord te wijzigen.</p>
+  <p><button id="pk-close">Sluiten</button></p>
 </dialog>
 
 <script src="/vendor/webauthn.js"></script>

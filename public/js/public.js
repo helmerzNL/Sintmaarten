@@ -3,6 +3,8 @@
   const data = await (await fetch('/api/map')).json();
   $('title').textContent = data.title;
   document.title = data.title;
+  const iosTitle = data.appShortName || data.appName || data.title;
+  document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute('content', iosTitle);
 
   if (data.logo) {
     $('logo').src = data.logo.url;

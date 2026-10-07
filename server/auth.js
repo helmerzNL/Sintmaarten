@@ -22,19 +22,29 @@ function parseCookies(header = '') {
   return out;
 }
 
-function isLoggedIn(req) {
+// Sessietoken: "<verloop>.<methode>.<handtekening>"; methode is "pk" (passkey) of "pw" (wachtwoord).
+// Oudere tokens zonder methode ("<verloop>.<handtekening>") gelden als passkey-sessie.
+function sessionMethod(req) {
   const token = parseCookies(req.headers.cookie)[COOKIE];
-  if (!token) return false;
-  const [exp, sig] = token.split('.');
-  if (!exp || !sig || !safeEqual(sig, sign(exp))) return false;
-  return Number(exp) > Date.now();
+  if (!token) return null;
+  const parts = token.split('.');
+  let exp, method, sig;
+  if (parts.length === 3) [exp, method, sig] = parts;
+  else if (parts.length === 2) { [exp, sig] = parts; method = 'pk'; }
+  else return null;
+  if (!exp || !sig || !['pk', 'pw'].includes(method)) return null;
+  const payload = parts.length === 3 ? `${exp}.${method}` : exp;
+  if (!safeEqual(sig, sign(payload))) return null;
+  return Number(exp) > Date.now() ? method : null;
 }
 
-function startSession(res) {
+const isLoggedIn = (req) => sessionMethod(req) !== null;
+
+function startSession(res, method = 'pk') {
   const exp = String(Date.now() + config.sessionHours * 3600 * 1000);
   const flags = ['Path=/', 'HttpOnly', 'SameSite=Strict', `Max-Age=${config.sessionHours * 3600}`];
   if (config.secureCookie) flags.push('Secure');
-  res.append('Set-Cookie', `${COOKIE}=${exp}.${sign(exp)}; ${flags.join('; ')}`);
+  res.append('Set-Cookie', `${COOKIE}=${exp}.${method}.${sign(`${exp}.${method}`)}; ${flags.join('; ')}`);
 }
 
 function endSession(res) {
@@ -43,6 +53,14 @@ function endSession(res) {
 
 function requireAdmin(req, res, next) {
   if (!isLoggedIn(req)) return res.status(401).json({ error: 'Niet ingelogd' });
+  next();
+}
+
+// Gevoelige acties (passkeys en wachtwoord beheren) vragen een sessie die met een passkey is gestart.
+function requirePasskeySession(req, res, next) {
+  const m = sessionMethod(req);
+  if (!m) return res.status(401).json({ error: 'Niet ingelogd' });
+  if (m !== 'pk') return res.status(403).json({ error: 'Log in met een passkey om dit te wijzigen' });
   next();
 }
 
@@ -59,13 +77,13 @@ const fails = new Map();
 const WINDOW = 15 * 60 * 1000;
 const MAX_FAILS = 10;
 const limiter = {
-  blocked(ip) {
+  blocked(ip, max = MAX_FAILS) {
     const f = (fails.get(ip) || []).filter((t) => Date.now() - t < WINDOW);
     fails.set(ip, f);
-    return f.length >= MAX_FAILS;
+    return f.length >= max;
   },
   fail(ip) { fails.set(ip, [...(fails.get(ip) || []), Date.now()]); },
   reset(ip) { fails.delete(ip); },
 };
 
-module.exports = { isLoggedIn, startSession, endSession, requireAdmin, sameOrigin, safeEqual, limiter };
+module.exports = { sessionMethod, requirePasskeySession, isLoggedIn, startSession, endSession, requireAdmin, sameOrigin, safeEqual, limiter };

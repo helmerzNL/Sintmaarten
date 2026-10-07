@@ -93,5 +93,7 @@ header.bar h1 { min-width: 8rem; }
 @media (max-width: 640px) { header.bar button { padding: 6px 9px; font-size: .9rem; } }
 .logo-preview { max-height: 80px; max-width: 100%; display: block; margin: 8px 0; background: repeating-conic-gradient(#ddd 0 25%, #fff 0 50%) 0 0 / 14px 14px; }
 
+dialog h4 { margin: 18px 0 6px; }
+dialog { max-height: 92vh; overflow-y: auto; }
 /* pinch-zoom alleen op de kaart */
 .viewport, .viewport .leaflet-container { touch-action: none; }

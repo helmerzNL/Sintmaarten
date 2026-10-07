@@ -75,6 +75,56 @@ test('manifest en service worker zijn beschikbaar', async () => {
   assert.equal(sw.headers.get('cache-control'), 'no-cache');
 });
 
+const store = require('../server/store');
+const { hashPassword } = require('../server/password');
+const sessionCookie = (method) => {
+  const e = String(Date.now() + 3600e3);
+  return `sm_session=${e}.${method}.${crypto.createHmac('sha256', 'test-session-secret-123').update(`${e}.${method}`).digest('base64url')}`;
+};
+const jsonH = (c) => ({ 'Content-Type': 'application/json', ...(c ? { cookie: c } : {}) });
+
+test('appnaam komt in het manifest en wordt gevalideerd', async () => {
+  const put = (body) => j('/api/admin/settings', { method: 'PUT', headers: jsonH(cookie), body: JSON.stringify(body) });
+  assert.equal((await put({ appName: 'Wijk Sint Maarten', appShortName: 'Sint Maarten' })).status, 200);
+  const m = await (await j('/manifest.webmanifest')).json();
+  assert.equal(m.name, 'Wijk Sint Maarten');
+  assert.equal(m.short_name, 'Sint Maarten');
+  assert.equal((await put({ appShortName: 'veel te lange korte naam' })).status, 400);
+  assert.equal((await put({ appName: '' , appShortName: '' })).status, 200);
+  assert.equal((await (await j('/manifest.webmanifest')).json()).name, 'Onze wijk');
+});
+
+test('wachtwoord: inloggen, beperkingen en bevestiging met passkey', async () => {
+  // zonder ingesteld wachtwoord kan niemand inloggen
+  assert.equal((await j('/api/auth/password-login', { method: 'POST', headers: jsonH(), body: JSON.stringify({ password: 'iets-geheims-123' }) })).status, 401);
+  // instellen zonder passkey-bevestiging mislukt
+  const noProof = await j('/api/admin/password', { method: 'PUT', headers: jsonH(cookie), body: JSON.stringify({ password: 'een-lang-wachtwoord' }) });
+  assert.equal(noProof.status, 400);
+  const short = await j('/api/admin/password', { method: 'PUT', headers: jsonH(cookie), body: JSON.stringify({ password: 'kort' }) });
+  assert.equal(short.status, 400);
+  assert.equal((await j('/api/admin/password', { method: 'PUT', headers: jsonH(), body: '{}' })).status, 401);
+
+  store.db().password = await hashPassword('een-lang-wachtwoord');
+  const bad = await j('/api/auth/password-login', { method: 'POST', headers: jsonH(), body: JSON.stringify({ password: 'fout-wachtwoord-1' }) });
+  assert.equal(bad.status, 401);
+  const ok = await j('/api/auth/password-login', { method: 'POST', headers: jsonH(), body: JSON.stringify({ password: 'een-lang-wachtwoord' }) });
+  assert.equal(ok.status, 200);
+  const set = ok.headers.get('set-cookie').split(';')[0];
+  const st = await (await j('/api/auth/status', { headers: { cookie: set } })).json();
+  assert.deepEqual([st.loggedIn, st.method, st.passwordEnabled], [true, 'pw', true]);
+
+  // met een wachtwoord-sessie mag je kaartgegevens beheren, maar geen passkeys/wachtwoord
+  assert.equal((await j('/api/admin/passkeys', { headers: { cookie: set } })).status, 200);
+  assert.equal((await j('/api/admin/password/options', { method: 'POST', headers: jsonH(set), body: '{}' })).status, 403);
+  assert.equal((await j('/api/admin/passkeys/x', { method: 'DELETE', headers: { cookie: set } })).status, 403);
+  assert.equal((await j('/api/auth/register/options', { method: 'POST', headers: jsonH(set), body: '{}' })).status, 403);
+  // met een passkey-sessie krijg je wel uitdaging voor bevestiging
+  const opts = await j('/api/admin/password/options', { method: 'POST', headers: jsonH(sessionCookie('pk')), body: '{}' });
+  assert.equal(opts.status, 200);
+  assert.ok((await opts.json()).options.challenge);
+  store.db().password = null;
+});
+
 test('kaartweergave instellen, valideren en wissen', async () => {
   const h = { 'Content-Type': 'application/json', cookie };
   const ok = await j('/api/admin/view', { method: 'PUT', headers: h, body: JSON.stringify({ center: [52.02, 5.16], zoom: 17.5, minZoom: 14, maxZoom: 19 }) });

@@ -7,7 +7,7 @@ const dbFile = path.join(config.dataDir, 'db.json');
 const uploadDir = path.join(config.dataDir, 'uploads');
 fs.mkdirSync(uploadDir, { recursive: true });
 
-const empty = () => ({ userId: null, passkeys: [], view: null, houses: [], settings: { intro: '', logo: null }, version: 2 });
+const empty = () => ({ userId: null, passkeys: [], password: null, view: null, houses: [], settings: { intro: '', logo: null, appName: '', appShortName: '' }, version: 2 });
 let db = empty();
 if (fs.existsSync(dbFile)) {
   db = { ...empty(), ...JSON.parse(fs.readFileSync(dbFile, 'utf8')) };
