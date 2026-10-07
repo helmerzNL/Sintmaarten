@@ -187,6 +187,37 @@ test('backups: lijst, terugzetten en verwijderen vereist passkey-bevestiging', a
   assert.ok(backups.read(oldest.id));
 });
 
+const { execFileSync } = require('node:child_process');
+
+test('versie-info is alleen voor beheerders en toont versie en build', async () => {
+  assert.equal((await j('/api/admin/info')).status, 401);
+  const info = await (await j('/api/admin/info', { headers: { cookie } })).json();
+  assert.ok(info.version && info.build && info.label.includes(info.build));
+  assert.match(info.label, /^(v\d+\.\d+\.\d+|dev) \(.+\)$/);
+});
+
+test('service worker krijgt de buildversie in zijn cachenaam', async () => {
+  const sw = await (await j('/sw.js')).text();
+  assert.match(sw, /const VERSION = '[\w.-]+';/);
+  assert.doesNotMatch(sw, /const VERSION = 'v1';/);
+});
+
+test('tools/next-version.sh telt per build 0.0.1 op, beginnend bij 0.1.0', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ver-'));
+  fs.mkdirSync(path.join(dir, 'tools'));
+  fs.copyFileSync(path.join(__dirname, '..', 'tools', 'next-version.sh'), path.join(dir, 'tools', 'next-version.sh'));
+  fs.chmodSync(path.join(dir, 'tools', 'next-version.sh'), 0o755);
+  fs.writeFileSync(path.join(dir, 'VERSION'), '0.1\n');
+  const run = (...a) => execFileSync(a[0], a.slice(1), { cwd: dir, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } }).trim();
+  run('git', 'init', '-q');
+  run('git', 'commit', '-q', '--allow-empty', '-m', 'x');
+  assert.equal(run('sh', 'tools/next-version.sh'), '0.1.0');
+  run('git', 'tag', 'v0.1.0');
+  assert.equal(run('sh', 'tools/next-version.sh'), '0.1.1');
+  run('git', 'tag', 'v0.1.1'); run('git', 'tag', 'v0.1.9'); run('git', 'tag', 'v0.1.10'); run('git', 'tag', 'v0.2.5'); run('git', 'tag', 'v0.1.foo');
+  assert.equal(run('sh', 'tools/next-version.sh'), '0.1.11'); // numeriek sorteren, andere minor/rommel negeren
+});
+
 test('huizen hebben straat en huisnummer; oude "label" wordt huisnummer', async () => {
   const pts = [[52, 5], [52.001, 5], [52.001, 5.001]];
   const put = (houses) => j('/api/admin/houses', { method: 'PUT', headers: jsonH(cookie), body: JSON.stringify({ houses }) });

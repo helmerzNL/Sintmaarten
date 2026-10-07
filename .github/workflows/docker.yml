@@ -3,12 +3,16 @@ name: Docker image
 on:
   push:
     branches: [main, master]
-    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # om de versietag te kunnen zetten
   packages: write
+
+# Builds na elkaar uitvoeren, zodat versienummers niet dubbel worden uitgegeven.
+concurrency:
+  group: docker-build
+  cancel-in-progress: false
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}
@@ -18,6 +22,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Versienummer bepalen
+        id: ver
+        run: |
+          git fetch --tags --force
+          echo "version=$(tools/next-version.sh)" >> "$GITHUB_OUTPUT"
+          echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
         with:
@@ -42,7 +55,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha
-            type=semver,pattern={{version}}
+            type=raw,value=v${{ steps.ver.outputs.version }}
 
       - uses: docker/build-push-action@v6
         with:
@@ -51,5 +64,15 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.ver.outputs.version }}
+            GIT_SHA=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Pas na een geslaagde build het versienummer vastleggen als tag (voorkomt gaten door mislukte builds).
+      - name: Versietag zetten
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        run: |
+          git tag "v${{ steps.ver.outputs.version }}" "$GITHUB_SHA"
+          git push origin "v${{ steps.ver.outputs.version }}"
