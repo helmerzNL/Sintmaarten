@@ -417,7 +417,9 @@
     header(title, 18);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Stand van ${new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}`, pw - margin, 14, { align: 'right' });
+    const now = new Date();
+    const stand = `${now.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })} ${now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+    doc.text(`Stand van ${stand}`, pw - margin, 14, { align: 'right' });
     doc.setTextColor(0);
 
     const mapW = pw - 2 * margin, mapH = (mapW * MAP_MM.h) / MAP_MM.w;
