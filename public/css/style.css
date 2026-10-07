@@ -120,3 +120,4 @@ dialog { max-height: 92vh; overflow-y: auto; }
 .bk-info span { color: var(--muted); }
 .bk-row input[type=checkbox] { width: 18px; height: 18px; }
 .bk-row button, .bk-row .btn { padding: 4px 8px; font-size: .85rem; }
+.secret { -webkit-text-security: disc; text-security: disc; }
