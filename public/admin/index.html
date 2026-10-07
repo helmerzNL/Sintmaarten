@@ -15,7 +15,7 @@
   <h2>Eerste keer instellen</h2>
   <p class="muted">Maak een passkey aan om het beheer te beveiligen. Voer de installatiecode in (<code>SETUP_TOKEN</code> uit je <code>.env</code>, of uit de containerlog als je die leeg liet).</p>
   <label for="s-token">Installatiecode</label>
-  <input type="password" id="s-token" autocomplete="off">
+  <input type="text" id="s-token" class="secret" autocomplete="off" spellcheck="false">
   <label for="s-name">Naam van dit apparaat</label>
   <input type="text" id="s-name" value="Mijn apparaat" maxlength="60">
   <p class="error" id="s-err"></p>
@@ -28,7 +28,9 @@
   <p class="muted">Log in met je passkey (vingerafdruk, gezicht, pincode of beveiligingssleutel).</p>
   <p class="error" id="l-err"></p>
   <button class="primary" id="l-go">Inloggen met passkey</button>
-  <form id="pw-form" class="hidden" autocomplete="on">
+  <div id="pw-form-slot"></div>
+  <template id="pw-form-tpl">
+    <form id="pw-form" autocomplete="on">
     <p class="muted" style="margin-top:20px">of met je wachtwoord</p>
     <input type="text" name="username" value="beheerder" autocomplete="username" hidden>
     <label for="l-pw">Wachtwoord</label>
@@ -36,6 +38,7 @@
     <p class="error" id="l-pw-err"></p>
     <button id="l-pw-go">Inloggen met wachtwoord</button>
   </form>
+  </template>
   <p><a href="/">← Naar de kaart</a></p>
 </section>
 
@@ -172,13 +175,11 @@
       <h4>Wachtwoord</h4>
       <p class="muted" id="pw-status"></p>
       <div id="pw-edit">
-        <label for="pw-new">Nieuw wachtwoord (minimaal 10 tekens)</label>
-        <input type="password" id="pw-new" autocomplete="new-password" maxlength="200">
-        <label for="pw-new2">Herhaal wachtwoord</label>
-        <input type="password" id="pw-new2" autocomplete="new-password" maxlength="200">
         <p class="muted">Het instellen, wijzigen en verwijderen van het wachtwoord moet je bevestigen met een passkey.</p>
         <p class="error" id="pw-err"></p>
-        <div class="row"><button id="pw-set" class="primary">Wachtwoord instellen (bevestig met passkey)</button><button id="pw-remove" class="danger">Wachtwoord verwijderen</button></div>
+        <div class="row"><button id="pw-start" class="primary">Wachtwoord instellen…</button><button id="pw-remove" class="danger">Wachtwoord verwijderen</button></div>
+        <!-- De wachtwoordvelden worden pas ingevoegd na een klik op de knop, zodat wachtwoordmanagers niet onnodig reageren. -->
+        <form id="pw-form-set" class="hidden" autocomplete="off"></form>
       </div>
       <p class="muted hidden" id="pw-locked">Je bent met een wachtwoord ingelogd. Log in met een passkey om passkeys of het wachtwoord te wijzigen.</p>
     </section>

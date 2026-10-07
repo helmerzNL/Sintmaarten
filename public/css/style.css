@@ -211,3 +211,4 @@ path.pending { animation: dash 1.2s linear infinite; }
 .chg-info span { display: block; color: var(--muted); font-size: .8rem; }
 .chg-row button { padding: 4px 10px; font-size: .85rem; }
 [hidden] { display: none !important; }
+.secret { -webkit-text-security: disc; text-security: disc; }
