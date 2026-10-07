@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="robots" content="noindex">
 <title>Beheer</title>
 <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
@@ -55,7 +55,7 @@
     <form id="search-form">
       <div class="row"><input type="text" id="search" placeholder="Zoek adres of plaats…" style="flex:3"><button style="flex:1">Zoek</button></div>
     </form>
-    <button id="setview" title="Bepaalt waar bezoekers de kaart mee openen">📍 Huidige weergave als startpunt opslaan</button>
+    <button id="view-open" title="Bepaalt hoe bezoekers de kaart te zien krijgen">📍 Kaartweergave instellen</button>
     <div class="row">
       <button id="t-select" class="active">☝ Selecteren</button>
       <button id="t-draw">✏ Huis tekenen</button>
@@ -90,6 +90,25 @@
   </div>
 </div>
 </div>
+
+<dialog id="view-dialog">
+  <h3>Kaartweergave</h3>
+  <p class="muted">Dit is de weergave waarmee bezoekers de kaart openen (ook in de app). Sleep en zoom de kaart naar de gewenste plek en neem die over, of vul de waarden in.</p>
+  <button id="view-grab" style="width:100%">⤓ Huidige kaartweergave overnemen</button>
+  <div class="row">
+    <div><label for="v-lat">Breedtegraad</label><input type="text" id="v-lat" inputmode="decimal"></div>
+    <div><label for="v-lng">Lengtegraad</label><input type="text" id="v-lng" inputmode="decimal"></div>
+  </div>
+  <div class="row">
+    <div><label for="v-zoom">Startzoom (1–19)</label><input type="number" id="v-zoom" min="1" max="19" step="0.25"></div>
+    <div><label for="v-min">Minimale zoom</label><input type="number" id="v-min" min="1" max="19" step="1"></div>
+    <div><label for="v-max">Maximale zoom</label><input type="number" id="v-max" min="1" max="19" step="1"></div>
+  </div>
+  <p class="muted" id="v-now"></p>
+  <p class="error" id="v-err"></p>
+  <div class="row"><button id="v-apply">Toon op kaart</button><button id="v-auto" class="danger" title="De site toont dan alle huizen">Automatisch</button></div>
+  <div class="row"><button id="v-save" class="primary">Opslaan</button><button id="v-close">Sluiten</button></div>
+</dialog>
 
 <dialog id="org-dialog">
   <h3>Logo, appnaam &amp; uitleg</h3>

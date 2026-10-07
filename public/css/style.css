@@ -7,7 +7,8 @@
   :root { --bg: #151a17; --panel: #1f2723; --text: #e8efea; --muted: #9aa8a0; --line: #33403a; --accent: #4cc38a; }
 }
 * { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; }
+html, body { height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; touch-action: manipulation; }
+body { height: 100dvh; }
 body { font: 16px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
 header.bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 header.bar h1 { font-size: 1.15rem; margin: 0; flex: 1; }
@@ -94,3 +95,5 @@ header.bar h1 { min-width: 8rem; }
 
 dialog h4 { margin: 18px 0 6px; }
 dialog { max-height: 92vh; overflow-y: auto; }
+/* pinch-zoom alleen op de kaart */
+.viewport, .viewport .leaflet-container { touch-action: none; }

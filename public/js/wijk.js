@@ -10,7 +10,12 @@
   const DEFAULT_VIEW = { center: [52.1, 5.3], zoom: 8 };
 
   function createMap(el, view, houses) {
-    const map = L.map(el, { maxZoom: 19, zoomSnap: 0.25 });
+    const map = L.map(el, {
+      minZoom: view?.minZoom ?? 1,
+      maxZoom: view?.maxZoom ?? 19,
+      zoomSnap: 0.25,
+      bounceAtZoomLimits: false,
+    });
     L.tileLayer(TILE_URL, { maxZoom: 19, attribution: ATTRIBUTION }).addTo(map);
     if (view) map.setView(view.center, view.zoom);
     else if (houses && houses.length) map.fitBounds(L.latLngBounds(houses.flatMap((h) => h.points)).pad(0.2));
@@ -251,6 +256,10 @@
     }
     return doc;
   }
+
+  // Alleen de kaart mag zoomen met pinch; de pagina/app zelf niet (iOS Safari negeert user-scalable=no).
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) =>
+    document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
 
   window.Wijk = { STATUS, createMap, houseStyle, buildPdf, prefetchTiles, DEFAULT_VIEW };
 })();
