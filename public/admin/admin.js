@@ -55,12 +55,19 @@
     $('l-err').textContent = '';
     try { await login(); boot(); } catch (e) { $('l-err').textContent = friendly(e); }
   };
-  $('pw-form').onsubmit = async (e) => {
-    e.preventDefault();
-    $('l-pw-err').textContent = '';
-    try { await post('/api/auth/password-login', { password: $('l-pw').value }); $('l-pw').value = ''; boot(); }
-    catch (err) { $('l-pw-err').textContent = err.message; }
-  };
+  // Het inlogformulier met wachtwoordveld bestaat alleen op het inlogscherm (niet in de editor).
+  function mountPwLogin(enabled) {
+    const slot = $('pw-form-slot');
+    slot.replaceChildren();
+    if (!enabled) return;
+    slot.append($('pw-form-tpl').content.cloneNode(true));
+    $('pw-form').onsubmit = async (e) => {
+      e.preventDefault();
+      $('l-pw-err').textContent = '';
+      try { await post('/api/auth/password-login', { password: $('l-pw').value }); boot(); }
+      catch (err) { $('l-pw-err').textContent = err.message; }
+    };
+  }
   $('logout').onclick = async () => {
     if (dirty && !confirm('Er zijn niet-opgeslagen wijzigingen. Toch uitloggen?')) return;
     dirty = false;
@@ -75,9 +82,10 @@
   async function renderPasskeys() {
     session = await api('/api/auth/status');
     $('pw-status').textContent = session.passwordEnabled ? 'Er is een wachtwoord ingesteld.' : 'Er is nog geen wachtwoord ingesteld; inloggen kan alleen met een passkey.';
-    $('pw-set').textContent = session.passwordEnabled ? 'Wachtwoord wijzigen (bevestig met passkey)' : 'Wachtwoord instellen (bevestig met passkey)';
+    $('pw-start').textContent = session.passwordEnabled ? 'Wachtwoord wijzigen…' : 'Wachtwoord instellen…';
     $('pw-remove').classList.toggle('hidden', !session.passwordEnabled);
     $('pw-edit').classList.toggle('hidden', locked());
+    if (locked()) closePwForm();
     $('pw-locked').classList.toggle('hidden', !locked());
     $('pk-add').disabled = locked();
     $('pk-name').disabled = locked();
@@ -105,18 +113,43 @@
     const response = await SimpleWebAuthnBrowser.startAuthentication({ optionsJSON: options });
     return { challengeId, response };
   }
-  $('pw-set').onclick = async () => {
+  // De wachtwoordvelden worden pas aangemaakt als je op "Wachtwoord instellen" klikt en daarna weer verwijderd.
+  function closePwForm() { $('pw-form-set').replaceChildren(); $('pw-form-set').classList.add('hidden'); $('pw-start').classList.remove('hidden'); }
+  $('pw-start').onclick = () => {
     $('pw-err').textContent = '';
+    const f = $('pw-form-set');
+    const field = (id, label) => {
+      const l = document.createElement('label'); l.htmlFor = id; l.textContent = label;
+      const i = document.createElement('input');
+      i.type = 'password'; i.id = id; i.maxLength = 200; i.autocomplete = 'new-password';
+      return [l, i];
+    };
+    const user = document.createElement('input');
+    user.type = 'text'; user.name = 'username'; user.value = 'beheerder'; user.autocomplete = 'username'; user.hidden = true;
+    const err = document.createElement('p'); err.className = 'error'; err.id = 'pw-set-err';
+    const row = document.createElement('div'); row.className = 'row';
+    const ok = document.createElement('button'); ok.type = 'submit'; ok.className = 'primary'; ok.textContent = 'Opslaan (bevestig met passkey)';
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Annuleren'; cancel.onclick = closePwForm;
+    row.append(ok, cancel);
+    f.replaceChildren(user, ...field('pw-new', session.passwordEnabled ? 'Nieuw wachtwoord (minimaal 10 tekens)' : 'Wachtwoord (minimaal 10 tekens)'), ...field('pw-new2', 'Herhaal wachtwoord'), err, row);
+    f.classList.remove('hidden');
+    $('pw-start').classList.add('hidden');
+    $('pw-new').focus();
+  };
+  $('pw-form-set').onsubmit = async (e) => {
+    e.preventDefault();
+    const err = $('pw-set-err');
+    err.textContent = '';
     const pw = $('pw-new').value;
-    if (pw.length < 10) { $('pw-err').textContent = 'Kies een wachtwoord van minimaal 10 tekens.'; return; }
-    if (pw !== $('pw-new2').value) { $('pw-err').textContent = 'De twee wachtwoorden zijn niet gelijk.'; return; }
+    if (pw.length < 10) { err.textContent = 'Kies een wachtwoord van minimaal 10 tekens.'; return; }
+    if (pw !== $('pw-new2').value) { err.textContent = 'De twee wachtwoorden zijn niet gelijk.'; return; }
     try {
       const proof = await confirmWithPasskey();
       await api('/api/admin/password', { method: 'PUT', body: JSON.stringify({ ...proof, password: pw }) });
-      $('pw-new').value = ''; $('pw-new2').value = '';
+      closePwForm();
       toast('Wachtwoord opgeslagen ✔');
       renderPasskeys();
-    } catch (e) { $('pw-err').textContent = friendly(e); }
+    } catch (ex) { err.textContent = friendly(ex); }
   };
   $('pw-remove').onclick = async () => {
     $('pw-err').textContent = '';
@@ -575,11 +608,20 @@
     setTimeout(() => map.invalidateSize(), 0);
   }
 
+  // Gewone invoervelden niet door wachtwoordmanagers laten aanvullen of aanbieden.
+  document.querySelectorAll('input:not([type=password]):not([type=file]):not([type=checkbox]), textarea, #s-token').forEach((el) => {
+    el.setAttribute('autocomplete', 'off');
+    el.setAttribute('data-lpignore', 'true');
+    el.setAttribute('data-1p-ignore', '');
+    el.setAttribute('data-bwignore', 'true');
+    el.setAttribute('data-form-type', 'other');
+  });
+
   async function boot() {
     const st = await api('/api/auth/status');
     session = st;
-    if (st.loggedIn) return openEditor();
-    $('pw-form').classList.toggle('hidden', !st.passwordEnabled);
+    if (st.loggedIn) { mountPwLogin(false); return openEditor(); }
+    mountPwLogin(st.passwordEnabled);
     show(st.configured ? 'v-login' : 'v-setup');
   }
   boot().catch((e) => { document.body.textContent = e.message; });
