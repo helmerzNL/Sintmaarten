@@ -437,20 +437,40 @@ app.use('/api', (req, res) => res.status(404).json({ error: 'Niet gevonden' }));
 // ---------- statische bestanden ----------
 const pub = path.join(__dirname, '..', 'public');
 const nm = (...p) => path.join(__dirname, '..', 'node_modules', ...p);
-app.get('/vendor/webauthn.js', (req, res) => res.sendFile(nm('@simplewebauthn', 'browser', 'dist', 'bundle', 'index.umd.min.js')));
-app.get('/vendor/jspdf.js', (req, res) => res.sendFile(nm('jspdf', 'dist', 'jspdf.umd.min.js')));
-app.use('/vendor/leaflet', express.static(nm('leaflet', 'dist'), { index: false }));
+const vendorFile = (file) => (req, res) => res
+  .set('Cache-Control', req.query.v ? 'public, max-age=31536000, immutable' : 'no-cache')
+  .sendFile(file, { cacheControl: false });
+app.get('/vendor/webauthn.js', vendorFile(nm('@simplewebauthn', 'browser', 'dist', 'bundle', 'index.umd.min.js')));
+app.get('/vendor/jspdf.js', vendorFile(nm('jspdf', 'dist', 'jspdf.umd.min.js')));
+app.use('/vendor/leaflet', express.static(nm('leaflet', 'dist'), {
+  index: false,
+  setHeaders: (res, file) => res.set('Cache-Control', res.req.query.v && /\.(js|css)$/.test(file) ? 'public, max-age=31536000, immutable' : 'no-cache'),
+}));
+// Elke build heeft een eigen versie-tag; die zit in de URL's van scripts en stijlen (cache-busting),
+// zodat browsers, de service worker en een eventuele proxy/CDN nooit een oude JS bij nieuwe HTML serven.
+const buildTag = `${appVersion.version}-${appVersion.build}`.replace(/[^\w.-]/g, '');
+const noCache = { 'Cache-Control': 'no-cache' };
+const page = (file) => (req, res) => {
+  const html = fs.readFileSync(file, 'utf8').replaceAll('{{v}}', buildTag);
+  res.set({ ...noCache, 'Content-Type': 'text/html; charset=utf-8' }).send(html);
+};
+app.get(['/', '/index.html'], page(path.join(pub, 'index.html')));
+app.get(['/beheer', '/beheer/', '/admin/'], page(path.join(pub, 'admin', 'index.html')));
+
 // De service worker krijgt de buildversie in zijn cachenaam, zodat een nieuwe build de oude caches opruimt.
 app.get('/sw.js', (req, res) => {
-  const tag = `${appVersion.version}-${appVersion.build}`.replace(/[^\w.-]/g, '');
-  const src = fs.readFileSync(path.join(pub, 'sw.js'), 'utf8').replace(/const VERSION = '[^']*';/, `const VERSION = '${tag}';`);
-  res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }).send(src);
+  const src = fs.readFileSync(path.join(pub, 'sw.js'), 'utf8').replace(/const VERSION = '[^']*';/, `const VERSION = '${buildTag}';`);
+  res.set({ ...noCache, 'Content-Type': 'application/javascript; charset=utf-8' }).send(src);
 });
 app.use(express.static(pub, {
   extensions: ['html'],
-  setHeaders: (res, file) => { if (file.endsWith('sw.js')) res.set('Cache-Control', 'no-cache'); },
+  index: false,
+  // Met ?v=<build> is een bestand onveranderlijk voor die build; zonder versie altijd hercontroleren.
+  setHeaders: (res, file) => {
+    if (res.req.query.v && /\.(js|css)$/.test(file)) res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    else res.set(noCache);
+  },
 }));
-app.get('/beheer', (req, res) => res.sendFile(path.join(pub, 'admin', 'index.html')));
 
 module.exports = app;
 

@@ -80,6 +80,10 @@ Standaard kun je alleen met een passkey inloggen. Wil je ook met een wachtwoord 
 Een sessie die met een wachtwoord is gestart kan de kaart en teksten beheren, maar geen passkeys of wachtwoord wijzigen; daarvoor log je in met een passkey.
 Mislukte pogingen worden per IP-adres en globaal beperkt.
 
+## Na een update: oude pagina's of scripts
+Scripts en stijlen worden per build met `?v=<versie>-<commit>` opgevraagd en de HTML wordt nooit gecachet; zo krijg je nooit een oude `admin.js` bij nieuwe HTML (dat geeft fouten als
+*Cannot set properties of null*). Zie je zo'n fout toch na een update, ververs dan hard (Ctrl+Shift+R) of wis de sitegegevens; eventueel staat een proxy/CDN (bijv. Cloudflare) te agressief te cachen.
+
 ## Versienummer
 Onderin het instellingenmenu (⚙) staat de versie en de commit van de draaiende build, bijvoorbeeld **v0.1.3 (9f2c4e1)**.
 Bij elke geslaagde build van de GitHub Action gaat het patchnummer met 1 omhoog (de eerste build is v0.1.0); de build krijgt een git-tag `v0.1.N` en het image wordt

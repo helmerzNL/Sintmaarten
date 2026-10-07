@@ -217,3 +217,23 @@ test('tools/next-version.sh telt per build 0.0.1 op, beginnend bij 0.1.0', () =>
   run('git', 'tag', 'v0.1.1'); run('git', 'tag', 'v0.1.9'); run('git', 'tag', 'v0.1.10'); run('git', 'tag', 'v0.2.5'); run('git', 'tag', 'v0.1.foo');
   assert.equal(run('sh', 'tools/next-version.sh'), '0.1.11'); // numeriek sorteren, andere minor/rommel negeren
 });
+
+test('cache-busting: HTML verwijst naar versie-URLs en JS/CSS cachet per build', async () => {
+  for (const url of ['/', '/beheer']) {
+    const r = await j(url);
+    const html = await r.text();
+    assert.equal(r.headers.get('cache-control'), 'no-cache', url);
+    assert.doesNotMatch(html, /\{\{v\}\}/);
+    const scripts = [...html.matchAll(/(?:src|href)="(\/(?:js|admin|css|vendor)\/[^"]+\.(?:js|css))\?v=([\w.-]+)"/g)];
+    assert.ok(scripts.length >= 3, url);
+    // elk lokaal script/stijl in de HTML heeft een versie
+    assert.doesNotMatch(html, /(?:src|href)="\/(?:js|admin|css)\/[^"?]+\.(?:js|css)"/);
+  }
+  const versioned = await j('/admin/admin.js?v=1.2.3');
+  assert.equal(versioned.status, 200);
+  assert.match(versioned.headers.get('cache-control'), /immutable/);
+  const plain = await j('/admin/admin.js');
+  assert.equal(plain.headers.get('cache-control'), 'no-cache');
+  const vendor = await j('/vendor/jspdf.js?v=1');
+  assert.match(vendor.headers.get('cache-control'), /immutable/);
+});
