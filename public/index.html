@@ -32,6 +32,7 @@
   </label>
   <nav class="actions" aria-label="Acties">
     <button id="intro-btn" hidden aria-label="Uitleg"><span class="ico">ℹ</span><span class="lbl">Uitleg</span></button>
+    <button id="house-edit" hidden aria-label="Huis wijzigen"><span class="ico">🏠</span><span class="lbl">Huis wijzigen</span></button>
     <button id="streets-btn" aria-label="Straten tonen of verbergen" aria-haspopup="dialog" hidden><span class="ico">🛣️</span><span class="lbl">Straten</span></button>
     <button id="pdf-view" aria-label="PDF bekijken"><span class="ico">📄</span><span class="lbl">PDF bekijken</span></button>
     <button id="pdf-dl" class="primary" aria-label="PDF opslaan"><span class="ico">⬇</span><span class="lbl">PDF opslaan</span></button>
@@ -46,6 +47,15 @@
   <p><button id="intro-close" class="primary">Sluiten</button></p>
 </dialog>
 
+<div id="house-sheet" class="house-sheet" hidden role="region" aria-label="Huis wijzigen"></div>
+
+<dialog id="claim-dialog" aria-labelledby="claim-q">
+  <h3 id="claim-q">Is dit jouw huis?</h3>
+  <p><strong id="claim-title"></strong></p>
+  <p class="muted">Je kunt met dit apparaat maar één huis kiezen. De beheerder keurt je wijziging eerst goed.</p>
+  <div class="row"><button id="claim-yes" class="primary" type="button">Ja, dit is mijn huis</button><button id="claim-no" type="button">Annuleren</button></div>
+</dialog>
+
 <dialog id="streets-dialog" aria-labelledby="streets-title">
   <h3 id="streets-title">Straten</h3>
   <p class="muted">Kies welke straten op de kaart (en in de PDF) te zien zijn.</p>
@@ -58,6 +68,7 @@
 <script src="/vendor/jspdf.js"></script>
 <script src="/js/wijk.js"></script>
 <script src="/js/pwa.js"></script>
+<script src="/js/resident.js"></script>
 <script src="/js/public.js"></script>
 </body>
 </html>

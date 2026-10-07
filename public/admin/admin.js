@@ -226,6 +226,7 @@
     document.querySelectorAll('#settings [data-panel]').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== name));
     if (name === 'security') { $('pk-err').textContent = ''; renderPasskeys().catch((e) => ($('pk-err').textContent = e.message)); }
     if (name === 'backups') renderBackups();
+    if (name === 'changes') { renderChanges(); renderPush(); }
     if (name === 'org') fillOrg();
   }
   let versionShown = false;
@@ -253,7 +254,7 @@
     $('scrim').classList.remove('show');
     $('settings-open').focus();
   }
-  $('settings-open').onclick = () => (drawerOpen() ? closeSettings() : openSettings());
+  $('settings-open').onclick = () => (drawerOpen() ? closeSettings() : openSettings(pendingCount > 0 ? 'changes' : undefined));
   $('settings-close').onclick = closeSettings;
   $('scrim').onclick = closeSettings;
   document.querySelectorAll('#settings [data-tab]').forEach((b) => (b.onclick = () => openTab(b.dataset.tab)));
@@ -323,6 +324,185 @@
       renderBackups();
     } catch (e) { $('bk-err').textContent = friendly(e); }
   };
+
+  // ---------- wijzigingen van bewoners en meldingen ----------
+  let pendingCount = 0;
+  const STATUS_NL = { green: 'groen', red: 'rood', none: 'niet gemarkeerd' };
+  const ago = (iso) => {
+    const m = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000));
+    return m < 1 ? 'zojuist' : m < 60 ? `${m} min geleden` : m < 1440 ? `${Math.round(m / 60)} uur geleden` : `${Math.round(m / 1440)} dagen geleden`;
+  };
+  const activeTab = () => document.querySelector('#settings [data-tab].active')?.dataset.tab;
+
+  function setBadge(n) {
+    for (const id of ['tab-badge', 'cog-badge']) { $(id).hidden = n === 0; $(id).textContent = n; }
+    document.title = n ? `(${n}) Beheer` : 'Beheer';
+  }
+
+  async function pollChanges(first) {
+    try {
+      const { pending } = await api('/api/admin/changes/count');
+      if (!first && pending > pendingCount) toast(`${pending} wijziging${pending === 1 ? '' : 'en'} wacht${pending === 1 ? '' : 'en'} op goedkeuring`);
+      const changed = pending !== pendingCount;
+      pendingCount = pending;
+      setBadge(pending);
+      if (changed && drawerOpen() && activeTab() === 'changes') renderChanges();
+    } catch { /* offline of uitgelogd: volgende poging */ }
+  }
+
+  // Een goedgekeurde wijziging ook in de lokale lijst verwerken, zodat een volgende "Opslaan" hem niet overschrijft.
+  function applyChange(c) {
+    const h = c && houses.find((x) => x.id === c.houseId);
+    if (h) { h.status = c.status; render(); }
+  }
+
+  async function renderChanges() {
+    $('chg-err').textContent = '';
+    let data;
+    try { data = await api('/api/admin/changes'); } catch (e) { $('chg-err').textContent = e.message; return; }
+    $('res-enabled').checked = data.enabled;
+    pendingCount = data.pending.length; setBadge(pendingCount);
+    const box = $('pend-list');
+    box.replaceChildren();
+    if (!data.pending.length) {
+      const p = document.createElement('p'); p.className = 'muted'; p.style.padding = '8px 10px'; p.textContent = 'Geen wijzigingen die op goedkeuring wachten.'; box.append(p);
+    }
+    for (const c of data.pending) {
+      const row = document.createElement('div'); row.className = 'chg-row';
+      const info = document.createElement('div'); info.className = 'chg-info';
+      const t = document.createElement('strong'); t.textContent = c.title;
+      const d = document.createElement('span'); d.textContent = `${STATUS_NL[c.from]} → ${STATUS_NL[c.to]} · ${ago(c.updatedAt)}`;
+      info.append(t, d);
+      const ok = document.createElement('button'); ok.className = 'primary'; ok.textContent = 'Goedkeuren';
+      const no = document.createElement('button'); no.textContent = 'Afwijzen';
+      ok.onclick = () => decideChange(c.id, 'approve');
+      no.onclick = () => decideChange(c.id, 'reject');
+      row.append(info, ok, no);
+      box.append(row);
+    }
+    $('pend-all').disabled = !data.pending.length;
+
+    const rl = $('res-list');
+    rl.replaceChildren();
+    if (!data.residents.length) { const p = document.createElement('p'); p.className = 'muted'; p.style.padding = '8px 10px'; p.textContent = 'Nog geen apparaten aangemeld.'; rl.append(p); }
+    for (const r of data.residents) {
+      const row = document.createElement('div'); row.className = 'chg-row';
+      const info = document.createElement('div'); info.className = 'chg-info';
+      const t = document.createElement('strong'); t.textContent = r.title;
+      const d = document.createElement('span'); d.textContent = `aangemeld ${ago(r.createdAt)} · laatst actief ${ago(r.lastActivity)}`;
+      info.append(t, d);
+      const del = document.createElement('button'); del.className = 'danger'; del.textContent = 'Verwijderen';
+      del.onclick = async () => {
+        if (!confirm(`De koppeling met ${r.title} verwijderen? Dat apparaat kan dan opnieuw een huis kiezen.`)) return;
+        try { await api(`/api/admin/residents/${r.rid}`, { method: 'DELETE', expectAuth: true }); renderChanges(); }
+        catch (e) { $('chg-err').textContent = e.message; }
+      };
+      row.append(info, del);
+      rl.append(row);
+    }
+  }
+
+  async function decideChange(id, action) {
+    try {
+      const res = await post(`/api/admin/changes/${id}/${action}`, {}, { expectAuth: true });
+      if (action === 'approve') applyChange(res.change);
+      toast(action === 'approve' ? 'Goedgekeurd ✔' : 'Afgewezen');
+      await renderChanges();
+    } catch (e) { $('chg-err').textContent = e.message; }
+  }
+
+  $('pend-all').onclick = async () => {
+    try {
+      const res = await post('/api/admin/changes/approve-all', {}, { expectAuth: true });
+      res.changes.forEach(applyChange);
+      toast(`${res.changes.length} wijziging(en) goedgekeurd ✔`);
+      await renderChanges();
+    } catch (e) { $('chg-err').textContent = e.message; }
+  };
+
+  $('res-enabled').onchange = async () => {
+    try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ residentsEnabled: $('res-enabled').checked }), expectAuth: true }); toast($('res-enabled').checked ? 'Wijzigen door bewoners staat aan' : 'Wijzigen door bewoners staat uit'); }
+    catch (e) { $('chg-err').textContent = e.message; $('res-enabled').checked = !$('res-enabled').checked; }
+  };
+
+  // ---- pushmeldingen op dit apparaat ----
+  const pushSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const b64 = (str) => { const pad = '='.repeat((4 - (str.length % 4)) % 4); const raw = atob((str + pad).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(raw, (c) => c.charCodeAt(0)); };
+  const deviceLabel = () => { const ua = navigator.userAgent; return /iPhone|iPad/.test(ua) ? 'iPhone/iPad' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac/.test(ua) ? 'Mac' : 'Apparaat'; };
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+  async function currentSub() {
+    if (!pushSupported) return null;
+    const reg = await navigator.serviceWorker.ready;
+    return reg.pushManager.getSubscription();
+  }
+
+  async function renderPush() {
+    $('push-err').textContent = '';
+    const on = $('push-on'), off = $('push-off'), test = $('push-test');
+    [on, off, test].forEach((b) => b.classList.add('hidden'));
+    if (!pushSupported) {
+      $('push-status').textContent = 'Dit apparaat of deze browser ondersteunt geen pushmeldingen. Op een iPhone/iPad: zet het beheer eerst op het beginscherm (iOS 16.4 of nieuwer) en open het vandaar.';
+    } else if (Notification.permission === 'denied') {
+      $('push-status').textContent = 'Meldingen zijn in de browser geblokkeerd voor deze site. Sta ze toe in de site-instellingen en probeer opnieuw.';
+    } else {
+      const sub = await currentSub();
+      $('push-status').textContent = sub ? 'Meldingen staan aan op dit apparaat: je krijgt een melding bij een nieuwe wijziging.' : 'Meldingen staan uit op dit apparaat.';
+      (sub ? off : on).classList.remove('hidden');
+      if (sub) test.classList.remove('hidden');
+    }
+    const box = $('push-devices');
+    try {
+      const devices = await api('/api/admin/push/devices');
+      box.classList.toggle('hidden', !devices.length);
+      box.replaceChildren(...devices.map((d) => {
+        const row = document.createElement('div'); row.className = 'chg-row';
+        const info = document.createElement('div'); info.className = 'chg-info';
+        const t = document.createElement('strong'); t.textContent = d.label;
+        const s = document.createElement('span'); s.textContent = `ingesteld ${ago(d.createdAt)}`;
+        info.append(t, s);
+        const del = document.createElement('button'); del.className = 'danger'; del.textContent = 'Verwijderen';
+        del.onclick = async () => { try { await api(`/api/admin/push/devices/${d.id}`, { method: 'DELETE', expectAuth: true }); renderPush(); } catch (e) { $('push-err').textContent = e.message; } };
+        row.append(info, del);
+        return row;
+      }));
+    } catch { box.classList.add('hidden'); }
+  }
+
+  $('push-on').onclick = async () => {
+    $('push-err').textContent = '';
+    try {
+      if (await Notification.requestPermission() !== 'granted') throw new Error('Toestemming voor meldingen is niet gegeven.');
+      const { publicKey } = await api('/api/admin/push/key');
+      const reg = await navigator.serviceWorker.ready;
+      const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(publicKey) });
+      const { id } = await post('/api/admin/push/subscribe', { subscription: sub.toJSON(), label: deviceLabel() });
+      try { localStorage.setItem('sm-push-id', id); } catch {}
+      toast('Meldingen aangezet ✔');
+    } catch (e) { $('push-err').textContent = friendly(e); }
+    renderPush();
+  };
+  $('push-off').onclick = async () => {
+    try {
+      const sub = await currentSub();
+      let id = null; try { id = localStorage.getItem('sm-push-id'); } catch {}
+      if (id) await api(`/api/admin/push/devices/${id}`, { method: 'DELETE', expectAuth: true });
+      if (sub) await sub.unsubscribe();
+      toast('Meldingen uitgezet');
+    } catch (e) { $('push-err').textContent = e.message; }
+    renderPush();
+  };
+  $('push-test').onclick = async () => {
+    try { const r = await post('/api/admin/push/test', {}); toast(r.sent ? 'Testmelding verstuurd' : 'Geen apparaat bereikt'); }
+    catch (e) { $('push-err').textContent = e.message; }
+  };
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'open-tab') { openSettings('changes'); pollChanges(true); }
+    });
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pollChanges(); });
 
   // ---------- editor ----------
   let map, houses = [], layers = new Map(); // id -> L.polygon
@@ -646,6 +826,9 @@
     setDirty(false);
     setMode('select');
     setTimeout(() => map.invalidateSize(), 0);
+    pollChanges(true);
+    if (!window.__pollTimer) window.__pollTimer = setInterval(() => pollChanges(), 30000);
+    if (location.hash === '#changes') openSettings('changes');
   }
 
   // Gewone invoervelden niet door wachtwoordmanagers laten aanvullen of aanbieden.
