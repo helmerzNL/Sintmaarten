@@ -64,6 +64,26 @@ Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen.
 
 ![PDF-toelichting](docs/screenshots/pdf-toelichting.png)
 
+## Bewoners: huis wijzigen (geïnstalleerde app)
+In de **geïnstalleerde app** (PWA) staat in de menubalk een knop **Huis wijzigen**; in een gewone browser is die niet zichtbaar.
+- Een bewoner tikt op zijn huis (of kiest zijn adres) en bevestigt dat. Dat apparaat is dan aan **één huis** gekoppeld (cookie, 1 jaar). Daarna wisselt elke tik op dat huis (of een keuze in het venster) de kleur: niet gemarkeerd → groen → rood → niet gemarkeerd. Andere huizen kunnen niet worden gewijzigd.
+- De wijziging is **pas zichtbaar voor anderen nadat de beheerder die goedkeurt**. De bewoner ziet het huis in de tussentijd met een gestippelde rand en de melding *Wacht op goedkeuring*; na de beslissing volgt een bericht (goedgekeurd of niet doorgevoerd).
+- Er worden alleen een willekeurig apparaat-token (als hash) en het gekozen huis bewaard, geen namen of andere persoonsgegevens.
+
+![Huis kiezen](docs/screenshots/bewoner-kies-huis.png)
+![Wacht op goedkeuring](docs/screenshots/bewoner-wacht.png)
+
+**Beheer** – *Instellingen (⚙) → Wijzigingen*: een rode teller bij het tandwiel en in de paginatitel toont het aantal openstaande wijzigingen; hier keur je wijzigingen goed of af (of alles tegelijk),
+zet je het wijzigen door bewoners aan/uit, beheer je de gekoppelde apparaten (een verkeerde koppeling verwijderen) en zet je meldingen aan.
+
+![Wijzigingen goedkeuren](docs/screenshots/instellingen-wijzigingen.png)
+
+### Pushmeldingen voor de beheerder
+- Zet in *Instellingen → Wijzigingen → Meldingen op dit apparaat* meldingen aan op je eigen telefoon of computer. De server maakt daarvoor zelf de (VAPID-)sleutels en bewaart ze in `data/db.json`.
+- Bij een nieuwe wijziging ontvang je een pushmelding (meerdere wijzigingen kort na elkaar worden samengevoegd). Tik je erop, dan opent het beheer bij *Wijzigingen* en kun je goedkeuren of afwijzen; pas dan wordt de wijziging doorgevoerd.
+- Vereist **HTTPS**. Op een iPhone/iPad werkt Web Push alleen als je het beheer eerst aan het beginscherm toevoegt (iOS 16.4 of nieuwer) en het daar opent. Een knop *Testmelding* controleert of het werkt.
+- Verlopen apparaten worden automatisch opgeruimd. Bewoners kun je tijdelijk uitschakelen met de schakelaar in het beheer.
+
 ## Huisnummers en straten
 - In het beheer heeft elk huis een **straat** en een **huisnummer** (aparte velden; het straatveld stelt bestaande straten voor). Met *Filter op straat* toon je alleen de huizen van één straat in de lijst; de rest wordt op de kaart gedimd.
 - De schakelaar *Huisnummers op de kaart* toont het nummer midden op elk huis (wit met donkere rand, dus goed leesbaar). Nummers die niet in het huis passen verdwijnen en komen terug bij verder inzoomen.

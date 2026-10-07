@@ -46,7 +46,7 @@
   <span class="muted" id="dirty"></span>
   <button class="primary" id="save">Opslaan</button>
   <a class="btn" href="/" target="_blank">Bekijk site</a>
-  <button id="settings-open" class="icon-btn" aria-label="Instellingen" title="Instellingen" aria-controls="settings">⚙</button>
+  <button id="settings-open" class="icon-btn cog" aria-label="Instellingen" title="Instellingen" aria-controls="settings">⚙<span id="cog-badge" class="count-badge cog-badge" hidden>0</span></button>
   <button id="logout">Uitloggen</button>
 </header>
 <div class="editor">
@@ -131,11 +131,35 @@
     <button id="settings-close" class="icon-btn" aria-label="Instellingen sluiten">✕</button>
   </div>
   <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="changes">🔔 Wijzigingen <span id="tab-badge" class="count-badge" hidden>0</span></button>
     <button role="tab" data-tab="security" class="active">🔐 Beveiliging</button>
     <button role="tab" data-tab="backups">🗂 Backups</button>
     <button role="tab" data-tab="org">🏷 Logo &amp; uitleg</button>
   </nav>
   <div class="drawer-body">
+
+    <section data-panel="changes" class="hidden">
+      <h4>Wijzigingen van bewoners</h4>
+      <label class="switch" style="margin:4px 0 8px">
+        <input type="checkbox" id="res-enabled" role="switch">
+        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+        <span class="switch-text">Bewoners mogen via de app hun eigen huis wijzigen</span>
+      </label>
+      <p class="muted">In de geïnstalleerde app staat dan een knop <em>Huis wijzigen</em>. Elk apparaat kiest één huis; een wijziging wordt pas zichtbaar nadat jij die goedkeurt.</p>
+      <div id="pend-list" class="bk-list"></div>
+      <p class="error" id="chg-err"></p>
+      <div class="row"><button id="pend-all" class="primary" disabled>Alles goedkeuren</button></div>
+
+      <h4>Meldingen op dit apparaat</h4>
+      <p class="muted" id="push-status"></p>
+      <div class="row"><button id="push-on" class="primary">Meldingen aanzetten</button><button id="push-test" class="hidden">Testmelding</button><button id="push-off" class="danger hidden">Uitzetten</button></div>
+      <p class="error" id="push-err"></p>
+      <div id="push-devices" class="bk-list hidden"></div>
+
+      <h4>Aangemelde apparaten</h4>
+      <p class="muted">Elk apparaat is aan één huis gekoppeld. Verwijder een koppeling als iemand een verkeerd huis koos; die kan dan opnieuw kiezen.</p>
+      <div id="res-list" class="bk-list"></div>
+    </section>
 
     <section data-panel="security">
       <h4>Passkeys</h4>

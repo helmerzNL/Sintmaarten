@@ -86,4 +86,4 @@ const limiter = {
   reset(ip) { fails.delete(ip); },
 };
 
-module.exports = { sessionMethod, requirePasskeySession, isLoggedIn, startSession, endSession, requireAdmin, sameOrigin, safeEqual, limiter };
+module.exports = { parseCookies, sessionMethod, requirePasskeySession, isLoggedIn, startSession, endSession, requireAdmin, sameOrigin, safeEqual, limiter };
