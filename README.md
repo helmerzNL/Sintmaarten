@@ -3,6 +3,26 @@
 Publieke kaart van de wijk waarop huizen groen of rood zijn gemarkeerd, met een beheerscherm
 (`/beheer`) dat beveiligd is met een **passkey**.
 
+## Screenshots
+
+Voorbeeld met willekeurige huizen (kaartgegevens © OpenStreetMap-bijdragers).
+
+**Publieke kaart** – klik op een huis voor de notitie; bovenaan de PDF-knoppen.
+
+![Publieke kaart](docs/screenshots/publiek.png)
+
+**Beheer** – vlakken tekenen en bewerken, kleur kiezen, huisnummer en notitie invullen.
+
+![Beheerscherm](docs/screenshots/beheer.png)
+
+**PDF-export** – A4 liggend met legenda en aantallen (pagina 2 bevat een overzicht van de huizen).
+
+![PDF-export](docs/screenshots/pdf.png)
+
+**Onboarding** – de eerste keer maak je een passkey aan met de installatiecode.
+
+![Onboarding](docs/screenshots/onboarding.png)
+
 ## Hoe werkt het
 - **Kaart**: OpenStreetMap (via Leaflet), geen API-sleutel nodig. Google Maps is bewust niet gebruikt: dat vereist een betaalde sleutel en de voorwaarden staan het overtekenen en exporteren naar PDF niet toe.
 - **Publiek (`/`)**: de kaart met gekleurde vlakken over de huizen; klik op een huis voor naam/notitie.

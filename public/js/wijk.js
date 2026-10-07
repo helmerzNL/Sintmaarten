@@ -56,14 +56,14 @@
       const lats = pts.map((p) => p[0]), lngs = pts.map((p) => p[1]);
       const sw = [Math.min(...lats), Math.min(...lngs)], ne = [Math.max(...lats), Math.max(...lngs)];
       const pad = 0.12;
-      for (z = 18; z > 1; z--) {
+      for (z = 19; z > 1; z--) {
         const a = project(sw, z), b = project(ne, z);
         if (Math.abs(b[0] - a[0]) <= W * (1 - 2 * pad) && Math.abs(a[1] - b[1]) <= H * (1 - 2 * pad)) break;
       }
       center = [(sw[0] + ne[0]) / 2, (sw[1] + ne[1]) / 2];
     } else {
       const v = view || DEFAULT_VIEW;
-      center = v.center; z = Math.min(18, Math.max(1, Math.round(v.zoom)));
+      center = v.center; z = Math.min(19, Math.max(1, Math.round(v.zoom)));
     }
     const [cx, cy] = project(center, z);
     const left = cx - W / 2, top = cy - H / 2;
