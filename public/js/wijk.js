@@ -181,6 +181,112 @@
     });
   }
 
+  // ---------- tekst met emoji in de PDF ----------
+  // De standaardlettertypen van jsPDF kennen geen emoji (en geen tekens buiten WinAnsi). Zulke tekens
+  // tekenen we als plaatje via een canvas, met het emoji-lettertype van het apparaat zelf.
+  const WINANSI_EXTRA = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ';
+  const isWinAnsi = (ch) => {
+    const c = ch.codePointAt(0);
+    return (c >= 0x20 && c <= 0x7e) || (c >= 0xa0 && c <= 0xff) || WINANSI_EXTRA.includes(ch);
+  };
+  const EMOJI_RE = /(\p{Regional_Indicator}{2}|[0-9#*]️?⃣|\p{Extended_Pictographic}(?:️|[\u{1F3FB}-\u{1F3FF}]|‍\p{Extended_Pictographic})*️?)/u;
+  const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla",sans-serif';
+  const PT_MM = 25.4 / 72;
+
+  function tokenize(para) {
+    const out = [];
+    const pushText = (str) => {
+      let run = '';
+      const flush = () => { if (run) { run.split(/(\s+)/).filter(Boolean).forEach((w) => out.push({ t: 'text', s: w })); run = ''; } };
+      for (const ch of str) {
+        if (isWinAnsi(ch) || /\s/.test(ch)) run += ch;
+        else if (/[‍️̀-ͯ]/.test(ch)) continue; // losse combinatietekens overslaan
+        else { flush(); out.push({ t: 'glyph', s: ch, emoji: false }); }
+      }
+      flush();
+    };
+    para.split(EMOJI_RE).forEach((part, i) => {
+      if (!part) return;
+      if (i % 2 === 1 && !(part.length <= 2 && isWinAnsi(part[0]) && [...part].length === 1)) out.push({ t: 'glyph', s: part, emoji: true });
+      else pushText(part); // ©, ® e.d. blijven gewone tekst
+    });
+    return out;
+  }
+
+  const glyphCache = new Map();
+  function glyphImage(str, emoji) {
+    if (glyphCache.has(str)) return glyphCache.get(str);
+    const SIZE = 192;
+    const c = document.createElement('canvas');
+    c.width = SIZE; c.height = SIZE;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.font = `128px ${emoji ? EMOJI_FONT : 'sans-serif'}`;
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = '#000';
+    g.fillText(str, SIZE / 2, SIZE / 2 + 6);
+    const px = g.getImageData(0, 0, SIZE, SIZE).data;
+    let ink = false;
+    for (let i = 3; i < px.length; i += 4) if (px[i] > 8) { ink = true; break; }
+    const img = ink ? { data: c.toDataURL('image/png'), alias: `g-${[...str].map((ch) => ch.codePointAt(0).toString(16)).join('-')}` } : null;
+    glyphCache.set(str, img);
+    return img;
+  }
+
+  // Breekt tekst (met \n en emoji) af op maxW mm; geeft regels met tokens terug.
+  function layoutRich(doc, text, maxW, sizePt) {
+    const em = sizePt * PT_MM, gw = em * 1.3;
+    const lines = [];
+    for (const para of String(text).split('\n')) {
+      let line = [], w = 0;
+      const push = () => {
+        while (line.length && line[line.length - 1].t === 'text' && /^\s+$/.test(line[line.length - 1].s)) w -= line.pop().w;
+        lines.push({ tokens: line, w });
+        line = []; w = 0;
+      };
+      for (const tok of tokenize(para)) {
+        tok.w = tok.t === 'glyph' ? gw : doc.getTextWidth(tok.s);
+        const space = tok.t === 'text' && /^\s+$/.test(tok.s);
+        if (space && !line.length) continue;
+        if (!space && w + tok.w > maxW && line.length) push();
+        if (tok.t === 'text' && tok.w > maxW) { // een woord dat nooit past: teken voor teken afbreken
+          let piece = '';
+          for (const ch of tok.s) {
+            if (doc.getTextWidth(piece + ch) > maxW - w && piece) { line.push({ t: 'text', s: piece, w: doc.getTextWidth(piece) }); w += doc.getTextWidth(piece); push(); piece = ''; }
+            piece += ch;
+          }
+          if (piece) { const pw = doc.getTextWidth(piece); line.push({ t: 'text', s: piece, w: pw }); w += pw; }
+          continue;
+        }
+        line.push(tok); w += tok.w;
+      }
+      push();
+    }
+    return lines;
+  }
+
+  function drawRichLine(doc, line, x, y, sizePt) {
+    const em = sizePt * PT_MM;
+    let cx = x;
+    for (const tok of line.tokens) {
+      if (tok.t === 'glyph') {
+        const img = glyphImage(tok.s, tok.emoji);
+        if (img) {
+          const size = em * 1.5; // het plaatje is 1,5x de letterhoogte (ruimte rond het teken)
+          doc.addImage(img.data, 'PNG', cx + tok.w / 2 - size / 2, y - em * 0.35 - size / 2, size, size, img.alias);
+        }
+      } else {
+        doc.text(tok.s, cx, y);
+      }
+      cx += tok.w;
+    }
+  }
+
+  // Eén regel tekst (zonder afbreken), bv. koppen en de overzichtsregels.
+  function richText(doc, text, x, y, sizePt, maxW = Infinity) {
+    const [first] = layoutRich(doc, text, maxW, sizePt);
+    if (first) drawRichLine(doc, first, x, y, sizePt);
+  }
+
   async function buildPdf({ title, houses, view, intro, logo }) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
@@ -197,7 +303,7 @@
         x += w + 4;
       }
       doc.setFont('helvetica', 'bold'); doc.setFontSize(size); doc.setTextColor(0);
-      doc.text(text, x, 14);
+      richText(doc, text, x, 14, size);
     };
 
     header(title, 18);
@@ -233,10 +339,10 @@
     if (intro) {
       newPage(`${title} – toelichting`);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(0);
-      for (const line of doc.splitTextToSize(intro, pw - 2 * margin)) {
-        room(5.5);
-        doc.text(line, margin, y);
-        y += 5.2;
+      for (const line of layoutRich(doc, intro, pw - 2 * margin, 11)) {
+        room(6);
+        drawRichLine(doc, line, margin, y, 11);
+        y += 5.6;
       }
       y += 6;
     }
@@ -250,7 +356,7 @@
         if (y > ph - margin) { col++; y = top; if (col > 2) { newPage(`${title} – overzicht`); col = 0; } }
         const cx = margin + col * colW;
         doc.setFillColor(STATUS[h.status].color); doc.circle(cx + 2, y - 1, 1.8, 'F');
-        doc.text(doc.splitTextToSize(h.note ? `${h.label} – ${h.note}` : h.label, colW - 10)[0], cx + 6, y);
+        richText(doc, h.note ? `${h.label} – ${h.note}` : h.label, cx + 6, y, 10, colW - 10);
         y += 6;
       }
     }
