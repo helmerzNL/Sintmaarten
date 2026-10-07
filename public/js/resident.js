@@ -1,4 +1,4 @@
-// "Huis wijzigen": in de geïnstalleerde app kiest een bewoner één huis (per apparaat) en stelt een
+// "Huis wijzigen": in de geïnstalleerde app (of in de browser na de schakelaar "Bewerken") kiest een bewoner één huis (per apparaat) en stelt een
 // nieuwe status voor (niet gemarkeerd → groen → rood; de namen zijn instelbaar). De beheerder moet dat goedkeuren.
 (function () {
   const ORDER = ['none', 'green', 'red'];
@@ -6,7 +6,7 @@
   const NAME = new Proxy({}, { get: (_, k) => Wijk.STATUS[k]?.name }); // volgt de instelbare namen
   const $ = (id) => document.getElementById(id);
 
-  const isInstalledApp = () => window.matchMedia('(display-mode: standalone)').matches
+  const isInstalledApp = Wijk.isInstalledApp = () => window.matchMedia('(display-mode: standalone)').matches
     || window.matchMedia('(display-mode: fullscreen)').matches || window.navigator.standalone === true;
 
   async function api(path, body) {
@@ -26,10 +26,10 @@
   }
 
   Wijk.initResident = async function ({ map, houses, enabled }) {
-    if (!enabled || !isInstalledApp()) return;
+    if (!enabled) return;
     const btn = $('house-edit');
     if (!btn) return;
-    btn.hidden = false;
+    btn.hidden = !isInstalledApp(); // in de browser tonen we de knop pas na de schakelaar "Bewerken"
 
     let sorted = [...houses].sort(Wijk.compareHouses);
     let byId = new Map(houses.map((h) => [h.id, h]));
@@ -239,6 +239,7 @@
     };
     drawMine();
 
+    Wijk.leaveResident = () => { if (on) leave(); };
     btn.onclick = () => (on ? leave() : enter());
     $('claim-no').onclick = () => $('claim-dialog').close('nee');
     $('claim-yes').onclick = () => $('claim-dialog').close('ja');

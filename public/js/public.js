@@ -142,16 +142,54 @@
   buildHouses();
   nums.setVisible($('num-switch').checked);
 
-  // bewoners: huis wijzigen (alleen in de geïnstalleerde app)
-  Wijk.initResident?.({ map, houses: data.houses, enabled: data.residentsEnabled !== false });
+  // bewoners: huis wijzigen. In de geïnstalleerde app staat de knop er altijd; in de browser
+  // verschijnt hij na de schakelaar "Bewerken" (dan gaan PDF opslaan en Installeer app naar "Meer").
+  const residentsOn = data.residentsEnabled !== false;
+  Wijk.initResident?.({ map, houses: data.houses, enabled: residentsOn });
+  const inApp = window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches || window.navigator.standalone === true;
+
+  const bar = document.querySelector('.actions');
+  const moreBtn = $('more-btn'), pop = $('more-pop');
+  const moved = ['pdf-view', 'pdf-dl', 'install'].map($);
+  const closeMore = () => { pop.hidden = true; moreBtn.setAttribute('aria-expanded', 'false'); };
+  const toggleMore = () => {
+    pop.hidden = !pop.hidden;
+    moreBtn.setAttribute('aria-expanded', String(!pop.hidden));
+  };
+  moreBtn.onclick = (e) => { e.stopPropagation(); toggleMore(); };
+  pop.addEventListener('click', (e) => { if (e.target.closest('button')) setTimeout(closeMore, 0); });
+  document.addEventListener('click', (e) => { if (!pop.hidden && !pop.contains(e.target)) closeMore(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) { closeMore(); moreBtn.focus(); } });
+
+  function setEditing(on) {
+    document.body.classList.toggle('edit-mode', on);
+    $('house-edit').hidden = !on;
+    moreBtn.hidden = !on;
+    if (on) {
+      moved.forEach((b) => pop.append(b)); // PDF opslaan (en Installeer app) onder "Meer"
+    } else {
+      closeMore();
+      moved.forEach((b) => bar.insertBefore(b, moreBtn)); // terug in de menubalk, in dezelfde volgorde
+      Wijk.leaveResident?.(); // wijzigmodus en venster sluiten
+    }
+  }
+  if (residentsOn && !inApp) {
+    $('edit-switch-wrap').hidden = false;
+    $('edit-switch').onchange = () => setEditing($('edit-switch').checked);
+  }
 
   // ---------- automatisch verversen (o.a. nadat de beheerder een wijziging goedkeurt) ----------
   const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.logo, d.appName, d.appShortName]);
   let lastSig = signature(data);
   let busy = false;
-  async function refresh() {
-    if (busy || document.hidden || !navigator.onLine) return;
+  let lastSync = new Date();
+  // manual = true: door de gebruiker gevraagd (sync-knop): ook als de pagina op de achtergrond staat, met terugmelding
+  async function refresh(manual) {
+    if (busy) return false;
+    if (!manual && (document.hidden || !navigator.onLine)) return false;
+    if (manual && !navigator.onLine) { Wijk.toast('Geen verbinding'); return false; }
     busy = true;
+    let ok = false, changed = false;
     try {
       const next = await getData();
       if (signature(next) !== lastSig) {
@@ -159,17 +197,36 @@
         data = next;
         applyMeta(false);
         buildHouses();
+        changed = true;
       }
       // ook de eigen status (en een uitslag van de beheerder) opnieuw ophalen
       await Wijk.refreshResident?.(data.houses);
+      lastSync = new Date();
+      ok = true;
     } catch { /* offline of server even weg: volgende poging */ }
     busy = false;
+    if (manual) Wijk.toast(ok ? (changed ? 'Bijgewerkt ✔' : 'Alles is up-to-date ✔') : 'Bijwerken mislukt, probeer het later opnieuw');
+    return ok;
   }
-  setInterval(refresh, 30000);
+  setInterval(() => refresh(), 30000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
-  window.addEventListener('online', refresh);
+  window.addEventListener('online', () => refresh());
   window.addEventListener('pageshow', (e) => { if (e.persisted) refresh(); });
   Wijk.refresh = refresh;
+
+  // sync-knop (alleen in de geïnstalleerde app)
+  if (inApp) {
+    const sync = $('sync-btn');
+    sync.hidden = false;
+    sync.onclick = async () => {
+      sync.classList.add('sync-spin');
+      sync.disabled = true;
+      await refresh(true);
+      sync.disabled = false;
+      sync.classList.remove('sync-spin');
+      sync.title = `Huizen bijwerken (laatst bijgewerkt ${lastSync.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })})`;
+    };
+  }
 
   // kaart alvast klaarzetten voor offline gebruik
   if (navigator.serviceWorker) navigator.serviceWorker.ready.then(() => Wijk.prefetchTiles(data.houses, data.view));

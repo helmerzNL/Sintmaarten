@@ -64,8 +64,11 @@ Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen.
 
 ![PDF-toelichting](docs/screenshots/pdf-toelichting.png)
 
-## Bewoners: huis wijzigen (geïnstalleerde app)
-In de **geïnstalleerde app** (PWA) staat in de menubalk een knop **Huis wijzigen**; in een gewone browser is die niet zichtbaar.
+## Bewoners: huis wijzigen
+- In de **geïnstalleerde app** (PWA) staat in de menubalk altijd een knop **Huis wijzigen**, plus een knop **Sync** (🔄) waarmee je de huizen direct bijwerkt (de app ververst ook zelf elke 30 seconden).
+- In een **gewone browser** staat bovenin een schakelaar **Bewerken** (✏️). Zet je die aan, dan verschijnt de knop *Huis wijzigen* in de menubalk en verhuizen *PDF opslaan* en *Installeer app* naar een menu **Meer** (⋯) dat omhoog opent. Zet je de schakelaar uit, dan staat alles weer zoals het was. In de app is deze schakelaar verborgen.
+
+![Bewerken en Meer-menu](docs/screenshots/bewerken-meer-mobiel.png)
 - Een bewoner tikt op zijn huis (of kiest zijn adres) en bevestigt dat. Dat apparaat is dan aan **één huis** gekoppeld (cookie, 1 jaar). Daarna wisselt elke tik op dat huis (of een keuze in het venster) de kleur: niet gemarkeerd → groen → rood → niet gemarkeerd. Andere huizen kunnen niet worden gewijzigd.
 - De wijziging is **pas zichtbaar voor anderen nadat de beheerder die goedkeurt**. De bewoner ziet het huis in de tussentijd met een gestippelde rand en de melding *Wacht op goedkeuring*; na de beslissing volgt een bericht (goedgekeurd of niet doorgevoerd).
 - Er worden alleen een willekeurig apparaat-token (als hash) en het gekozen huis bewaard, geen namen of andere persoonsgegevens.
