@@ -253,11 +253,30 @@ admin.put('/settings', (req, res) => {
 
 admin.put('/view', (req, res) => {
   const { center, zoom } = req.body || {};
-  if (!validLatLng(center) || !(zoom >= 1 && zoom <= 20)) return res.status(400).json({ error: 'Ongeldige kaartweergave' });
+  const minZoom = req.body?.minZoom ?? 1;
+  const maxZoom = req.body?.maxZoom ?? 19;
+  const okZoom = (z) => Number.isFinite(z) && z >= 1 && z <= 19;
+  if (!validLatLng(center) || !okZoom(zoom) || !okZoom(minZoom) || !okZoom(maxZoom)) {
+    return res.status(400).json({ error: 'Ongeldige kaartweergave (zoom moet tussen 1 en 19 liggen)' });
+  }
+  if (minZoom > maxZoom) return res.status(400).json({ error: 'Minimale zoom mag niet groter zijn dan de maximale zoom' });
+  if (zoom < minZoom || zoom > maxZoom) return res.status(400).json({ error: 'De startzoom moet tussen de minimale en maximale zoom liggen' });
   const db = store.db();
-  db.view = { center: center.map((n) => Math.round(n * 1e6) / 1e6), zoom: Math.round(zoom * 100) / 100 };
+  db.view = {
+    center: center.map((n) => Math.round(n * 1e6) / 1e6),
+    zoom: Math.round(zoom * 100) / 100,
+    minZoom: Math.round(minZoom * 100) / 100,
+    maxZoom: Math.round(maxZoom * 100) / 100,
+  };
   store.save();
   res.json({ view: db.view });
+});
+
+// Weergave wissen: de site toont dan automatisch alle huizen.
+admin.delete('/view', (req, res) => {
+  store.db().view = null;
+  store.save();
+  res.json({ view: null });
 });
 
 const validLatLng = (p) =>

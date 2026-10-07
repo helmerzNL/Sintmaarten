@@ -28,6 +28,7 @@
   }
 
   const map = Wijk.createMap($('vp'), data.view, data.houses);
+  Wijk.map = map;
   for (const h of data.houses) {
     if (h.status === 'none') continue;
     const poly = L.polygon(h.points, Wijk.houseStyle(h.status)).addTo(map);

@@ -276,12 +276,59 @@
     } catch (e) { toast(e.message); }
   }
 
-  async function saveView() {
+  // ---------- kaartweergave ----------
+  let savedView = null;
+  const num = (id) => Number(String($(id).value).replace(',', '.'));
+  function fillView(v) {
+    $('v-lat').value = v.center[0];
+    $('v-lng').value = v.center[1];
+    $('v-zoom').value = v.zoom;
+    $('v-min').value = v.minZoom ?? 1;
+    $('v-max').value = v.maxZoom ?? 19;
+  }
+  const grabView = () => {
     const c = map.getCenter();
-    try {
-      await api('/api/admin/view', { method: 'PUT', body: JSON.stringify({ center: [c.lat, c.lng], zoom: map.getZoom() }), expectAuth: true });
-      toast('Startpunt opgeslagen ✔');
-    } catch (e) { toast(e.message); }
+    $('v-lat').value = Math.round(c.lat * 1e6) / 1e6;
+    $('v-lng').value = Math.round(c.lng * 1e6) / 1e6;
+    $('v-zoom').value = Math.round(map.getZoom() * 4) / 4;
+  };
+  const readView = () => ({ center: [num('v-lat'), num('v-lng')], zoom: num('v-zoom'), minZoom: num('v-min'), maxZoom: num('v-max') });
+  function updateNow() {
+    $('v-now').textContent = `Kaart nu: zoom ${map.getZoom()} · ${savedView ? 'startweergave is ingesteld' : 'geen startweergave: de site toont automatisch alle huizen'}`;
+  }
+
+  function wireView() {
+    $('view-open').onclick = () => {
+      $('v-err').textContent = '';
+      if (savedView) fillView(savedView); else { fillView({ center: [0, 0], zoom: 17 }); grabView(); }
+      updateNow();
+      $('view-dialog').showModal();
+    };
+    $('view-grab').onclick = () => { grabView(); updateNow(); };
+    $('v-close').onclick = () => $('view-dialog').close();
+    $('v-apply').onclick = () => {
+      const v = readView();
+      if (v.center.every(Number.isFinite) && Number.isFinite(v.zoom)) map.setView(v.center, Math.min(19, Math.max(1, v.zoom)));
+      updateNow();
+    };
+    $('v-save').onclick = async () => {
+      $('v-err').textContent = '';
+      try {
+        const res = await api('/api/admin/view', { method: 'PUT', body: JSON.stringify(readView()), expectAuth: true });
+        savedView = res.view;
+        $('view-dialog').close();
+        toast('Kaartweergave opgeslagen ✔');
+      } catch (e) { $('v-err').textContent = e.message; }
+    };
+    $('v-auto').onclick = async () => {
+      if (!confirm('De startweergave wissen? De site toont dan automatisch alle huizen.')) return;
+      try {
+        await api('/api/admin/view', { method: 'DELETE', expectAuth: true });
+        savedView = null;
+        $('view-dialog').close();
+        toast('Startweergave gewist');
+      } catch (e) { $('v-err').textContent = e.message; }
+    };
   }
 
   async function search(q) {
@@ -297,7 +344,9 @@
   function initEditor(data) {
     if (map) { map.remove(); layers.clear(); handles = []; draftLayer = null; }
     $('vp').replaceChildren();
-    map = Wijk.createMap($('vp'), data.view, data.houses);
+    savedView = data.view;
+    // in het beheer altijd het volledige zoombereik, ook als bezoekers beperkt zijn
+    map = Wijk.createMap($('vp'), data.view && { ...data.view, minZoom: 1, maxZoom: 19 }, data.houses);
     map.on('click', onMapClick);
     map.on('dblclick', () => { if (mode === 'draw' && draft.length >= 3) finishDraft(); });
 
@@ -312,7 +361,7 @@
     $('p-note').oninput = () => { const s = selected(); if (s) { s.note = $('p-note').value; setDirty(); } };
     $('p-del').onclick = deleteSelected;
     $('save').onclick = save;
-    $('setview').onclick = saveView;
+    wireView();
     $('search-form').onsubmit = (e) => { e.preventDefault(); if ($('search').value.trim()) search($('search').value.trim()); };
 
     if (!window.__keys) {
@@ -320,7 +369,7 @@
       document.addEventListener('keydown', (e) => {
         if (!map) return;
         if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) && e.key !== 'Escape') return;
-        if ($('pk-dialog').open || $('org-dialog').open) return;
+        if (document.querySelector('dialog[open]')) return;
         const k = e.key.toLowerCase();
         if ((e.ctrlKey || e.metaKey) && k === 's') { e.preventDefault(); save(); }
         else if (e.ctrlKey || e.metaKey || e.altKey) return;
