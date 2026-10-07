@@ -129,7 +129,7 @@ test('kaartweergave instellen, valideren en wissen', async () => {
   const h = { 'Content-Type': 'application/json', cookie };
   const ok = await j('/api/admin/view', { method: 'PUT', headers: h, body: JSON.stringify({ center: [52.02, 5.16], zoom: 17.5, minZoom: 14, maxZoom: 19 }) });
   assert.equal(ok.status, 200);
-  assert.deepEqual((await (await j('/api/map')).json()).view, { center: [52.02, 5.16], zoom: 17.5, minZoom: 14, maxZoom: 19 });
+  assert.deepEqual((await (await j('/api/map')).json()).view, { center: [52.02, 5.16], zoom: 17.5, minZoom: 14, maxZoom: 19, showNumbers: false });
   for (const bad of [{ zoom: 25 }, { minZoom: 18, maxZoom: 15 }, { zoom: 10, minZoom: 14 }, { center: [200, 5] }]) {
     const r = await j('/api/admin/view', { method: 'PUT', headers: h, body: JSON.stringify({ center: [52.02, 5.16], zoom: 17, ...bad }) });
     assert.equal(r.status, 400, JSON.stringify(bad));
@@ -216,4 +216,45 @@ test('tools/next-version.sh telt per build 0.0.1 op, beginnend bij 0.1.0', () =>
   assert.equal(run('sh', 'tools/next-version.sh'), '0.1.1');
   run('git', 'tag', 'v0.1.1'); run('git', 'tag', 'v0.1.9'); run('git', 'tag', 'v0.1.10'); run('git', 'tag', 'v0.2.5'); run('git', 'tag', 'v0.1.foo');
   assert.equal(run('sh', 'tools/next-version.sh'), '0.1.11'); // numeriek sorteren, andere minor/rommel negeren
+});
+
+test('huizen hebben straat en huisnummer; oude "label" wordt huisnummer', async () => {
+  const pts = [[52, 5], [52.001, 5], [52.001, 5.001]];
+  const put = (houses) => j('/api/admin/houses', { method: 'PUT', headers: jsonH(cookie), body: JSON.stringify({ houses }) });
+  const r = await put([
+    { id: 'n1', street: '  Loerikseweg ', number: '12a', status: 'green', points: pts },
+    { id: 'n2', label: '7', status: 'red', points: pts }, // oud formaat
+    { id: 'n3', street: 'X'.repeat(300), number: '9'.repeat(50), status: 'bogus', points: pts },
+  ]);
+  assert.equal(r.status, 200);
+  const { houses } = await r.json();
+  assert.deepEqual([houses[0].street, houses[0].number, 'label' in houses[0]], ['Loerikseweg', '12a', false]);
+  assert.deepEqual([houses[1].street, houses[1].number], ['', '7']);
+  assert.equal(houses[2].street.length, 100);
+  assert.equal(houses[2].number.length, 20);
+  assert.equal(houses[2].status, 'none');
+  const map = await (await j('/api/map')).json();
+  assert.equal(map.houses[0].number, '12a');
+});
+
+test('kaartweergave bewaart de standaardkeuze voor huisnummers', async () => {
+  const put = (extra) => j('/api/admin/view', { method: 'PUT', headers: jsonH(cookie), body: JSON.stringify({ center: [52, 5], zoom: 17, ...extra }) });
+  assert.equal((await put({ showNumbers: true })).status, 200);
+  assert.equal((await (await j('/api/map')).json()).view.showNumbers, true);
+  assert.equal((await put({})).status, 200);
+  assert.equal((await (await j('/api/map')).json()).view.showNumbers, false);
+});
+
+test('naam van de site is instelbaar en komt in site, manifest en backups', async () => {
+  const put = (body) => j('/api/admin/settings', { method: 'PUT', headers: jsonH(cookie), body: JSON.stringify(body) });
+  assert.equal((await put({ siteTitle: '  Wijk Sint Maarten ' })).status, 200);
+  const map = await (await j('/api/map')).json();
+  assert.equal(map.title, 'Wijk Sint Maarten');
+  assert.equal(map.siteTitle, 'Wijk Sint Maarten');
+  assert.equal((await (await j('/manifest.webmanifest')).json()).name, 'Wijk Sint Maarten');
+  assert.equal((await put({ siteTitle: 'x'.repeat(61) })).status, 400);
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(backups.read(backups.list()[0].id).texts.siteTitle, 'Wijk Sint Maarten');
+  assert.equal((await put({ siteTitle: '' })).status, 200);
+  assert.equal((await (await j('/api/map')).json()).title, 'Onze wijk'); // terug naar SITE_TITLE
 });

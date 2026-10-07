@@ -169,7 +169,7 @@
   };
 
   // ---------- logo & uitleg ----------
-  let org = { intro: '', logo: null, appName: '', appShortName: '' };
+  let org = { intro: '', logo: null, siteTitle: '', appName: '', appShortName: '' };
   function renderOrg() {
     $('org-logo').hidden = !org.logo;
     if (org.logo) $('org-logo').src = org.logo.url;
@@ -179,6 +179,7 @@
   function fillOrg() {
     $('org-err').textContent = '';
     $('org-intro').value = org.intro;
+    $('org-title').value = org.siteTitle;
     $('org-appname').value = org.appName;
     $('org-short').value = org.appShortName;
     renderOrg();
@@ -205,8 +206,8 @@
   $('org-save').onclick = async () => {
     $('org-err').textContent = '';
     try {
-      const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ intro: $('org-intro').value, appName: $('org-appname').value, appShortName: $('org-short').value }), expectAuth: true });
-      org.intro = res.intro; org.appName = res.appName; org.appShortName = res.appShortName;
+      const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ intro: $('org-intro').value, siteTitle: $('org-title').value, appName: $('org-appname').value, appShortName: $('org-short').value }), expectAuth: true });
+      org.intro = res.intro; org.siteTitle = res.siteTitle; org.appName = res.appName; org.appShortName = res.appShortName;
       toast('Opgeslagen ✔');
     } catch (e) { $('org-err').textContent = e.message; }
   };
@@ -331,12 +332,18 @@
 
   function setDirty(v = true) {
     dirty = v;
+    touchHouses();
     $('dirty').textContent = v ? '● Niet opgeslagen' : '';
   }
   window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
   const selected = () => houses.find((h) => h.id === selectedId);
-  const nameOf = (h, i) => h.label || `Huis ${i + 1}`;
+  const nameOf = (h, i) => (h.street || h.number ? Wijk.houseTitle(h) : `Huis ${i + 1}`);
+  let filterStreet = ''; // '' = alle straten, '\u0000none' = huizen zonder straat
+  const NO_STREET = '\u0000none';
+  const inFilter = (h) => !filterStreet || (filterStreet === NO_STREET ? !h.street : h.street === filterStreet);
+  let nums = null, numsRev = 0, numsBuilt = -1;
+  const touchHouses = () => { numsRev++; };
 
   function hint() {
     $('hint').textContent = mode === 'draw'
@@ -360,6 +367,7 @@
         layers.set(h.id, l);
       }
       l.setStyle(Wijk.houseStyle(h.status, h.id === selectedId));
+      if (!inFilter(h)) l.setStyle({ opacity: 0.3, fillOpacity: 0.06 });
       if (h.id === selectedId) l.bringToFront();
     }
   }
@@ -399,26 +407,44 @@
 
   function render() {
     syncPolygons(); syncHandles(); syncDraft(); renderPanel();
+    if (nums && numsBuilt !== numsRev) { nums.rebuild(houses); numsBuilt = numsRev; }
   }
 
   function renderPanel() {
     const sel = selected();
     $('props').classList.toggle('hidden', !sel);
     if (sel) {
-      if (document.activeElement !== $('p-label')) $('p-label').value = sel.label;
+      if (document.activeElement !== $('p-street')) $('p-street').value = sel.street || '';
+      if (document.activeElement !== $('p-number')) $('p-number').value = sel.number || '';
       if (document.activeElement !== $('p-note')) $('p-note').value = sel.note;
       document.querySelectorAll('#p-status button').forEach((b) => b.classList.toggle('active', b.dataset.status === sel.status));
     }
-    $('count').textContent = houses.length;
-    $('list').replaceChildren(...houses.map((h, i) => {
+    renderStreets();
+    const shown = houses.filter(inFilter).sort(Wijk.compareHouses);
+    $('count').textContent = filterStreet ? `${shown.length} van ${houses.length}` : houses.length;
+    $('list').replaceChildren(...shown.map((h) => {
       const d = document.createElement('div');
       d.className = h.id === selectedId ? 'sel' : '';
       d.innerHTML = `<i class="dot ${h.status}"></i>`;
-      d.append(nameOf(h, i));
+      d.append(nameOf(h, houses.indexOf(h)));
       d.onclick = () => { setMode('select'); select(h.id); map.fitBounds(L.latLngBounds(h.points).pad(1.5), { maxZoom: 19 }); };
       return d;
     }));
     hint();
+  }
+
+  // Straten-filter en suggesties voor het straatveld
+  function renderStreets() {
+    const streets = [...new Set(houses.map((h) => h.street).filter(Boolean))].sort(Wijk.natCompare);
+    const sel = $('street-filter');
+    const want = [['', 'Alle straten'], ...streets.map((x) => [x, x])];
+    if (houses.some((h) => !h.street)) want.push([NO_STREET, '(zonder straat)']);
+    if (filterStreet && !want.some(([v]) => v === filterStreet)) filterStreet = '';
+    if (sel.options.length !== want.length || [...sel.options].some((o, i) => o.value !== want[i][0])) {
+      sel.replaceChildren(...want.map(([v, t]) => Object.assign(document.createElement('option'), { value: v, textContent: t })));
+    }
+    sel.value = filterStreet;
+    $('street-list').replaceChildren(...streets.map((x) => Object.assign(document.createElement('option'), { value: x })));
   }
 
   function select(id) { selectedId = id; render(); }
@@ -435,13 +461,14 @@
 
   function finishDraft() {
     if (draft.length < 3) { toast('Een huis heeft minstens 3 punten nodig'); return; }
-    const h = { id: uid(), label: '', note: '', status: newStatus, points: draft };
+    const lastStreet = filterStreet && filterStreet !== NO_STREET ? filterStreet : (houses[houses.length - 1]?.street || '');
+    const h = { id: uid(), street: lastStreet, number: '', note: '', status: newStatus, points: draft };
     houses.push(h);
     draft = [];
     selectedId = h.id;
     setDirty();
     render();
-    if (matchMedia('(pointer: fine)').matches) $('p-label').focus();
+    if (matchMedia('(pointer: fine)').matches) $('p-number').focus();
   }
 
   function onMapClick(e) {
@@ -474,6 +501,7 @@
     $('v-zoom').value = v.zoom;
     $('v-min').value = v.minZoom ?? 1;
     $('v-max').value = v.maxZoom ?? 19;
+    $('v-numbers').checked = !!v.showNumbers;
   }
   const grabView = () => {
     const c = map.getCenter();
@@ -481,7 +509,7 @@
     $('v-lng').value = Math.round(c.lng * 1e6) / 1e6;
     $('v-zoom').value = Math.round(map.getZoom() * 4) / 4;
   };
-  const readView = () => ({ center: [num('v-lat'), num('v-lng')], zoom: num('v-zoom'), minZoom: num('v-min'), maxZoom: num('v-max') });
+  const readView = () => ({ center: [num('v-lat'), num('v-lng')], zoom: num('v-zoom'), minZoom: num('v-min'), maxZoom: num('v-max'), showNumbers: $('v-numbers').checked });
   function updateNow() {
     $('v-now').textContent = `Kaart nu: zoom ${map.getZoom()} · ${savedView ? 'startweergave is ingesteld' : 'geen startweergave: de site toont automatisch alle huizen'}`;
   }
@@ -546,7 +574,24 @@
       document.querySelectorAll('[data-newstatus]').forEach((x) => x.classList.toggle('active', x === b));
     });
     document.querySelectorAll('#p-status button').forEach((b) => b.onclick = () => setStatus(b.dataset.status));
-    $('p-label').oninput = () => { const s = selected(); if (s) { s.label = $('p-label').value; setDirty(); renderListOnly(); } };
+    $('p-street').oninput = () => { const s = selected(); if (s) { s.street = $('p-street').value; setDirty(); render(); } };
+    $('p-number').oninput = () => { const s = selected(); if (s) { s.number = $('p-number').value; setDirty(); render(); } };
+    $('street-filter').onchange = () => {
+      filterStreet = $('street-filter').value;
+      render();
+      const sub = houses.filter(inFilter);
+      if (filterStreet && sub.length) map.fitBounds(L.latLngBounds(sub.flatMap((h) => h.points)).pad(0.3), { maxZoom: 19 });
+    };
+    // huisnummers midden op de huizen (alleen een weergavekeuze in het beheer)
+    nums = Wijk.createNumberLayer(map);
+    let showNums = true;
+    try { showNums = localStorage.getItem('sm-admin-numbers') !== '0'; } catch {}
+    $('a-num-switch').checked = showNums;
+    nums.setVisible(showNums);
+    $('a-num-switch').onchange = () => {
+      nums.setVisible($('a-num-switch').checked);
+      try { localStorage.setItem('sm-admin-numbers', $('a-num-switch').checked ? '1' : '0'); } catch {}
+    };
     $('p-note').oninput = () => { const s = selected(); if (s) { s.note = $('p-note').value; setDirty(); } };
     $('p-del').onclick = deleteSelected;
     $('save').onclick = save;
@@ -573,11 +618,6 @@
     }
   }
 
-  function renderListOnly() {
-    const sel = selected();
-    const i = houses.indexOf(sel);
-    $('list').children[i].lastChild.textContent = nameOf(sel, i);
-  }
   function setStatus(s) { const h = selected(); if (!h) return; h.status = s; setDirty(); render(); }
   function deleteSelected() {
     const h = selected();
@@ -590,7 +630,7 @@
     const data = await api('/api/map');
     houses = data.houses;
     savedView = data.view;
-    org = { intro: data.intro || '', logo: data.logo, appName: data.appName || '', appShortName: data.appShortName || '' };
+    org = { intro: data.intro || '', logo: data.logo, siteTitle: data.siteTitle || '', appName: data.appName || '', appShortName: data.appShortName || '' };
     selectedId = null; draft = [];
     setDirty(false);
     render();
@@ -601,7 +641,7 @@
     show('v-edit');
     const data = await api('/api/map');
     houses = data.houses;
-    org = { intro: data.intro || '', logo: data.logo, appName: data.appName || '', appShortName: data.appShortName || '' };
+    org = { intro: data.intro || '', logo: data.logo, siteTitle: data.siteTitle || '', appName: data.appName || '', appShortName: data.appShortName || '' };
     initEditor(data);
     setDirty(false);
     setMode('select');

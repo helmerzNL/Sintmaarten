@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const config = require('./config');
 const store = require('./store');
+const { normalizeHouse } = require('./houses');
 
 const dir = path.join(config.dataDir, 'backups');
 fs.mkdirSync(dir, { recursive: true });
@@ -19,7 +20,7 @@ function snapshotData() {
   return {
     houses: JSON.parse(JSON.stringify(houses)),
     view: view ? { ...view } : null,
-    texts: { intro: settings?.intro || '', appName: settings?.appName || '', appShortName: settings?.appShortName || '' },
+    texts: { siteTitle: settings?.siteTitle || '', intro: settings?.intro || '', appName: settings?.appName || '', appShortName: settings?.appShortName || '' },
   };
 }
 
@@ -68,9 +69,10 @@ function restore(id) {
   if (!b) return false;
   create('Voor terugzetten');
   const db = store.db();
-  db.houses = b.houses;
+  db.houses = b.houses.map(normalizeHouse); // ook oude backups met "label" werken
   db.view = b.view;
   db.settings.intro = b.texts.intro;
+  if ('siteTitle' in b.texts) db.settings.siteTitle = b.texts.siteTitle; // oudere backups kennen dit veld nog niet
   db.settings.appName = b.texts.appName;
   db.settings.appShortName = b.texts.appShortName;
   store.save();
