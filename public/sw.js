@@ -1,0 +1,96 @@
+// Service worker: app-shell + kaartgegevens + kaarttegels offline beschikbaar.
+const VERSION = 'v1';
+const SHELL = `sm-shell-${VERSION}`;
+const DATA = `sm-data-${VERSION}`;
+const TILES = 'sm-tiles-v1'; // blijft bij nieuwe versies bestaan
+const TILE_HOST = 'tile.openstreetmap.org';
+const MAX_TILES = 1500;
+
+const PRECACHE = [
+  '/', '/css/style.css', '/js/wijk.js', '/js/public.js', '/js/pwa.js',
+  '/vendor/leaflet/leaflet.js', '/vendor/leaflet/leaflet.css', '/vendor/jspdf.js',
+  '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png',
+];
+
+self.addEventListener('install', (e) => {
+  e.waitUntil(caches.open(SHELL).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
+});
+
+self.addEventListener('activate', (e) => {
+  e.waitUntil((async () => {
+    for (const k of await caches.keys()) {
+      if (k !== SHELL && k !== DATA && k !== TILES) await caches.delete(k);
+    }
+    await self.clients.claim();
+  })());
+});
+
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), ms);
+    promise.then((v) => { clearTimeout(t); resolve(v); }, (err) => { clearTimeout(t); reject(err); });
+  });
+}
+
+async function networkFirst(req, cacheName, ms = 4000, key = req) {
+  const cache = await caches.open(cacheName);
+  try {
+    const res = await withTimeout(fetch(req), ms);
+    if (res.ok) cache.put(key, res.clone());
+    return res;
+  } catch (err) {
+    const hit = await cache.match(key, { ignoreSearch: true });
+    if (hit) return hit;
+    throw err;
+  }
+}
+
+async function cacheFirst(req, cacheName) {
+  const cache = await caches.open(cacheName);
+  const hit = await cache.match(req);
+  if (hit) return hit;
+  const res = await fetch(req);
+  if (res.ok) cache.put(req, res.clone());
+  return res;
+}
+
+async function staleWhileRevalidate(req) {
+  const cache = await caches.open(SHELL);
+  const hit = await cache.match(req);
+  const refresh = fetch(req).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; }).catch(() => null);
+  return hit || (await refresh) || Response.error();
+}
+
+async function tile(req) {
+  const cache = await caches.open(TILES);
+  const hit = await cache.match(req.url);
+  if (hit) return hit;
+  // Altijd met CORS ophalen: dan kan dezelfde respons zowel <img> als canvas (PDF) bedienen.
+  const res = await fetch(req.url, { mode: 'cors', credentials: 'omit' });
+  if (res.ok) {
+    await cache.put(req.url, res.clone());
+    const keys = await cache.keys();
+    if (keys.length > MAX_TILES) await Promise.all(keys.slice(0, keys.length - MAX_TILES + 200).map((k) => cache.delete(k)));
+  }
+  return res;
+}
+
+self.addEventListener('fetch', (e) => {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+
+  if (url.hostname === TILE_HOST) return e.respondWith(tile(req));
+  if (url.origin !== self.location.origin) return;
+
+  const p = url.pathname;
+  if (p === '/api/map') return e.respondWith(networkFirst(req, DATA));
+  if (p.startsWith('/uploads/')) return e.respondWith(cacheFirst(req, DATA));
+  if (req.mode === 'navigate' && (p === '/' || p === '/index.html')) {
+    return e.respondWith(networkFirst(req, SHELL, 3000, '/'));
+  }
+  if (PRECACHE.includes(p) || p.startsWith('/vendor/leaflet/') || p.startsWith('/icons/')) {
+    return e.respondWith(staleWhileRevalidate(req));
+  }
+  // beheer, auth en overige API's: altijd netwerk
+});

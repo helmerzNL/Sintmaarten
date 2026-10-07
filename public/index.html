@@ -2,22 +2,41 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Onze wijk</title>
+<meta name="theme-color" content="#1f6f4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 <header class="bar">
+  <img id="logo" class="logo" alt="" hidden>
   <h1 id="title">Onze wijk</h1>
+  <span id="offline" class="badge" hidden>Offline – laatst bekende stand</span>
   <div class="legend"><span><i class="dot green"></i>Groen</span><span><i class="dot red"></i>Rood</span></div>
+  <button id="intro-btn" hidden>ℹ Uitleg</button>
   <button id="pdf-view">📄 PDF bekijken</button>
   <button id="pdf-dl" class="primary">⬇ PDF downloaden</button>
+  <button id="install" hidden>📲 Installeer app</button>
 </header>
 <div class="viewport" id="vp"></div>
+
+<dialog id="intro-dialog">
+  <h3 id="intro-title"></h3>
+  <div id="intro-text" class="intro-text"></div>
+  <p><button id="intro-close" class="primary">Sluiten</button></p>
+</dialog>
+
 <script src="/vendor/leaflet/leaflet.js"></script>
 <script src="/vendor/jspdf.js"></script>
 <script src="/js/wijk.js"></script>
+<script src="/js/pwa.js"></script>
 <script src="/js/public.js"></script>
 </body>
 </html>

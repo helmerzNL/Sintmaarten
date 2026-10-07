@@ -1,5 +1,6 @@
 'use strict';
 const crypto = require('node:crypto');
+const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 const {
@@ -20,7 +21,7 @@ app.use((req, res, next) => {
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'X-Frame-Options': 'DENY',
     'Content-Security-Policy':
-      "default-src 'self'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://nominatim.openstreetmap.org; object-src 'self' blob:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'",
+      "default-src 'self'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://nominatim.openstreetmap.org https://tile.openstreetmap.org; worker-src 'self'; manifest-src 'self'; object-src 'self' blob:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'",
   });
   next();
 });
@@ -55,9 +56,31 @@ function userId() {
 
 // ---------- publiek ----------
 app.get('/api/map', (req, res) => {
-  const { view, houses } = store.db();
+  const { view, houses, settings } = store.db();
   res.set('Cache-Control', 'no-cache');
-  res.json({ title: config.siteTitle, view, houses });
+  res.json({ title: config.siteTitle, view, houses, intro: settings?.intro || '', logo: settings?.logo || null });
+});
+
+app.use('/uploads', express.static(store.uploadDir, { immutable: true, maxAge: '365d', index: false }));
+
+// PWA-manifest met de naam van de site
+app.get('/manifest.webmanifest', (req, res) => {
+  res.type('application/manifest+json').json({
+    name: config.siteTitle,
+    short_name: config.siteTitle.length > 12 ? config.siteTitle.slice(0, 12) : config.siteTitle,
+    description: `Kaart van ${config.siteTitle}`,
+    lang: 'nl',
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+    background_color: '#f4f6f4',
+    theme_color: '#1f6f4a',
+    icons: [
+      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+  });
 });
 
 // ---------- auth ----------
@@ -185,6 +208,49 @@ admin.delete('/passkeys/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+const IMAGE_TYPES = [
+  { ext: 'png', test: (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) },
+  { ext: 'jpg', test: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
+  { ext: 'webp', test: (b) => b.subarray(0, 4).toString() === 'RIFF' && b.subarray(8, 12).toString() === 'WEBP' },
+];
+
+const removeLogoFile = (logo) => {
+  if (logo?.file) fs.rm(path.join(store.uploadDir, path.basename(logo.file)), () => {});
+};
+
+admin.post('/logo',
+  express.raw({ type: 'application/octet-stream', limit: '5mb' }),
+  (req, res) => {
+    const buf = req.body;
+    const type = Buffer.isBuffer(buf) && IMAGE_TYPES.find((t) => t.test(buf));
+    if (!type) return res.status(400).json({ error: 'Alleen PNG, JPEG of WebP is toegestaan (max 5 MB)' });
+    const db = store.db();
+    const old = db.settings.logo;
+    const file = `logo-${Date.now()}.${type.ext}`;
+    fs.writeFileSync(path.join(store.uploadDir, file), buf);
+    db.settings.logo = { file, url: `/uploads/${file}` };
+    store.save();
+    removeLogoFile(old);
+    res.json({ logo: db.settings.logo });
+  });
+
+admin.delete('/logo', (req, res) => {
+  const db = store.db();
+  removeLogoFile(db.settings.logo);
+  db.settings.logo = null;
+  store.save();
+  res.json({ ok: true });
+});
+
+admin.put('/settings', (req, res) => {
+  const intro = String(req.body?.intro ?? '').replace(/\r\n?/g, '\n').trim();
+  if (intro.length > 5000) return res.status(400).json({ error: 'De uitleg mag maximaal 5000 tekens zijn' });
+  const db = store.db();
+  db.settings.intro = intro;
+  store.save();
+  res.json({ intro });
+});
+
 admin.put('/view', (req, res) => {
   const { center, zoom } = req.body || {};
   if (!validLatLng(center) || !(zoom >= 1 && zoom <= 20)) return res.status(400).json({ error: 'Ongeldige kaartweergave' });
@@ -238,7 +304,10 @@ const nm = (...p) => path.join(__dirname, '..', 'node_modules', ...p);
 app.get('/vendor/webauthn.js', (req, res) => res.sendFile(nm('@simplewebauthn', 'browser', 'dist', 'bundle', 'index.umd.min.js')));
 app.get('/vendor/jspdf.js', (req, res) => res.sendFile(nm('jspdf', 'dist', 'jspdf.umd.min.js')));
 app.use('/vendor/leaflet', express.static(nm('leaflet', 'dist'), { index: false }));
-app.use(express.static(pub, { extensions: ['html'] }));
+app.use(express.static(pub, {
+  extensions: ['html'],
+  setHeaders: (res, file) => { if (file.endsWith('sw.js')) res.set('Cache-Control', 'no-cache'); },
+}));
 app.get('/beheer', (req, res) => res.sendFile(path.join(pub, 'admin', 'index.html')));
 
 module.exports = app;

@@ -90,6 +90,50 @@
     catch (e) { $('pk-err').textContent = friendly(e); }
   };
 
+  // ---------- logo & uitleg ----------
+  let org = { intro: '', logo: null };
+  function renderOrg() {
+    $('org-logo').hidden = !org.logo;
+    if (org.logo) $('org-logo').src = org.logo.url;
+    $('org-remove').disabled = !org.logo;
+    $('org-count').textContent = $('org-intro').value.length;
+  }
+  $('org-open').onclick = () => {
+    $('org-err').textContent = '';
+    $('org-intro').value = org.intro;
+    renderOrg();
+    $('org-dialog').showModal();
+  };
+  $('org-close').onclick = () => $('org-dialog').close();
+  $('org-intro').oninput = renderOrg;
+  $('org-upload').onclick = () => $('org-file').click();
+  $('org-file').onchange = async () => {
+    const f = $('org-file').files[0];
+    $('org-file').value = '';
+    if (!f) return;
+    $('org-err').textContent = '';
+    try {
+      const res = await api('/api/admin/logo', { method: 'POST', body: f, headers: { 'Content-Type': 'application/octet-stream' }, expectAuth: true });
+      org.logo = res.logo;
+      renderOrg();
+      toast('Logo geüpload ✔');
+    } catch (e) { $('org-err').textContent = e.message; }
+  };
+  $('org-remove').onclick = async () => {
+    if (!confirm('Logo verwijderen?')) return;
+    try { await api('/api/admin/logo', { method: 'DELETE', expectAuth: true }); org.logo = null; renderOrg(); }
+    catch (e) { $('org-err').textContent = e.message; }
+  };
+  $('org-save').onclick = async () => {
+    $('org-err').textContent = '';
+    try {
+      const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ intro: $('org-intro').value }), expectAuth: true });
+      org.intro = res.intro;
+      $('org-dialog').close();
+      toast('Uitleg opgeslagen ✔');
+    } catch (e) { $('org-err').textContent = e.message; }
+  };
+
   // ---------- editor ----------
   let map, houses = [], layers = new Map(); // id -> L.polygon
   let selectedId = null, mode = 'select', newStatus = 'green', draft = [], dirty = false;
@@ -276,7 +320,7 @@
       document.addEventListener('keydown', (e) => {
         if (!map) return;
         if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) && e.key !== 'Escape') return;
-        if ($('pk-dialog').open) return;
+        if ($('pk-dialog').open || $('org-dialog').open) return;
         const k = e.key.toLowerCase();
         if ((e.ctrlKey || e.metaKey) && k === 's') { e.preventDefault(); save(); }
         else if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -308,6 +352,7 @@
     show('v-edit');
     const data = await api('/api/map');
     houses = data.houses;
+    org = { intro: data.intro || '', logo: data.logo };
     initEditor(data);
     setDirty(false);
     setMode('select');

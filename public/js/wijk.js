@@ -48,8 +48,8 @@
     });
   }
 
-  // Tekent de kaart (tegels + huizen) op een canvas dat het gebied van alle huizen toont.
-  async function renderMapCanvas(houses, view, W, H) {
+  // Bepaalt welk kaartvlak (midden, zoom) de PDF toont: het gebied van alle huizen.
+  function pdfFrame(houses, view, W, H) {
     const pts = houses.flatMap((h) => h.points);
     let center, z;
     if (pts.length) {
@@ -66,19 +66,62 @@
       center = v.center; z = Math.min(19, Math.max(1, Math.round(v.zoom)));
     }
     const [cx, cy] = project(center, z);
-    const left = cx - W / 2, top = cy - H / 2;
+    return { center, z, left: cx - W / 2, top: cy - H / 2 };
+  }
+
+  function frameTiles({ z, left, top }, W, H) {
+    const n = 2 ** z, out = [];
+    for (let tx = Math.floor(left / TILE); tx <= Math.floor((left + W) / TILE); tx++) {
+      for (let ty = Math.floor(top / TILE); ty <= Math.floor((top + H) / TILE); ty++) {
+        if (ty >= 0 && ty < n) out.push({ z, x: ((tx % n) + n) % n, y: ty, tx, ty });
+      }
+    }
+    return out;
+  }
+
+  const PDF_W = 2000;
+  const MAP_MM = { w: 277, h: 168 };
+  const pdfH = () => Math.round((PDF_W * MAP_MM.h) / MAP_MM.w);
+
+  // Haalt de tegels voor de PDF en de omgeving alvast op, zodat de kaart ook offline werkt
+  // (de service worker bewaart ze). Bewust beperkt om OpenStreetMap niet te belasten.
+  async function prefetchTiles(houses, view) {
+    if (!navigator.onLine || !navigator.serviceWorker?.controller) return;
+    const H = pdfH();
+    const frame = pdfFrame(houses, view, PDF_W, H);
+    const list = frameTiles(frame, PDF_W, H);
+    // uitzoomen: dezelfde omgeving op lagere zoomniveaus (max. 3 niveaus)
+    for (let dz = 1; dz <= 3 && frame.z - dz >= 12; dz++) {
+      const f = 2 ** dz;
+      list.push(...frameTiles({ z: frame.z - dz, left: frame.left / f, top: frame.top / f }, PDF_W / f, H / f));
+    }
+    const seen = new Set();
+    const urls = list.map((t) => TILE_URL.replace('{z}', t.z).replace('{x}', t.x).replace('{y}', t.y))
+      .filter((u) => !seen.has(u) && seen.add(u)).slice(0, 250);
+    const key = `sm-prefetch:${urls.length}:${urls[0]}`;
+    try { if (localStorage.getItem(key)) return; } catch {}
+    let i = 0;
+    const worker = async () => {
+      while (i < urls.length) {
+        const u = urls[i++];
+        try { await fetch(u, { mode: 'cors', credentials: 'omit' }); } catch {}
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    try { localStorage.setItem(key, '1'); } catch {}
+  }
+
+  // Tekent de kaart (tegels + huizen) op een canvas dat het gebied van alle huizen toont.
+  async function renderMapCanvas(houses, view, W, H) {
+    const frame = pdfFrame(houses, view, W, H);
+    const { z, left, top } = frame;
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     const g = canvas.getContext('2d');
     g.fillStyle = '#e5e5e5'; g.fillRect(0, 0, W, H);
 
-    const n = 2 ** z, jobs = [];
-    for (let tx = Math.floor(left / TILE); tx <= Math.floor((left + W) / TILE); tx++) {
-      for (let ty = Math.floor(top / TILE); ty <= Math.floor((top + H) / TILE); ty++) {
-        if (ty < 0 || ty >= n) continue;
-        jobs.push(loadTile(z, ((tx % n) + n) % n, ty).then((img) => img && g.drawImage(img, tx * TILE - left, ty * TILE - top)));
-      }
-    }
+    const jobs = frameTiles(frame, W, H).map((t) =>
+      loadTile(t.z, t.x, t.y).then((img) => img && g.drawImage(img, t.tx * TILE - left, t.ty * TILE - top)));
     await Promise.all(jobs);
 
     const px = (p) => { const [x, y] = project(p, z); return [x - left, y - top]; };
@@ -115,56 +158,99 @@
     return canvas;
   }
 
-  async function buildPdf({ title, houses, view }) {
+  // Logo laden als data-URL (voor jsPDF) met afmetingen.
+  function loadLogo(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const g = c.getContext('2d');
+        const jpeg = /\.jpe?g$/i.test(url);
+        if (jpeg) { g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); }
+        g.drawImage(img, 0, 0);
+        resolve({ data: c.toDataURL(jpeg ? 'image/jpeg' : 'image/png', 0.92), format: jpeg ? 'JPEG' : 'PNG', w: c.width, h: c.height });
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  }
+
+  async function buildPdf({ title, houses, view, intro, logo }) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const pw = 297, margin = 10;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(18);
-    doc.text(title, margin, 14);
+    const pw = 297, ph = 210, margin = 10;
+    const logoImg = logo ? await loadLogo(logo.url) : null;
+
+    const header = (text, size) => {
+      let x = margin;
+      if (logoImg) {
+        const maxH = 14, maxW = 45;
+        const k = Math.min(maxH / logoImg.h, maxW / logoImg.w);
+        const w = logoImg.w * k, h = logoImg.h * k;
+        doc.addImage(logoImg.data, logoImg.format, margin, 16 - h, w, h);
+        x += w + 4;
+      }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(size); doc.setTextColor(0);
+      doc.text(text, x, 14);
+    };
+
+    header(title, 18);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(`Stand van ${new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}`, pw - margin, 14, { align: 'right' });
     doc.setTextColor(0);
 
-    const mapW = pw - 2 * margin, mapH = 168;
-    const canvas = await renderMapCanvas(houses, view, 2000, Math.round(2000 * mapH / mapW));
-    doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, 18, mapW, mapH);
-    doc.setDrawColor(150); doc.rect(margin, 18, mapW, mapH);
+    const mapW = pw - 2 * margin, mapH = (mapW * MAP_MM.h) / MAP_MM.w;
+    const canvas = await renderMapCanvas(houses, view, PDF_W, pdfH());
+    doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, 20, mapW, mapH);
+    doc.setDrawColor(150); doc.rect(margin, 20, mapW, mapH);
 
     // legenda
     const counts = { green: 0, red: 0 };
     houses.forEach((h) => { if (counts[h.status] !== undefined) counts[h.status]++; });
     let x = margin;
+    const ly = 20 + mapH + 7;
     for (const k of ['green', 'red']) {
-      const c = STATUS[k].color;
-      doc.setFillColor(c); doc.circle(x + 2, 193.5, 2, 'F');
+      doc.setFillColor(STATUS[k].color); doc.circle(x + 2, ly - 1.5, 2, 'F');
       doc.setFontSize(10);
-      doc.text(`${STATUS[k].name} (${counts[k]})`, x + 6, 195);
+      doc.text(`${STATUS[k].name} (${counts[k]})`, x + 6, ly);
       x += 40;
     }
 
-    // lijst met huizen op volgende pagina('s)
+    // tweede pagina: toelichting en overzicht van de huizen
     const named = houses.filter((h) => h.label && h.status !== 'none')
       .sort((a, b) => a.label.localeCompare(b.label, 'nl', { numeric: true }));
+    let y = 0;
+    const newPage = (text) => { doc.addPage(); header(text, 14); y = 26; };
+    const room = (need) => { if (y + need > ph - margin) { newPage(`${title} – vervolg`); } };
+
+    if (intro) {
+      newPage(`${title} – toelichting`);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(0);
+      for (const line of doc.splitTextToSize(intro, pw - 2 * margin)) {
+        room(5.5);
+        doc.text(line, margin, y);
+        y += 5.2;
+      }
+      y += 6;
+    }
     if (named.length) {
-      doc.addPage();
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
-      doc.text(`${title} – overzicht`, margin, 14);
+      if (!intro) newPage(`${title} – overzicht`);
+      else { room(20); doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.text('Overzicht', margin, y); y += 8; }
       doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-      let y = 24;
-      const colW = 90;
+      const colW = 90, top = y;
       let col = 0;
       for (const h of named) {
-        if (y > 195) { col++; y = 24; if (col > 2) { doc.addPage(); col = 0; } }
+        if (y > ph - margin) { col++; y = top; if (col > 2) { newPage(`${title} – overzicht`); col = 0; } }
         const cx = margin + col * colW;
         doc.setFillColor(STATUS[h.status].color); doc.circle(cx + 2, y - 1, 1.8, 'F');
-        const line = doc.splitTextToSize(h.note ? `${h.label} – ${h.note}` : h.label, colW - 10)[0];
-        doc.text(line, cx + 6, y);
+        doc.text(doc.splitTextToSize(h.note ? `${h.label} – ${h.note}` : h.label, colW - 10)[0], cx + 6, y);
         y += 6;
       }
     }
     return doc;
   }
 
-  window.Wijk = { STATUS, createMap, houseStyle, buildPdf, DEFAULT_VIEW };
+  window.Wijk = { STATUS, createMap, houseStyle, buildPdf, prefetchTiles, DEFAULT_VIEW };
 })();
