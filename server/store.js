@@ -2,12 +2,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const config = require('./config');
+const { normalizeHouse } = require('./houses');
 
 const dbFile = path.join(config.dataDir, 'db.json');
 const uploadDir = path.join(config.dataDir, 'uploads');
 fs.mkdirSync(uploadDir, { recursive: true });
 
-const empty = () => ({ userId: null, passkeys: [], password: null, view: null, houses: [], settings: { intro: '', logo: null, appName: '', appShortName: '' }, version: 2 });
+const empty = () => ({ userId: null, passkeys: [], password: null, view: null, houses: [], settings: { intro: '', logo: null, appName: '', appShortName: '', siteTitle: '' }, version: 2 });
 let db = empty();
 if (fs.existsSync(dbFile)) {
   db = { ...empty(), ...JSON.parse(fs.readFileSync(dbFile, 'utf8')) };
@@ -17,6 +18,7 @@ if (fs.existsSync(dbFile)) {
     delete db.map;
     db.version = 2;
   }
+  db.houses = (db.houses || []).map(normalizeHouse); // label -> huisnummer, straat toevoegen
 }
 
 function save() {

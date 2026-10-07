@@ -55,6 +55,11 @@
       <div class="row"><input type="text" id="search" placeholder="Zoek adres of plaats…" style="flex:3"><button style="flex:1">Zoek</button></div>
     </form>
     <button id="view-open" title="Bepaalt hoe bezoekers de kaart te zien krijgen">📍 Kaartweergave instellen</button>
+    <label class="switch" title="Huisnummers midden op de gemarkeerde huizen tonen">
+      <input type="checkbox" id="a-num-switch" role="switch" aria-label="Huisnummers op de kaart tonen">
+      <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+      <span class="switch-text">Huisnummers op de kaart</span>
+    </label>
     <div class="row">
       <button id="t-select" class="active">☝ Selecteren</button>
       <button id="t-draw">✏ Huis tekenen</button>
@@ -68,8 +73,11 @@
     </div>
     <div class="hint" id="hint"></div>
     <div id="props" class="hidden">
-      <label for="p-label">Huisnummer / naam</label>
-      <input type="text" id="p-label" maxlength="100">
+      <label for="p-street">Straat</label>
+      <input type="text" id="p-street" list="street-list" maxlength="100" placeholder="bijv. Loerikseweg">
+      <datalist id="street-list"></datalist>
+      <label for="p-number">Huisnummer</label>
+      <input type="text" id="p-number" maxlength="20" placeholder="bijv. 12a">
       <label for="p-note">Notitie (zichtbaar bij klik)</label>
       <textarea id="p-note" rows="2" maxlength="500"></textarea>
       <label>Status</label>
@@ -81,7 +89,9 @@
       <p><button class="danger" id="p-del">Huis verwijderen</button></p>
     </div>
     <div>
-      <label>Alle huizen (<span id="count">0</span>)</label>
+      <label for="street-filter">Filter op straat</label>
+      <select id="street-filter"><option value="">Alle straten</option></select>
+      <label style="margin-top:12px">Huizen (<span id="count">0</span>)</label>
       <div class="list" id="list"></div>
     </div>
   </aside>
@@ -103,6 +113,11 @@
     <div><label for="v-min">Minimale zoom</label><input type="number" id="v-min" min="1" max="19" step="1"></div>
     <div><label for="v-max">Maximale zoom</label><input type="number" id="v-max" min="1" max="19" step="1"></div>
   </div>
+  <label class="switch" style="margin:10px 0 4px">
+    <input type="checkbox" id="v-numbers" role="switch">
+    <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+    <span class="switch-text">Huisnummers standaard tonen voor bezoekers</span>
+  </label>
   <p class="muted" id="v-now"></p>
   <p class="error" id="v-err"></p>
   <div class="row"><button id="v-apply">Toon op kaart</button><button id="v-auto" class="danger" title="De site toont dan alle huizen">Automatisch</button></div>
@@ -158,6 +173,8 @@
       <img id="org-logo" class="logo-preview" alt="" hidden>
       <input type="file" id="org-file" accept="image/png,image/jpeg,image/webp" hidden>
       <div class="row"><button id="org-upload">Logo uploaden</button><button id="org-remove" class="danger">Logo verwijderen</button></div>
+      <label for="org-title">Naam van de site (staat naast het logo en bovenaan de PDF)</label>
+      <input type="text" id="org-title" maxlength="60" placeholder="Standaard: de naam uit de serverinstelling (SITE_TITLE)">
       <label for="org-appname">Naam van de app (zoals die op het beginscherm van een telefoon komt te staan)</label>
       <input type="text" id="org-appname" maxlength="45" placeholder="Standaard: de sitenaam">
       <label for="org-short">Korte naam onder het icoon (max. 12 tekens)</label>

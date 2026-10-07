@@ -13,6 +13,7 @@ const store = require('./store');
 const auth = require('./auth');
 const { hashPassword, verifyPassword } = require('./password');
 const backups = require('./backups');
+const { normalizeHouse, STATUSES } = require('./houses');
 
 const app = express();
 app.set('trust proxy', true);
@@ -57,11 +58,14 @@ function userId() {
 }
 
 // ---------- publiek ----------
+// Naam van de site: instelling in het beheer, anders SITE_TITLE uit de omgeving.
+const siteTitle = () => store.db().settings?.siteTitle || config.siteTitle;
+
 app.get('/api/map', (req, res) => {
   const { view, houses, settings } = store.db();
   res.set('Cache-Control', 'no-cache');
   res.json({
-    title: config.siteTitle, view, houses,
+    title: siteTitle(), siteTitle: settings?.siteTitle || '', view, houses,
     intro: settings?.intro || '', logo: settings?.logo || null,
     appName: settings?.appName || '', appShortName: settings?.appShortName || '',
   });
@@ -72,7 +76,7 @@ app.use('/uploads', express.static(store.uploadDir, { immutable: true, maxAge: '
 // PWA-manifest met de naam van de site
 app.get('/manifest.webmanifest', (req, res) => {
   const st = store.db().settings || {};
-  const name = st.appName || config.siteTitle;
+  const name = st.appName || siteTitle();
   const shortName = st.appShortName || (name.length > 12 ? name.slice(0, 12) : name);
   res.type('application/manifest+json').json({
     name,
@@ -113,7 +117,7 @@ app.post('/api/auth/register/options', asyncRoute(async (req, res) => {
   }
   const name = String(req.body.name || 'Passkey').slice(0, 60);
   const options = await generateRegistrationOptions({
-    rpName: config.siteTitle,
+    rpName: siteTitle(),
     rpID: config.rpID,
     userName: 'beheerder',
     userDisplayName: 'Beheerder',
@@ -348,6 +352,11 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     if (intro.length > 5000) return res.status(400).json({ error: 'De uitleg mag maximaal 5000 tekens zijn' });
     db.settings.intro = intro;
   }
+  if ('siteTitle' in body) {
+    const title = String(body.siteTitle ?? '').trim();
+    if (title.length > 60) return res.status(400).json({ error: 'De naam van de site mag maximaal 60 tekens zijn' });
+    db.settings.siteTitle = title;
+  }
   if ('appName' in body) {
     const name = String(body.appName ?? '').trim();
     if (name.length > 45) return res.status(400).json({ error: 'De naam van de app mag maximaal 45 tekens zijn' });
@@ -359,7 +368,7 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     db.settings.appShortName = short;
   }
   store.save();
-  res.json({ intro: db.settings.intro, appName: db.settings.appName, appShortName: db.settings.appShortName });
+  res.json({ intro: db.settings.intro, siteTitle: db.settings.siteTitle, appName: db.settings.appName, appShortName: db.settings.appShortName });
 });
 
 admin.put('/view', backups.afterSave('Kaartweergave opgeslagen'), (req, res) => {
@@ -378,6 +387,7 @@ admin.put('/view', backups.afterSave('Kaartweergave opgeslagen'), (req, res) => 
     zoom: Math.round(zoom * 100) / 100,
     minZoom: Math.round(minZoom * 100) / 100,
     maxZoom: Math.round(maxZoom * 100) / 100,
+    showNumbers: req.body?.showNumbers === true, // huisnummers standaard tonen voor bezoekers
   };
   store.save();
   res.json({ view: db.view });
@@ -393,7 +403,6 @@ admin.delete('/view', backups.afterSave('Kaartweergave gewist'), (req, res) => {
 const validLatLng = (p) =>
   Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && Math.abs(p[0]) <= 85.06 && Math.abs(p[1]) <= 180;
 
-const STATUSES = ['green', 'red', 'none'];
 const clean = (s, n) => String(s ?? '').trim().slice(0, n);
 
 function validateHouses(list) {
@@ -404,13 +413,7 @@ function validateHouses(list) {
       if (!validLatLng(p)) throw new Error('Ongeldig punt');
       return p.map((n) => Math.round(n * 1e7) / 1e7);
     });
-    return {
-      id: /^[\w-]{1,40}$/.test(h.id) ? h.id : crypto.randomBytes(6).toString('hex'),
-      label: clean(h.label, 100),
-      note: clean(h.note, 500),
-      status: STATUSES.includes(h.status) ? h.status : 'none',
-      points,
-    };
+    return normalizeHouse({ ...h, points });
   });
 }
 
