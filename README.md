@@ -20,9 +20,9 @@ Publieke kaart van de wijk waarop huizen groen of rood zijn gemarkeerd, met een 
 
 ## Draaien op de NAS
 1. Zet `docker-compose.yml` en een `.env` (kopie van `.env.example`) in een map op je NAS.
-2. Vul `.env` in: `ORIGIN` (je https-adres), `SETUP_TOKEN`, `SESSION_SECRET`.
+2. Vul `.env` in: `ORIGIN` (`https://sintmaarten.flux76.app`), optioneel `PORT` (standaard 9888), `SETUP_TOKEN`, `SESSION_SECRET`.
 3. `docker compose up -d`. Data (kaart + huizen + passkeys) staat in `./data`.
-4. Zet een reverse proxy met **HTTPS** voor poort 3000 (Synology: *Inloggegevens → Reverse Proxy*, of Nginx Proxy Manager / Traefik).
+4. Zet een reverse proxy met **HTTPS** voor de poort uit `PORT` (standaard **9888**) (Synology: *Inloggegevens → Reverse Proxy*, of Nginx Proxy Manager / Traefik).
    Passkeys werken alleen over HTTPS (of op `localhost`), en `ORIGIN` moet exact het adres in de browser zijn.
 
 > Is het GHCR-package privé? Maak het publiek (GitHub → Packages → Package settings), of log op de NAS in met
@@ -35,7 +35,7 @@ Publieke kaart van de wijk waarop huizen groen of rood zijn gemarkeerd, met een 
 ## Lokaal ontwikkelen
 ```
 npm install
-ORIGIN=http://localhost:3000 SETUP_TOKEN=lokaal-test-token-1 npm start
+ORIGIN=http://localhost:9888 SETUP_TOKEN=lokaal-test-token-1 npm start
 npm test
 ```
 

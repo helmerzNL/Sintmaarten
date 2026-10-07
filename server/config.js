@@ -2,7 +2,7 @@
 const crypto = require('node:crypto');
 const path = require('node:path');
 
-const origin = (process.env.ORIGIN || 'http://localhost:3000').replace(/\/+$/, '');
+const origin = (process.env.ORIGIN || 'https://sintmaarten.flux76.app').replace(/\/+$/, '');
 let rpID = process.env.RP_ID;
 if (!rpID) {
   try { rpID = new URL(origin).hostname; } catch { rpID = 'localhost'; }
@@ -18,7 +18,7 @@ const sessionSecret = secret('SESSION_SECRET', 32);
 const setupToken = secret('SETUP_TOKEN', 12);
 
 module.exports = {
-  port: Number(process.env.PORT) || 3000,
+  port: Number(process.env.PORT) || 9888,
   origin,
   rpID,
   siteTitle: process.env.SITE_TITLE || 'Onze wijk',
