@@ -67,7 +67,7 @@ label { display: block; font-size: .85rem; color: var(--muted); margin: 10px 0 4
 .list div:last-child { border-bottom: 0; }
 .list div.sel { background: color-mix(in srgb, var(--accent) 18%, transparent); }
 .hint { font-size: .85rem; color: var(--muted); background: var(--bg); border-radius: 8px; padding: 8px 10px; }
-.toast { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); background: #222; color: #fff; padding: 8px 16px; border-radius: 8px; z-index: 10; box-shadow: var(--shadow); }
+.toast { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); background: #222; color: #fff; padding: 8px 16px; border-radius: 8px; z-index: 3000; box-shadow: var(--shadow); }
 dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text); max-width: 460px; width: 92vw; }
 dialog::backdrop { background: rgba(0,0,0,.4); }
 .pk { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
@@ -182,4 +182,35 @@ dialog { max-height: 92vh; overflow-y: auto; }
 .street-name { order: 0; }
 
 select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+
+/* huis wijzigen (bewoners, geïnstalleerde app) */
+.house-sheet { position: fixed; left: 12px; bottom: 12px; width: min(360px, calc(100vw - 24px)); z-index: 1250; background: var(--panel); color: var(--text);
+  border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 12px 14px; font-size: .95rem; }
+.house-sheet p { margin: 8px 0; }
+.house-sheet select { margin: 4px 0 2px; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; }
+.status-choice { display: flex; gap: 6px; }
+.status-choice button { flex: 1; padding: 10px 6px; }
+.status-choice button.active { outline: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); font-weight: 600; }
+.pending-msg { color: #8a5a00; background: #fff3d1; border-radius: 8px; padding: 8px 10px; }
+.notice { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-radius: 8px; padding: 8px 10px; }
+.notice.ok { background: #dff3e6; color: #0f5a2c; } .notice.no { background: #fde4e4; color: #8f1f1f; }
+path.pending { animation: dash 1.2s linear infinite; }
+@keyframes dash { to { stroke-dashoffset: -32; } }
+@media (prefers-reduced-motion: reduce) { path.pending { animation: none; } }
+@media (max-width: 640px) {
+  .house-sheet { left: 8px; right: 8px; width: auto; bottom: calc(70px + env(safe-area-inset-bottom)); }
+  body.editing .legend { display: none; }
+}
+
+/* meldingen voor de beheerder */
+.count-badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 999px; background: #d93a3a; color: #fff; font-size: .72rem; line-height: 18px; text-align: center; font-weight: 700; }
+.cog { position: relative; }
+.cog-badge { position: absolute; top: -6px; right: -6px; margin: 0; }
+.chg-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.chg-row:last-child { border-bottom: 0; }
+.chg-info { flex: 1; min-width: 160px; font-size: .9rem; }
+.chg-info span { display: block; color: var(--muted); font-size: .8rem; }
+.chg-row button { padding: 4px 10px; font-size: .85rem; }
+[hidden] { display: none !important; }
 .secret { -webkit-text-security: disc; text-security: disc; }

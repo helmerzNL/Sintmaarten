@@ -100,6 +100,9 @@
   applyStreets();
   nums.setVisible($('num-switch').checked);
 
+  // bewoners: huis wijzigen (alleen in de geïnstalleerde app)
+  Wijk.initResident?.({ map, houses: data.houses, enabled: data.residentsEnabled !== false });
+
   // kaart alvast klaarzetten voor offline gebruik
   if (navigator.serviceWorker) navigator.serviceWorker.ready.then(() => Wijk.prefetchTiles(data.houses, data.view));
 
