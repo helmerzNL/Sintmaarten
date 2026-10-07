@@ -408,6 +408,32 @@ test('bewoners: apparaat en IP blokkeren', async () => {
   for (const [m, p] of [['POST', '/residents/x/block'], ['DELETE', '/blocks/x']]) assert.equal((await j(`/api/admin${p}`, { method: m, headers: jsonH() })).status, 401, p);
 });
 
+test('beheer kan de status altijd aanpassen, ook als een bewoner iets voorstelde', async () => {
+  await adminReq('/settings', 'PUT', { residentsEnabled: true, residentsAppOnly: false });
+  const mk = (st) => [{ id: 'h1', street: 'Dorpsstraat', number: '1', status: st, points: ptsR }];
+  await adminReq('/houses', 'PUT', { houses: mk('none') });
+  for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
+  const c = (await post('/claim', { houseId: 'h1' })).headers.get('set-cookie').split(';')[0];
+  await post('/set', { status: 'green' }, c);
+
+  // beheer kiest rood terwijl groen wacht: het voorstel blijft, met de nieuwe uitgangsstatus
+  assert.equal((await adminReq('/houses', 'PUT', { houses: mk('red') })).status, 200);
+  assert.equal((await (await j('/api/map')).json()).houses[0].status, 'red');
+  const p = (await (await adminReq('/changes')).json()).pending;
+  assert.deepEqual([p.length, p[0].from, p[0].to], [1, 'red', 'green']);
+
+  // beheer kiest precies wat de bewoner wilde: voorstel is overbodig en verdwijnt
+  await adminReq('/houses', 'PUT', { houses: mk('green') });
+  assert.equal((await (await adminReq('/changes')).json()).pending.length, 0);
+  const me = await (await res('/me', { headers: { cookie: c } })).json();
+  assert.deepEqual([me.approved, me.pending], ['green', false]);
+
+  // en terug naar niet gemarkeerd kan altijd
+  await adminReq('/houses', 'PUT', { houses: mk('none') });
+  assert.equal((await (await j('/api/map')).json()).houses[0].status, 'none');
+  for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
+});
+
 test('bewoners: uitschakelen, beheerrechten en push-registratie', async () => {
   for (const [m, p] of [['GET', '/changes'], ['POST', '/changes/approve-all'], ['DELETE', '/residents/x'], ['GET', '/push/key'], ['POST', '/push/test']]) {
     assert.equal((await j(`/api/admin${p}`, { method: m, headers: jsonH() })).status, 401, p);

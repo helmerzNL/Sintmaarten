@@ -31,6 +31,23 @@ function prune() {
   d.proposals = d.proposals.filter((p) => rids.has(p.residentId) && ids.has(p.houseId));
 }
 
+// Na een wijziging door de beheerder: beheer wint altijd. Een voorstel dat nu overbodig is verdwijnt,
+// de rest krijgt de actuele status als uitgangspunt.
+function reconcile() {
+  prune();
+  const d = db();
+  for (const prop of [...d.proposals]) {
+    const house = houseOf(prop.houseId);
+    if (prop.to === house.status) {
+      const rec = d.residents.find((r) => r.rid === prop.residentId);
+      if (rec) rec.notice = { decision: 'approved', status: prop.to, at: new Date().toISOString() };
+      d.proposals = d.proposals.filter((p) => p !== prop);
+    } else {
+      prop.from = house.status;
+    }
+  }
+}
+
 function currentResident(req) {
   const token = auth.parseCookies(req.headers.cookie)[COOKIE];
   if (!token || token.length < 20) return null;
@@ -268,4 +285,4 @@ admin.post('/push/test', async (req, res) => {
   res.json(r);
 });
 
-module.exports = { resident, admin, prune, enabled };
+module.exports = { resident, admin, prune, reconcile, enabled };

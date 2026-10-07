@@ -444,7 +444,7 @@ admin.put('/houses', backups.afterSave('Layout opgeslagen'), (req, res) => {
   try {
     const db = store.db();
     db.houses = validateHouses(req.body.houses);
-    residents.prune();
+    residents.reconcile();
     store.save();
     res.json({ houses: db.houses });
   } catch (err) {
