@@ -77,7 +77,8 @@ Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen.
 ## Draaien op de NAS
 1. Zet `docker-compose.yml` en een `.env` (kopie van `.env.example`) in een map op je NAS.
 2. Vul `.env` in: `ORIGIN` (`https://sintmaarten.flux76.app`), optioneel `PORT` (standaard 9888), `SETUP_TOKEN`, `SESSION_SECRET`.
-3. `docker compose up -d`. Data (kaart + huizen + passkeys) staat in `./data`.
+3. `docker compose up -d`. Data (huizen, passkeys, logo en uitleg) staat in `./data`. De container herstelt zelf de rechten op die map
+   (hij start kort als root en draait de app daarna als gebruiker `node`).
 4. Zet een reverse proxy met **HTTPS** voor de poort uit `PORT` (standaard **9888**) (Synology: *Inloggegevens → Reverse Proxy*, of Nginx Proxy Manager / Traefik).
    Passkeys werken alleen over HTTPS (of op `localhost`), en `ORIGIN` moet exact het adres in de browser zijn.
 
