@@ -66,9 +66,11 @@ Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen.
 
 ## Bewoners: huis wijzigen
 - In de **geïnstalleerde app** (PWA) staat in de menubalk altijd een knop **Huis wijzigen**, plus een knop **Sync** (🔄) waarmee je de huizen direct bijwerkt (de app ververst ook zelf elke 30 seconden).
-- In een **gewone browser** staat bovenin een schakelaar **Bewerken** (✏️). Zet je die aan, dan verschijnt de knop *Huis wijzigen* in de menubalk en verhuizen *PDF opslaan* en *Installeer app* naar een menu **Meer** (⋯) dat omhoog opent. Zet je de schakelaar uit, dan staat alles weer zoals het was. In de app is deze schakelaar verborgen.
+- In een **gewone browser** staat bovenin een schakelaar **Bewerken** (✏️). Zet je die aan, dan verschijnt de knop *Huis wijzigen* in de menubalk. *PDF opslaan*, *PDF bekijken* en *Installeer app* staan altijd onder het menu **Meer** (⋯), ook in de app. Het balkje met de statuskleuren zweeft op een klein scherm altijd net boven de menubalk. In de app is deze schakelaar verborgen.
 
 ![Bewerken en Meer-menu](docs/screenshots/bewerken-meer-mobiel.png)
+
+**Misbruik tegengaan** – onder *Instellingen → Wijzigingen* staat bij elke openstaande wijziging en bij elk aangemeld apparaat een knop **Blokkeren**. Het apparaat verliest zijn koppeling en openstaande wijzigingen, en kan niet meer wijzigen of een huis kiezen. Je kunt er ook het **IP-adres** bij blokkeren (let op: huisgenoten of buren achter dezelfde router delen vaak een IP). Onder *Geblokkeerd* haal je een blokkade weer weg.
 
 **Alleen in de app toestaan** – onder *Instellingen → Wijzigingen* zet je **Alleen in de geïnstalleerde app (niet in de browser)** aan. De schakelaar *Bewerken* verdwijnt dan voor browserbezoekers (ook bij een open pagina, na het verversen), en de server weigert wijzigingen die niet vanuit de app komen. De app meldt zich daarvoor met een kop (`X-App-Mode: standalone`). Dat is een gebruiksbeperking: wie de verzoeken zelf nabootst kan de kop meesturen, maar elke wijziging moet nog steeds door de beheerder worden goedgekeurd.
 

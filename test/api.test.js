@@ -371,6 +371,43 @@ test('bewoners: 1 huis per apparaat, wijziging pas zichtbaar na goedkeuring', as
   assert.equal((await (await res('/me', { headers: { cookie: c1 } })).json()).claim, null);
 });
 
+test('bewoners: apparaat en IP blokkeren', async () => {
+  await adminReq('/settings', 'PUT', { residentsEnabled: true, residentsAppOnly: false });
+  await adminReq('/houses', 'PUT', { houses: [
+    { id: 'h1', street: 'Dorpsstraat', number: '1', status: 'none', points: ptsR },
+    { id: 'h2', street: 'Dorpsstraat', number: '2', status: 'none', points: ptsR },
+  ] });
+  for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
+  const c1 = (await post('/claim', { houseId: 'h1' })).headers.get('set-cookie').split(';')[0];
+  await post('/set', { status: 'green' }, c1);
+  const ch = await (await adminReq('/changes')).json();
+  assert.equal(ch.pending.length, 1);
+  assert.ok(ch.residents[0].ip);
+  assert.equal((await adminReq('/residents/nope/block', 'POST', {})).status, 404);
+
+  // alleen het apparaat blokkeren
+  assert.equal((await adminReq(`/residents/${ch.pending[0].rid}/block`, 'POST', {})).status, 200);
+  const after = await (await adminReq('/changes')).json();
+  assert.deepEqual([after.pending.length, after.residents.length, after.blocked.length, after.blocked[0].ip], [0, 0, 1, null]);
+  const blocked = await post('/set', { status: 'red' }, c1);
+  assert.equal(blocked.status, 403);
+  assert.equal((await blocked.json()).blocked, true);
+  assert.equal((await (await res('/me', { headers: { cookie: c1 } })).json()).blocked, true);
+  // een ander apparaat (ander token/cookie, zelfde IP) kan nog gewoon
+  assert.equal((await post('/claim', { houseId: 'h2' })).status, 200);
+
+  // ook het IP blokkeren
+  const r2 = (await (await adminReq('/changes')).json()).residents[0];
+  await adminReq(`/residents/${r2.rid}/block`, 'POST', { withIp: true });
+  assert.equal((await post('/claim', { houseId: 'h1' })).status, 403);
+
+  // deblokkeren
+  for (const b of (await (await adminReq('/changes')).json()).blocked) assert.equal((await adminReq(`/blocks/${b.id}`, 'DELETE')).status, 200);
+  assert.equal((await post('/claim', { houseId: 'h1' })).status, 200);
+  for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
+  for (const [m, p] of [['POST', '/residents/x/block'], ['DELETE', '/blocks/x']]) assert.equal((await j(`/api/admin${p}`, { method: m, headers: jsonH() })).status, 401, p);
+});
+
 test('bewoners: uitschakelen, beheerrechten en push-registratie', async () => {
   for (const [m, p] of [['GET', '/changes'], ['POST', '/changes/approve-all'], ['DELETE', '/residents/x'], ['GET', '/push/key'], ['POST', '/push/test']]) {
     assert.equal((await j(`/api/admin${p}`, { method: m, headers: jsonH() })).status, 401, p);

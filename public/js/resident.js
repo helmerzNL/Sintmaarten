@@ -143,7 +143,7 @@
       dlg.onclose = async () => {
         if (dlg.returnValue !== 'ja') return;
         try {
-          me = await api('/claim', { houseId: h.id });
+          me = await api('/claim', { houseId: h.id, token: store.get(TOKEN) || undefined });
           if (me.deviceToken) store.set(TOKEN, me.deviceToken);
           store.set(CACHE, JSON.stringify(me));
           restyle();
