@@ -34,6 +34,98 @@
     };
   }
 
+  // ---------- huizen: titel, sortering, nummerpositie ----------
+  const houseTitle = (h) => [h.street, h.number].filter(Boolean).join(' ') || h.label || 'Huis';
+  const natCompare = (a, b) => String(a).localeCompare(String(b), 'nl', { numeric: true, sensitivity: 'base' });
+  const compareHouses = (a, b) => natCompare(a.street || '', b.street || '') || natCompare(a.number || a.label || '', b.number || b.label || '');
+  const houseNumber = (h) => h.number || '';
+
+  // Beste plek voor het huisnummer: het punt in het vlak dat het verst van de randen ligt
+  // (valt ook bij hoekige of L-vormige huizen binnen het huis).
+  function labelPoint(points) {
+    const lat0 = points.reduce((a, p) => a + p[0], 0) / points.length;
+    const kx = Math.cos((lat0 * Math.PI) / 180);
+    const P = points.map(([la, ln]) => [ln * kx, la]);
+    const xs = P.map((p) => p[0]), ys = P.map((p) => p[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const inside = (x, y) => {
+      let c = false;
+      for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+        if ((P[i][1] > y) !== (P[j][1] > y) && x < ((P[j][0] - P[i][0]) * (y - P[i][1])) / (P[j][1] - P[i][1]) + P[i][0]) c = !c;
+      }
+      return c;
+    };
+    const edgeDist = (x, y) => {
+      let d = Infinity;
+      for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+        const [ax, ay] = P[j], [bx, by] = P[i];
+        const dx = bx - ax, dy = by - ay;
+        const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
+        d = Math.min(d, Math.hypot(x - (ax + t * dx), y - (ay + t * dy)));
+      }
+      return d;
+    };
+    let best = [(minX + maxX) / 2, (minY + maxY) / 2], bestD = -1;
+    const N = 24;
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < N; j++) {
+        const x = minX + ((maxX - minX) * (i + 0.5)) / N, y = minY + ((maxY - minY) * (j + 0.5)) / N;
+        if (!inside(x, y)) continue;
+        const d = edgeDist(x, y);
+        if (d > bestD) { bestD = d; best = [x, y]; }
+      }
+    }
+    return [best[1], best[0] / kx];
+  }
+
+  // Laag met huisnummers in het midden van elk huis (wit met donkere rand: goed leesbaar op elke kleur).
+  // Nummers die niet in het huis passen worden verborgen en komen vanzelf terug bij verder inzoomen.
+  function createNumberLayer(map) {
+    const group = L.layerGroup();
+    let items = [];
+    const sizeFor = (z) => Math.max(9, Math.min(22, 6 + (z - 15.5) * 3.4));
+
+    function update() {
+      const fs = sizeFor(map.getZoom());
+      map.getContainer().style.setProperty('--num-fs', `${fs}px`);
+      for (const it of items) {
+        const el = it.marker.getElement();
+        if (!el) continue;
+        const a = map.latLngToContainerPoint(it.bounds.getSouthWest()), b = map.latLngToContainerPoint(it.bounds.getNorthEast());
+        const w = Math.abs(b.x - a.x), h = Math.abs(b.y - a.y);
+        el.style.display = w >= fs * 0.6 * it.text.length + 6 && h >= fs * 1.3 ? '' : 'none';
+      }
+    }
+
+    function rebuild(houses) {
+      group.clearLayers();
+      items = [];
+      for (const h of houses) {
+        const text = houseNumber(h);
+        if (!text) continue;
+        const span = document.createElement('span');
+        span.textContent = text;
+        const marker = L.marker(labelPoint(h.points), {
+          icon: L.divIcon({ className: `house-num ${h.status}`, html: span, iconSize: [0, 0] }),
+          interactive: false, keyboard: false,
+        });
+        items.push({ marker, text, bounds: L.latLngBounds(h.points) });
+        group.addLayer(marker);
+      }
+      if (map.hasLayer(group)) update();
+    }
+
+    map.on('zoomend', update);
+    return {
+      rebuild,
+      update,
+      setVisible(v) {
+        if (v && !map.hasLayer(group)) { group.addTo(map); update(); }
+        if (!v && map.hasLayer(group)) map.removeLayer(group);
+      },
+    };
+  }
+
   // ---------- PDF ----------
   const TILE = 256;
   const worldPx = (z) => TILE * 2 ** z;
@@ -117,7 +209,7 @@
   }
 
   // Tekent de kaart (tegels + huizen) op een canvas dat het gebied van alle huizen toont.
-  async function renderMapCanvas(houses, view, W, H) {
+  async function renderMapCanvas(houses, view, W, H, showNumbers = true) {
     const frame = pdfFrame(houses, view, W, H);
     const { z, left, top } = frame;
     const canvas = document.createElement('canvas');
@@ -140,18 +232,21 @@
       g.globalAlpha = 0.55; g.fillStyle = st.color; g.fill();
       g.globalAlpha = 1; g.lineWidth = 2 * scale; g.strokeStyle = st.stroke; g.stroke();
     }
-    g.font = `bold ${Math.round(13 * scale)}px sans-serif`;
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.lineJoin = 'round'; g.lineWidth = 4 * scale;
-    for (const h of houses) {
-      if (!h.label || h.status === 'none') continue;
-      const ps = h.points.map(px);
-      const xs = ps.map((p) => p[0]), ys = ps.map((p) => p[1]);
-      const w = Math.max(...xs) - Math.min(...xs);
-      if (w < g.measureText(h.label).width * 0.8) continue; // past niet in het huis
-      const x = (Math.max(...xs) + Math.min(...xs)) / 2, y = (Math.max(...ys) + Math.min(...ys)) / 2;
-      g.strokeStyle = '#fff'; g.strokeText(h.label, x, y);
-      g.fillStyle = '#111'; g.fillText(h.label, x, y);
+    if (showNumbers) {
+      g.font = `800 ${Math.round(15 * scale)}px system-ui, sans-serif`;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineJoin = 'round'; g.lineWidth = 4.5 * scale;
+      for (const h of houses) {
+        const text = houseNumber(h);
+        if (!text || h.status === 'none') continue;
+        const ps = h.points.map(px);
+        const xs = ps.map((p) => p[0]), ys = ps.map((p) => p[1]);
+        const w = Math.max(...xs) - Math.min(...xs), hh = Math.max(...ys) - Math.min(...ys);
+        if (w < g.measureText(text).width + 6 * scale || hh < 18 * scale) continue; // past niet in het huis
+        const [x, y] = px(labelPoint(h.points));
+        g.strokeStyle = 'rgba(10,30,20,.9)'; g.strokeText(text, x, y);
+        g.fillStyle = '#fff'; g.fillText(text, x, y);
+      }
     }
     // verplichte bronvermelding
     g.font = `${Math.round(12 * scale)}px sans-serif`;
@@ -181,7 +276,7 @@
     });
   }
 
-  async function buildPdf({ title, houses, view, intro, logo }) {
+  async function buildPdf({ title, houses, view, intro, logo, showNumbers = true }) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const pw = 297, ph = 210, margin = 10;
@@ -207,7 +302,7 @@
     doc.setTextColor(0);
 
     const mapW = pw - 2 * margin, mapH = (mapW * MAP_MM.h) / MAP_MM.w;
-    const canvas = await renderMapCanvas(houses, view, PDF_W, pdfH());
+    const canvas = await renderMapCanvas(houses, view, PDF_W, pdfH(), showNumbers);
     doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, 20, mapW, mapH);
     doc.setDrawColor(150); doc.rect(margin, 20, mapW, mapH);
 
@@ -224,8 +319,7 @@
     }
 
     // tweede pagina: toelichting en overzicht van de huizen
-    const named = houses.filter((h) => h.label && h.status !== 'none')
-      .sort((a, b) => a.label.localeCompare(b.label, 'nl', { numeric: true }));
+    const named = houses.filter((h) => (h.number || h.label) && h.status !== 'none').sort(compareHouses);
     let y = 0;
     const newPage = (text) => { doc.addPage(); header(text, 14); y = 26; };
     const room = (need) => { if (y + need > ph - margin) { newPage(`${title} – vervolg`); } };
@@ -250,7 +344,7 @@
         if (y > ph - margin) { col++; y = top; if (col > 2) { newPage(`${title} – overzicht`); col = 0; } }
         const cx = margin + col * colW;
         doc.setFillColor(STATUS[h.status].color); doc.circle(cx + 2, y - 1, 1.8, 'F');
-        doc.text(doc.splitTextToSize(h.note ? `${h.label} – ${h.note}` : h.label, colW - 10)[0], cx + 6, y);
+        doc.text(doc.splitTextToSize(h.note ? `${houseTitle(h)} – ${h.note}` : houseTitle(h), colW - 10)[0], cx + 6, y);
         y += 6;
       }
     }
@@ -261,5 +355,5 @@
   ['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) =>
     document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
 
-  window.Wijk = { STATUS, createMap, houseStyle, buildPdf, prefetchTiles, DEFAULT_VIEW };
+  window.Wijk = { STATUS, createMap, houseStyle, buildPdf, prefetchTiles, DEFAULT_VIEW, houseTitle, compareHouses, natCompare, labelPoint, createNumberLayer };
 })();

@@ -21,10 +21,22 @@
   <h1 id="title">Onze wijk</h1>
   <span id="offline" class="badge" hidden>Offline – laatst bekende stand</span>
   <div class="legend"><span><i class="dot green"></i>Groen</span><span><i class="dot red"></i>Rood</span></div>
-  <button id="intro-btn" hidden>ℹ Uitleg</button>
-  <button id="pdf-view">📄 PDF bekijken</button>
-  <button id="pdf-dl" class="primary">⬇ PDF downloaden</button>
-  <button id="install" hidden>📲 Installeer app</button>
+  <label class="switch" title="Huisnummers op de kaart tonen">
+    <input type="checkbox" id="num-switch" role="switch" aria-label="Huisnummers op de kaart tonen">
+    <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+    <span class="switch-text">Huisnummers</span>
+    <svg class="num-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+      <path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" fill="currentColor" fill-opacity=".15" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <text x="12" y="17.2" text-anchor="middle" font-size="9.5" font-weight="800" fill="currentColor" font-family="system-ui,sans-serif">12</text>
+    </svg>
+  </label>
+  <nav class="actions" aria-label="Acties">
+    <button id="intro-btn" hidden aria-label="Uitleg"><span class="ico">ℹ</span><span class="lbl">Uitleg</span></button>
+    <button id="streets-btn" aria-label="Straten tonen of verbergen" aria-haspopup="dialog" hidden><span class="ico">🛣️</span><span class="lbl">Straten</span></button>
+    <button id="pdf-view" aria-label="PDF bekijken"><span class="ico">📄</span><span class="lbl">PDF bekijken</span></button>
+    <button id="pdf-dl" class="primary" aria-label="PDF opslaan"><span class="ico">⬇</span><span class="lbl">PDF opslaan</span></button>
+    <button id="install" hidden aria-label="Installeer app"><span class="ico">📲</span><span class="lbl">Installeer app</span></button>
+  </nav>
 </header>
 <div class="viewport" id="vp"></div>
 
@@ -32,6 +44,14 @@
   <h3 id="intro-title"></h3>
   <div id="intro-text" class="intro-text"></div>
   <p><button id="intro-close" class="primary">Sluiten</button></p>
+</dialog>
+
+<dialog id="streets-dialog" aria-labelledby="streets-title">
+  <h3 id="streets-title">Straten</h3>
+  <p class="muted">Kies welke straten op de kaart (en in de PDF) te zien zijn.</p>
+  <div class="row"><button id="streets-all">Alles tonen</button><button id="streets-none">Alles verbergen</button></div>
+  <div id="streets-list" class="streets-list"></div>
+  <p><button id="streets-close" class="primary">Sluiten</button></p>
 </dialog>
 
 <script src="/vendor/leaflet/leaflet.js"></script>
