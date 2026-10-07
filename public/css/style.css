@@ -180,3 +180,4 @@ dialog { max-height: 92vh; overflow-y: auto; }
 .street-name { order: 0; }
 
 select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+.secret { -webkit-text-security: disc; text-security: disc; }
