@@ -18,4 +18,14 @@ function normalizeHouse(h) {
   };
 }
 
-module.exports = { normalizeHouse, STATUSES };
+const DEFAULT_LABELS = { green: 'Groen', red: 'Rood', none: 'Niet gemarkeerd' };
+
+// Namen van de statussen (door de beheerder aan te passen); ontbrekende of lege namen vallen terug op de standaard.
+function statusLabels(settings) {
+  const l = settings?.labels || {};
+  const out = {};
+  for (const k of STATUSES) out[k] = clean(l[k], 24) || DEFAULT_LABELS[k];
+  return out;
+}
+
+module.exports = { normalizeHouse, STATUSES, statusLabels, DEFAULT_LABELS };
