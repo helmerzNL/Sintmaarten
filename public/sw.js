@@ -103,8 +103,8 @@ self.addEventListener('push', (e) => {
   try { data = e.data ? e.data.json() : {}; } catch { data = { body: e.data ? e.data.text() : '' }; }
   e.waitUntil(self.registration.showNotification(data.title || 'Melding', {
     body: data.body || '',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/favicon-32.png',
+    icon: '/icons/admin-192.png',
+    badge: '/icons/admin-favicon-32.png',
     tag: data.tag || 'melding',
     renotify: true,
     data: { url: data.url || '/' },

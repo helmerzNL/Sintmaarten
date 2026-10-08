@@ -653,6 +653,23 @@ test('toegangscode voor apparaten zonder GPS (schakelaar en code in het beheer)'
   for (const rr of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${rr.rid}`, 'DELETE');
 });
 
+test('beheer heeft een eigen PWA-manifest, icoon en favicon', async () => {
+  const m = await (await j('/beheer.webmanifest')).json();
+  assert.deepEqual([m.start_url, m.scope, m.short_name, m.display], ['/beheer', '/beheer', 'Beheer', 'standalone']);
+  assert.match(m.name, /Beheer$/);
+  assert.ok(m.icons.some((i) => i.sizes === '512x512' && i.purpose === 'maskable'));
+  for (const i of m.icons) assert.equal((await j(i.src)).status, 200, i.src); // de iconen bestaan echt
+  const html = await (await j('/beheer')).text();
+  assert.match(html, /rel="manifest" href="\/beheer\.webmanifest"/);
+  assert.match(html, /rel="icon"[^>]*admin-favicon-32\.png/);
+  assert.match(html, /rel="apple-touch-icon" href="\/icons\/admin-apple-touch-icon\.png"/);
+  assert.equal((await j('/icons/admin-favicon-32.png')).status, 200);
+  assert.equal((await j('/icons/admin-apple-touch-icon.png')).status, 200);
+  // de publieke site houdt zijn eigen manifest en icoon
+  const pub = await (await j('/manifest.webmanifest')).json();
+  assert.equal(pub.start_url, '/');
+});
+
 test('bewoners: uitschakelen, beheerrechten en push-registratie', async () => {
   for (const [m, p] of [['GET', '/changes'], ['POST', '/changes/approve-all'], ['DELETE', '/residents/x'], ['GET', '/push/key'], ['POST', '/push/test']]) {
     assert.equal((await j(`/api/admin${p}`, { method: m, headers: jsonH() })).status, 401, p);

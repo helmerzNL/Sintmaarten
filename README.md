@@ -35,33 +35,35 @@ Een interactieve kaart van de wijk waarop elk huis **groen**, **rood** of **niet
 
 Voorbeeld met willekeurige huizen (kaartgegevens © OpenStreetMap-bijdragers).
 
-**Publieke kaart** – met het logo van de vereniging; klik op een huis voor de notitie. Bovenaan staan de knoppen voor de uitleg, de straten en het menu *Meer* (⋯) met de PDF-knoppen.
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/publiek.png"><img src="docs/screenshots/publiek.png" width="270" alt="Publieke kaart"></a><br><sub>Publieke kaart</sub></td><td align="center" valign="top"><a href="docs/screenshots/straten-popup.png"><img src="docs/screenshots/straten-popup.png" width="270" alt="Straten per straat tonen/verbergen"></a><br><sub>Straten per straat tonen/verbergen</sub></td><td align="center" valign="top"><a href="docs/screenshots/uitleg.png"><img src="docs/screenshots/uitleg.png" width="270" alt="Uitleg met infovlak"></a><br><sub>Uitleg met infovlak</sub></td></tr>
+</table>
 
-![Publieke kaart](docs/screenshots/publiek.png)
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/mobiel.png"><img src="docs/screenshots/mobiel.png" width="220" alt="Mobiel"></a><br><sub>Mobiel</sub></td><td align="center" valign="top"><a href="docs/screenshots/straten-popup-mobiel.png"><img src="docs/screenshots/straten-popup-mobiel.png" width="220" alt="Straten (mobiel)"></a><br><sub>Straten (mobiel)</sub></td><td align="center" valign="top"><a href="docs/screenshots/info-vlak-mobiel.png"><img src="docs/screenshots/info-vlak-mobiel.png" width="220" alt="Infovlak in de uitleg"></a><br><sub>Infovlak in de uitleg</sub></td></tr>
+</table>
+
+**Publieke kaart** – met het logo van de vereniging; klik op een huis voor de notitie. Bovenaan staan de knoppen voor de uitleg, de straten en het menu *Meer* (⋯) met de PDF-knoppen.
 
 **Mobiel** – bovenaan alleen het logo, de titel en de schakelaar voor huisnummers; de acties (uitleg, straten, Meer) staan onderaan, met het statusbalkje (groen/rood) er altijd net boven.
 
-![Mobiel](docs/screenshots/mobiel.png)
-
 **Straten** – met het straat-icoon (🛣️) in de menubalk zet je per straat de huizen op de kaart (en in de PDF) aan of uit. Per straat staat hoeveel huizen **groen** en **rood** zijn, en bovenaan het totaal van de zichtbare straten.
-
-![Straten](docs/screenshots/straten-popup.png)
 
 **Uitleg en infovlak** – de tekst van de vereniging; wordt de eerste keer automatisch getoond en sluit met het kruisje rechtsboven. Bovenaan staat het opvallende groene **infovlak** dat uitlegt dat bewoners hun eigen huis kunnen wijzigen; dat verdwijnt zodra wijzigen is uitgeschakeld.
 
-![Uitleg](docs/screenshots/uitleg.png)
-![Infovlak](docs/screenshots/info-vlak-mobiel.png)
-
 **PDF-export** – A4 liggend met legenda, aantallen en de datum en het tijdstip (HH:MM) van de stand. Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen. De PDF volgt de gekozen straten en de huisnummers.
 
-![PDF-export](docs/screenshots/pdf.png)
-![PDF-toelichting](docs/screenshots/pdf-toelichting.png)
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/pdf.png"><img src="docs/screenshots/pdf.png" width="400" alt="PDF: kaart met legenda en aantallen"></a><br><sub>PDF: kaart met legenda en aantallen</sub></td><td align="center" valign="top"><a href="docs/screenshots/pdf-toelichting.png"><img src="docs/screenshots/pdf-toelichting.png" width="400" alt="PDF: logo, uitleg en overzicht"></a><br><sub>PDF: logo, uitleg en overzicht</sub></td></tr>
+</table>
 
 ## Bewoners: huis wijzigen
 - In de **geïnstalleerde app** (PWA) staat in de menubalk altijd een knop **Huis wijzigen**, plus een knop **Sync** (🔄) waarmee je de huizen direct bijwerkt (de app ververst ook zelf elke 30 seconden).
 - In een **gewone browser** staat bovenin een schakelaar **Bewerken** (✏️). Die staat **standaard aan** (zet je hem uit, dan onthoudt de browser dat), zodat de knop *Huis wijzigen* in de menubalk staat; zet je hem uit, dan verdwijnt die knop. *PDF opslaan* en *PDF bekijken* staan onder het menu **Meer** (⋯), ook in de app. Het balkje met de statuskleuren zweeft op een klein scherm altijd net boven de menubalk. In de app is deze schakelaar verborgen.
 
-![Bewerken en Meer-menu](docs/screenshots/bewerken-meer-mobiel.png)
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/bewerken-meer-mobiel.png"><img src="docs/screenshots/bewerken-meer-mobiel.png" width="190" alt="Menu Meer"></a><br><sub>Menu Meer</sub></td><td align="center" valign="top"><a href="docs/screenshots/bewoner-kies-huis.png"><img src="docs/screenshots/bewoner-kies-huis.png" width="190" alt="Huis kiezen"></a><br><sub>Huis kiezen</sub></td><td align="center" valign="top"><a href="docs/screenshots/bewoner-wacht.png"><img src="docs/screenshots/bewoner-wacht.png" width="190" alt="Wacht op goedkeuring"></a><br><sub>Wacht op goedkeuring</sub></td><td align="center" valign="top"><a href="docs/screenshots/bewoner-heropend.png"><img src="docs/screenshots/bewoner-heropend.png" width="190" alt="App heropend: koppeling blijft"></a><br><sub>App heropend: koppeling blijft</sub></td></tr>
+</table>
 
 **Snel naar jouw huis** – met een muis dubbelklik je op een huis, op een touchscreen druk je er lang op (ruim een halve seconde). Dan gaat *Bewerken* aan (in de browser), springt de kaart naar het huis en start de wijzigmodus; heb je nog geen huis gekozen, dan vraagt de app of het jouw huis is. Een dubbelklik buiten de huizen zoomt gewoon in. In het beheer selecteert hetzelfde gebaar het huis in de selecteermodus.
 
@@ -79,48 +81,42 @@ Voorbeeld met willekeurige huizen (kaartgegevens © OpenStreetMap-bijdragers).
 
 **Infovlak** – onder *Instellingen → Site → Teksten* staat een apart tekstveld voor het infovlak. Dat staat als opvallend groen blok bovenaan de uitleg op de website en legt uit dat bewoners hun eigen huis kunnen wijzigen. Het verdwijnt vanzelf zodra wijzigen door bewoners uit staat (of de geplande datum is verstreken).
 
-![Infovlak in de uitleg](docs/screenshots/info-vlak-mobiel.png)
-
 **Misbruik tegengaan** – onder *Instellingen → Goedkeuren* en *Bewoners → Apparaten* staat bij elke openstaande wijziging en bij elk aangemeld apparaat een knop **Blokkeren**. Het apparaat verliest zijn koppeling en openstaande wijzigingen, en kan niet meer wijzigen of een huis kiezen. Je kunt er ook het **IP-adres** bij blokkeren (let op: huisgenoten of buren achter dezelfde router delen vaak een IP). Onder *Geblokkeerd* haal je een blokkade weer weg.
 
 **Alleen in de app toestaan** – onder *Instellingen → Bewoners* zet je **Alleen in de geïnstalleerde app** aan. De schakelaar *Bewerken* verdwijnt dan voor browserbezoekers (ook bij een open pagina, na het verversen), en de server weigert wijzigingen die niet vanuit de app komen. De app meldt zich daarvoor met een kop (`X-App-Mode: standalone`). Dat is een gebruiksbeperking: wie de verzoeken zelf nabootst kan de kop meesturen, maar elke wijziging moet nog steeds door de beheerder worden goedgekeurd.
 
-![Alleen in de app](docs/screenshots/instellingen-alleen-app.png)
 - Een bewoner tikt op zijn huis (of kiest zijn adres) en bevestigt dat. Dat apparaat is dan aan **één huis** gekoppeld (cookie, 1 jaar). Daarna wisselt elke tik op dat huis (of een keuze in het venster) de kleur: niet gemarkeerd → groen → rood → niet gemarkeerd. Andere huizen kunnen niet worden gewijzigd.
 - De wijziging is **pas zichtbaar voor anderen nadat de beheerder die goedkeurt**. De bewoner ziet het huis in de tussentijd met een gestippelde rand en de melding *Wacht op goedkeuring*; na de beslissing volgt een bericht (goedgekeurd of niet doorgevoerd). De beheerder kan de status van een huis altijd zelf aanpassen; een openstaand voorstel volgt dan de nieuwe status of vervalt als het precies overeenkomt.
 - Er worden alleen een willekeurig apparaat-token (als hash), het IP-adres van het laatste verzoek (voor het blokkeren) en het gekozen huis bewaard, geen namen of andere persoonsgegevens.
 - De koppeling en het voorstel blijven **bewaard na het afsluiten van de app**: ze staan op de server, met een lokale kopie van het token als reserve (voor als de cookie wordt gewist) en van de laatste status (voor als er geen verbinding is). Het eigen huis blijft ook buiten de wijzigmodus zichtbaar (⏳ zolang de wijziging op goedkeuring wacht, daarna 🏠).
 - De app **ververst zichzelf** (elke 30 seconden, en zodra je terugkeert naar de app of weer online bent). Keurt de beheerder een wijziging goed, dan verschijnt die vanzelf op het apparaat, inclusief een melding "Je wijziging is goedgekeurd".
 
-![Huis kiezen](docs/screenshots/bewoner-kies-huis.png)
-![Wacht op goedkeuring](docs/screenshots/bewoner-wacht.png)
-
 ## Het beheer (`/beheer`)
+
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/onboarding.png"><img src="docs/screenshots/onboarding.png" width="400" alt="Onboarding met installatiecode"></a><br><sub>Onboarding met installatiecode</sub></td><td align="center" valign="top"><a href="docs/screenshots/beheer-login.png"><img src="docs/screenshots/beheer-login.png" width="400" alt="Inloggen met passkey"></a><br><sub>Inloggen met passkey</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/beheer-tekenen.png"><img src="docs/screenshots/beheer-tekenen.png" width="400" alt="Huis tekenen"></a><br><sub>Huis tekenen</sub></td><td align="center" valign="top"><a href="docs/screenshots/beheer.png"><img src="docs/screenshots/beheer.png" width="400" alt="Huis bewerken"></a><br><sub>Huis bewerken</sub></td></tr>
+</table>
 
 **Onboarding** – de eerste keer maak je een passkey aan met de installatiecode (`SETUP_TOKEN`).
 
-![Onboarding](docs/screenshots/onboarding.png)
-
 **Inloggen** – met passkey (vingerafdruk, gezicht, pincode of beveiligingssleutel), eventueel met wachtwoord dat je met een passkey bevestigt.
-
-![Inloggen](docs/screenshots/beheer-login.png)
 
 **Huis tekenen** – kies een kleur en klik de hoekpunten van het huis; sluit af met het gele beginpunt, dubbelklik of Enter. Nieuwe huizen krijgen standaard *geen status* en de actieve straat.
 
-![Huis tekenen](docs/screenshots/beheer-tekenen.png)
-
 **Huis bewerken** – selecteer een huis (klik, dubbelklik of lang indrukken) om de kleur, straat, huisnummer en notitie aan te passen, of sleep de hoekpunten. Sneltoetsen: **G** groen, **R** rood, **Delete** verwijderen, **Ctrl+S** opslaan. De lijst links heeft een filter per straat; de rest wordt op de kaart gedimd.
-
-![Beheerscherm](docs/screenshots/beheer.png)
 
 ## Instellingen
 Het tandwiel (⚙) in de balk schuift het instellingen-menu in beeld. Het is ingedeeld in vijf tabs; elke tab bestaat uit kaarten met duidelijke schakelaars en een korte uitleg (ook op een telefoon).
 
-![Instellingen op een telefoon](docs/screenshots/instellingen-mobiel.png)
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/instellingen-goedkeuren.png"><img src="docs/screenshots/instellingen-goedkeuren.png" width="270" alt="Goedkeuren"></a><br><sub>Goedkeuren</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-bewoners.png"><img src="docs/screenshots/instellingen-bewoners.png" width="270" alt="Bewoners"></a><br><sub>Bewoners</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-bewoners-apparaten.png"><img src="docs/screenshots/instellingen-bewoners-apparaten.png" width="270" alt="Bewoners: apparaten en meldingen"></a><br><sub>Bewoners: apparaten en meldingen</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/instellingen-site.png"><img src="docs/screenshots/instellingen-site.png" width="270" alt="Site"></a><br><sub>Site</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-beveiliging.png"><img src="docs/screenshots/instellingen-beveiliging.png" width="270" alt="Beveiliging"></a><br><sub>Beveiliging</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-backups.png"><img src="docs/screenshots/instellingen-backups.png" width="270" alt="Backups"></a><br><sub>Backups</sub></td></tr>
+</table>
+
+<p align="center"><a href="docs/screenshots/instellingen-mobiel.png"><img src="docs/screenshots/instellingen-mobiel.png" width="220" alt="Instellingen op een telefoon"></a><br><sub>Instellingen op een telefoon</sub></p>
 
 **Goedkeuren** – de wijzigingen die bewoners voor hun eigen huis hebben aangevraagd. Een rode teller bij het tandwiel en bij de tab toont het aantal; keur ze goed of af, of alles tegelijk.
-
-![Goedkeuren](docs/screenshots/instellingen-goedkeuren.png)
 
 **Bewoners** – alles rond het wijzigen door bewoners:
 - *Wijzigen door bewoners*: aan/uit, en eventueel alleen in de geïnstalleerde app (de schakelaar *Bewerken* verdwijnt dan in de browser en de server weigert wijzigingen zonder de app-kop `X-App-Mode: standalone`).
@@ -129,20 +125,11 @@ Het tandwiel (⚙) in de balk schuift het instellingen-menu in beeld. Het is ing
 - *Apparaten*: aangemelde apparaten (koppeling verwijderen of **blokkeren**, eventueel met IP-adres) en de lijst *Geblokkeerd*.
 - *Meldingen op dit apparaat*: pushmeldingen voor nieuwe wijzigingen.
 
-![Bewoners](docs/screenshots/instellingen-bewoners.png)
-![Bewoners: apparaten en meldingen](docs/screenshots/instellingen-bewoners-apparaten.png)
-
 **Site** – logo, naam van de site en de app, de eenvoudige weergave, de namen van de statussen, het infovlak en de uitleg.
-
-![Site](docs/screenshots/instellingen-site.png)
 
 **Beveiliging** – passkeys toevoegen/verwijderen en een optioneel wachtwoord (bevestigen met passkey).
 
-![Instellingen: beveiliging](docs/screenshots/instellingen-beveiliging.png)
-
 **Backups** – na elke opslagpoging wordt automatisch een backup gemaakt van de layout en teksten. Geef een backup een **korte titel** (✎, max. 40 tekens, bijvoorbeeld "Alles" of "Alleen layout") of maak er zelf een met *Backup maken*. Terugzetten of downloaden kan altijd; verwijderen (één of meer tegelijk) moet je bevestigen met je passkey.
-
-![Instellingen: backups](docs/screenshots/instellingen-backups.png)
 
 **Versie** – onderin het menu staat de versie en commit van de draaiende build (zie [Versienummer](#versienummer)).
 
@@ -198,6 +185,9 @@ Elke backup kan een **korte titel** krijgen (max. 40 tekens, knop ✎), bijvoorb
 ## Naam van de app
 Bij *Instellingen* (⚙) → *Site* stel je ook de **naam van de site** in (naast het logo en in de PDF; standaard `SITE_TITLE`) en de **naam van de app** en een korte naam (max. 12 tekens, onder het icoon) in. Die worden gebruikt als de site op een telefoon of computer wordt geïnstalleerd.
 Zonder invoer geldt de sitenaam (`SITE_TITLE`). Een al geïnstalleerde app neemt een nieuwe naam pas na een tijdje over.
+
+## Beheer als app
+Ook het beheer (`/beheer`) is te installeren als eigen app, met een eigen donkerblauwe lantaarn met tandwiel als icoon en een eigen favicon, zodat je het onderscheidt van de publieke kaart (Chrome/Edge: installeer-icoon in de adresbalk of *App installeren*; iPhone/iPad: *Zet in beginscherm*). De app opent direct op `/beheer`; pushmeldingen voor nieuwe wijzigingen gebruiken hetzelfde icoon. Een nieuw icoon maak je met `python3 tools/make-icons.py`.
 
 ## Installeren als app en offline gebruik
 - **Android en Windows (Chrome/Edge)**: je krijgt **eenmalig** een melding om de app te installeren (*Installeren* / *Niet nu*), per apparaat onthouden. Daarna kan het ook via het browsermenu → *App installeren*.
