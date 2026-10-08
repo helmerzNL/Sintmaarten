@@ -62,16 +62,32 @@ function userId() {
 // ---------- publiek ----------
 // Naam van de site: instelling in het beheer, anders SITE_TITLE uit de omgeving.
 const lang = require('./lang');
-const siteTitle = () => store.db().settings?.siteTitle || config.siteTitle;
+lang.migrate();
+const siteTitle = () => lang.text('siteTitle') || config.siteTitle; // in de standaardtaal van de site
+
+// Teksten in andere talen zoals bezoekers ze zien (het infovlak alleen als wijzigen door bewoners aan staat).
+function publicTranslations() {
+  const out = {};
+  for (const l of lang.LANGS) {
+    if (l === 'nl') continue;
+    const t = lang.translations(l);
+    out[l] = {
+      siteTitle: t.siteTitle || '', appName: t.appName || '', appShortName: t.appShortName || '', intro: t.intro || '',
+      residentInfo: residents.enabled() ? t.residentInfo || '' : '',
+      labels: { green: t.labels?.green || '', red: t.labels?.red || '', none: t.labels?.none || '' },
+    };
+  }
+  return out;
+}
 
 app.get('/api/map', (req, res) => {
   const { view, houses, settings } = store.db();
   res.set('Cache-Control', 'no-cache');
   res.json({
-    title: siteTitle(), siteTitle: settings?.siteTitle || '', view, houses,
+    title: settings?.siteTitle || config.siteTitle, siteTitle: settings?.siteTitle || '', view, houses,
     intro: settings?.intro || '', logo: settings?.logo || null,
     multilingual: lang.multilingual(), defaultLang: lang.defaultLang(),
-    introEn: settings?.introEn || '', residentInfoEn: settings?.residentInfoEn || '',
+    translations: publicTranslations(),
     appName: settings?.appName || '', appShortName: settings?.appShortName || '',
     residentsEnabled: residents.mode() !== 'closed', // ook 'swap': dan blijft de knop zichtbaar voor wie al een huis heeft
     residentsMode: residents.mode(),
@@ -89,9 +105,8 @@ app.use('/uploads', express.static(store.uploadDir, { immutable: true, maxAge: '
 
 // PWA-manifest met de naam van de site
 app.get('/manifest.webmanifest', (req, res) => {
-  const st = store.db().settings || {};
-  const name = st.appName || siteTitle();
-  const shortName = st.appShortName || (name.length > 12 ? name.slice(0, 12) : name);
+  const name = lang.text('appName') || siteTitle();
+  const shortName = lang.text('appShortName') || (name.length > 12 ? name.slice(0, 12) : name);
   res.type('application/manifest+json').json({
     name,
     short_name: shortName,
@@ -112,8 +127,7 @@ app.get('/manifest.webmanifest', (req, res) => {
 
 // Eigen PWA-manifest voor het beheer: andere naam, icoon en kleur, en alleen het pad /beheer
 app.get('/beheer.webmanifest', (req, res) => {
-  const st = store.db().settings || {};
-  const name = st.appName || siteTitle();
+  const name = lang.text('appName') || siteTitle();
   res.type('application/manifest+json').json({
     name: `${name} – Beheer`,
     short_name: 'Beheer',
@@ -402,41 +416,45 @@ admin.delete('/logo', (req, res) => {
 // Instellingen zoals bewaard (voor het beheerscherm); /api/map geeft de actuele, effectieve waarden.
 admin.get('/settings', (req, res) => {
   const s = store.db().settings;
-  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null, residentsSwapAfter: s.residentsSwapAfter === true, residentsGeofence: s.residentsGeofence === true, simpleUi: s.simpleUi === true, residentsQrOnly: s.residentsQrOnly === true, residentsCodeOn: s.residentsCodeOn === true, residentsCode: s.residentsCode || '', residentsGeofenceRadius: residents.geofence().radius, multilingual: lang.multilingual(), defaultLang: lang.defaultLang(), introEn: s.introEn || '', residentInfoEn: s.residentInfoEn || '' });
+  const tx = {};
+  for (const l of lang.LANGS) {
+    if (l === 'nl') continue;
+    const t = lang.translations(l);
+    tx[l] = Object.fromEntries([...lang.TEXT_FIELDS.map((f) => [f, t[f] || '']), ['labels', { green: t.labels?.green || '', red: t.labels?.red || '', none: t.labels?.none || '' }]]);
+  }
+  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null, residentsSwapAfter: s.residentsSwapAfter === true, residentsGeofence: s.residentsGeofence === true, simpleUi: s.simpleUi === true, residentsQrOnly: s.residentsQrOnly === true, residentsCodeOn: s.residentsCodeOn === true, residentsCode: s.residentsCode || '', residentsGeofenceRadius: residents.geofence().radius, multilingual: lang.multilingual(), defaultLang: lang.defaultLang(), qrShareText: s.qrShareText || '', translations: tx, defaultShareTexts: residents.defaultShareTexts(), defaultInfo: residents.DEFAULT_INFO });
 });
+
+// Tekstvelden met hun maximale lengte; gelden voor het Nederlands (gewone instellingen) en voor elke vertaling.
+const TEXT_RULES = {
+  siteTitle: { max: 60, error: 'De naam van de site mag maximaal 60 tekens zijn' },
+  appName: { max: 45, error: 'De naam van de app mag maximaal 45 tekens zijn' },
+  appShortName: { max: 12, error: 'De korte naam mag maximaal 12 tekens zijn (past onder het icoon)' },
+  intro: { max: 5000, multiline: true, error: 'De uitleg mag maximaal 5000 tekens zijn' },
+  residentInfo: { max: 1000, multiline: true, error: 'Het infovlak mag maximaal 1000 tekens zijn' },
+  qrShareText: { max: 500, multiline: true, error: 'De deeltekst mag maximaal 500 tekens zijn' },
+};
+// { value } of { error }
+function cleanText(field, raw) {
+  const r = TEXT_RULES[field];
+  let v = String(raw ?? '');
+  v = (r.multiline ? v.replace(/\r\n?/g, '\n') : v).trim();
+  return v.length > r.max ? { error: r.error } : { value: v };
+}
 
 admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (req, res) => {
   const body = req.body || {};
   const db = store.db();
-  if ('intro' in body) {
-    const intro = String(body.intro ?? '').replace(/\r\n?/g, '\n').trim();
-    if (intro.length > 5000) return res.status(400).json({ error: 'De uitleg mag maximaal 5000 tekens zijn' });
-    db.settings.intro = intro;
-  }
-  if ('introEn' in body) {
-    const t = String(body.introEn ?? '').replace(/\r\n?/g, '\n').trim();
-    if (t.length > 5000) return res.status(400).json({ error: 'De uitleg mag maximaal 5000 tekens zijn' });
-    db.settings.introEn = t;
-  }
-  if ('residentInfoEn' in body) {
-    const t = String(body.residentInfoEn ?? '').replace(/\r\n?/g, '\n').trim();
-    if (t.length > 1000) return res.status(400).json({ error: 'Het infovlak mag maximaal 1000 tekens zijn' });
-    db.settings.residentInfoEn = t;
+  for (const f of ['intro', 'residentInfo', 'qrShareText']) {
+    if (!(f in body)) continue;
+    const r = cleanText(f, body[f]);
+    if (r.error) return res.status(400).json({ error: r.error });
+    db.settings[f] = r.value; // qrShareText leeg = standaardtekst
   }
   if ('multilingual' in body) db.settings.multilingual = body.multilingual === true;
   if ('defaultLang' in body) {
     if (!lang.LANGS.includes(body.defaultLang)) return res.status(400).json({ error: 'Onbekende taal' });
     db.settings.defaultLang = body.defaultLang;
-  }
-  if ('residentInfo' in body) {
-    const text = String(body.residentInfo ?? '').replace(/\r\n?/g, '\n').trim();
-    if (text.length > 1000) return res.status(400).json({ error: 'Het infovlak mag maximaal 1000 tekens zijn' });
-    db.settings.residentInfo = text;
-  }
-  if ('qrShareText' in body) {
-    const text = String(body.qrShareText ?? '').replace(/\r\n?/g, '\n').trim();
-    if (text.length > 500) return res.status(400).json({ error: 'De deeltekst mag maximaal 500 tekens zijn' });
-    db.settings.qrShareText = text; // leeg = standaardtekst
   }
   if ('residentsOff' in body || 'residentsUntil' in body) {
     const off = 'residentsOff' in body ? body.residentsOff === true : db.settings.residentsOff === true;
@@ -483,20 +501,36 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     }
     db.settings.labels = next;
   }
-  if ('siteTitle' in body) {
-    const title = String(body.siteTitle ?? '').trim();
-    if (title.length > 60) return res.status(400).json({ error: 'De naam van de site mag maximaal 60 tekens zijn' });
-    db.settings.siteTitle = title;
+  for (const f of ['siteTitle', 'appName', 'appShortName']) {
+    if (!(f in body)) continue;
+    const r = cleanText(f, body[f]);
+    if (r.error) return res.status(400).json({ error: r.error });
+    db.settings[f] = r.value;
   }
-  if ('appName' in body) {
-    const name = String(body.appName ?? '').trim();
-    if (name.length > 45) return res.status(400).json({ error: 'De naam van de app mag maximaal 45 tekens zijn' });
-    db.settings.appName = name;
-  }
-  if ('appShortName' in body) {
-    const short = String(body.appShortName ?? '').trim();
-    if (short.length > 12) return res.status(400).json({ error: 'De korte naam mag maximaal 12 tekens zijn (past onder het icoon)' });
-    db.settings.appShortName = short;
+  // Teksten in andere talen: { en: { siteTitle, appName, appShortName, intro, residentInfo, qrShareText, labels: { green, red, none } } }
+  if (body.translations !== undefined) {
+    if (!body.translations || typeof body.translations !== 'object') return res.status(400).json({ error: 'Ongeldige vertalingen' });
+    const next = JSON.parse(JSON.stringify(db.settings.translations || {}));
+    for (const [l, vals] of Object.entries(body.translations)) {
+      if (!lang.LANGS.includes(l) || l === 'nl' || !vals || typeof vals !== 'object') return res.status(400).json({ error: 'Onbekende taal' });
+      const cur = (next[l] = next[l] || {});
+      for (const f of lang.TEXT_FIELDS) {
+        if (!(f in vals)) continue;
+        const r = cleanText(f, vals[f]);
+        if (r.error) return res.status(400).json({ error: r.error });
+        cur[f] = r.value; // leeg = valt terug op het Nederlands
+      }
+      if (vals.labels && typeof vals.labels === 'object') {
+        cur.labels = cur.labels || {};
+        for (const k of STATUSES) {
+          if (!(k in vals.labels)) continue;
+          const v = String(vals.labels[k] ?? '').trim();
+          if (v.length > 24) return res.status(400).json({ error: 'Een naam mag maximaal 24 tekens zijn' });
+          cur.labels[k] = v;
+        }
+      }
+    }
+    db.settings.translations = next;
   }
   store.save();
   res.json({ labels: statusLabels(db.settings), residentsEnabled: db.settings.residentsEnabled !== false, residentsAppOnly: db.settings.residentsAppOnly === true, intro: db.settings.intro, siteTitle: db.settings.siteTitle, appName: db.settings.appName, appShortName: db.settings.appShortName });

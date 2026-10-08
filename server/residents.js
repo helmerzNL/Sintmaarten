@@ -8,14 +8,14 @@ const store = require('./store');
 const auth = require('./auth');
 const backups = require('./backups');
 const push = require('./push');
-const { tr, t } = require('./lang');
+const { tr, trIn, t, defaultLang, translations, LANGS } = require('./lang');
 const { STATUSES, statusLabels } = require('./houses');
 
 const COOKIE = 'sm_resident';
 const MAX_RESIDENTS = 3000;
 const MAX_PENDING = 500;
 const MAX_MESSAGES = 200, MAX_MESSAGE_LEN = 300;
-const statusName = (k) => tr(statusLabels(store.db().settings)[k]).toLowerCase();
+const statusName = (k) => tr(statusLabels(store.db().settings, defaultLang())[k]).toLowerCase();
 
 const db = () => store.db();
 const sha = (t) => crypto.createHash('sha256').update(t).digest('hex');
@@ -44,11 +44,17 @@ const enabled = () => mode() === 'open';
 const appOnly = () => (scheduled() ? false : storedAppOnly());
 const DEFAULT_INFO = 'Woon je in de wijk? Dan kun je in deze app zelf de status van jouw huis aanpassen. Tik op "Huis wijzigen", kies jouw huis en geef aan of het wel of niet is bezocht. Een wijziging wordt pas zichtbaar nadat de beheerder die heeft goedgekeurd.';
 const DEFAULT_SHARE_TEXT = 'Hallo! Dit is de persoonlijke link om jouw huis ({adres}) te koppelen in de wijkapp. Open de link op je telefoon: {link}';
-const shareText = () => {
-  const t = db().settings?.qrShareText;
-  return typeof t === 'string' && t.trim() ? t : tr(DEFAULT_SHARE_TEXT);
+// Tekst bij delen via WhatsApp in een taal: de eigen tekst van die taal, anders de standaardtekst in die taal.
+const shareText = (l = defaultLang()) => {
+  const own = l === 'nl' ? db().settings?.qrShareText : translations(l).qrShareText;
+  return typeof own === 'string' && own.trim() ? own : trIn(l, DEFAULT_SHARE_TEXT);
 };
-const info = () => {
+const shareTexts = () => Object.fromEntries(LANGS.map((l) => [l, shareText(l)]));
+const defaultShareTexts = () => Object.fromEntries(LANGS.map((l) => [l, trIn(l, DEFAULT_SHARE_TEXT)]));
+// Infovlak: standaard de Nederlandse tekst (of de standaardtekst); met een taal de eigen tekst van die taal als die er is.
+const info = (l = 'nl') => {
+  const own = l === 'nl' ? '' : translations(l).residentInfo;
+  if (typeof own === 'string' && own.trim()) return own;
   const t = db().settings?.residentInfo;
   return typeof t === 'string' ? t : DEFAULT_INFO;
 };
@@ -402,7 +408,7 @@ const list = () => {
   const blocked = (d.blocked || []).map((b) => ({ id: b.id, title: b.title, ip: b.ip || null, at: b.at }))
     .sort((a, b) => String(a.title).localeCompare(String(b.title), 'nl', { numeric: true, sensitivity: 'base' }));
   const messages = (d.messages || []).map((m) => ({ id: m.id, createdAt: m.createdAt, text: m.text, ownTitle: m.ownTitle, scannedTitle: m.scannedTitle })).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  return { messages, qrOnly: qrOnly(), shareText: shareText(), defaultShareText: tr(DEFAULT_SHARE_TEXT), enabled: storedEnabled(), appOnly: storedAppOnly(), code: { on: db().settings?.residentsCodeOn === true, code: codeSetting() }, geofence: { on: db().settings?.residentsGeofence === true, radius: geofence().radius, hasCenter: !!geoCenter() }, schedule: { swap: swapAfter(), on: db().settings?.residentsOff === true, until: db().settings?.residentsUntil || null, active: scheduled() }, pending: rows, residents, blocked };
+  return { messages, qrOnly: qrOnly(), shareTexts: shareTexts(), defaultShareTexts: defaultShareTexts(), enabled: storedEnabled(), appOnly: storedAppOnly(), code: { on: db().settings?.residentsCodeOn === true, code: codeSetting() }, geofence: { on: db().settings?.residentsGeofence === true, radius: geofence().radius, hasCenter: !!geoCenter() }, schedule: { swap: swapAfter(), on: db().settings?.residentsOff === true, until: db().settings?.residentsUntil || null, active: scheduled() }, pending: rows, residents, blocked };
 };
 
 admin.get('/changes', (req, res) => res.json(list()));
@@ -501,4 +507,4 @@ admin.post('/push/test', async (req, res) => {
   res.json(r);
 });
 
-module.exports = { resident, admin, prune, reconcile, enabled, mode, geofence, codeOn, qrOnly, GEO_MAX_ACC, GEO_MIN, GEO_MAX, GEO_DEFAULT_RADIUS, appOnly, info, untilMs, DEFAULT_INFO, DEFAULT_SHARE_TEXT };
+module.exports = { resident, admin, prune, reconcile, enabled, mode, geofence, codeOn, qrOnly, GEO_MAX_ACC, GEO_MIN, GEO_MAX, GEO_DEFAULT_RADIUS, appOnly, info, untilMs, DEFAULT_INFO, DEFAULT_SHARE_TEXT, shareText, defaultShareTexts };

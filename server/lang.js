@@ -17,4 +17,29 @@ const t = (tpl, vars) => {
   return x ? x.t(tpl, vars) : tpl.replace(/\{(\w+)\}/g, (m, n) => (vars && n in vars ? String(vars[n]) : m));
 };
 
-module.exports = { LANGS, multilingual, defaultLang, tr, t };
+const trIn = (l, s) => (translators[l] ? translators[l].tr(s) : s);
+
+// Teksten per taal: Nederlands staat in de gewone instellingen, andere talen in settings.translations[taal].
+// Een lege vertaling valt terug op de Nederlandse tekst.
+const TEXT_FIELDS = ['siteTitle', 'appName', 'appShortName', 'intro', 'residentInfo', 'qrShareText'];
+const translations = (l) => store.db().settings?.translations?.[l] || {};
+const text = (field, l = defaultLang()) => {
+  const own = l === 'nl' ? '' : translations(l)[field];
+  if (typeof own === 'string' && own.trim()) return own;
+  const base = store.db().settings?.[field];
+  return typeof base === 'string' ? base : '';
+};
+
+// Oudere versie: losse velden introEn en residentInfoEn -> translations.en
+function migrate() {
+  const s = store.db().settings;
+  if (!s || (!('introEn' in s) && !('residentInfoEn' in s))) return;
+  s.translations = s.translations || {};
+  s.translations.en = s.translations.en || {};
+  if (s.introEn && !s.translations.en.intro) s.translations.en.intro = s.introEn;
+  if (s.residentInfoEn && !s.translations.en.residentInfo) s.translations.en.residentInfo = s.residentInfoEn;
+  delete s.introEn; delete s.residentInfoEn;
+  store.save();
+}
+
+module.exports = { LANGS, TEXT_FIELDS, multilingual, defaultLang, tr, trIn, t, translations, text, migrate };

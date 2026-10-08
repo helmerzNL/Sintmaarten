@@ -189,16 +189,85 @@
   const langPicker = I18n.picker({ value: I18n.defaultLang, label: 'Standaardtaal', onSelect: (code) => saveLang({ defaultLang: code }) });
   $('org-lang-slot').append(langPicker);
   $('org-multi').onchange = () => saveLang({ multilingual: $('org-multi').checked });
-  function fillOrg() {
-    $('org-err').textContent = '';
-    $('org-intro').value = org.intro;
-    api('/api/admin/settings').then((st) => { $('org-info').value = st.residentInfo; $('org-simple').checked = st.simpleUi; $('org-info-en').value = st.residentInfoEn; $('org-intro-en').value = st.introEn; $('org-multi').checked = st.multilingual; langPicker.setValue(st.defaultLang); }).catch((e) => { $('org-err').textContent = e.message; });
-    $('org-title').value = org.siteTitle;
-    $('org-appname').value = org.appName;
-    $('org-short').value = org.appShortName;
-    for (const k of ['green', 'red', 'none']) $(`lbl-${k}`).value = org.labels && org.labels[k] !== DEFAULT_LABELS[k] ? org.labels[k] : '';
-    renderOrg();
+  // ---- Config: teksten per taal ----
+  // De velden onder de taalbalk bestaan per taal. Wat je typt blijft per taal bewaard (cfg.drafts) tot je opslaat.
+  const FIELD_IDS = { siteTitle: 'org-title', appName: 'org-appname', appShortName: 'org-short', residentInfo: 'org-info', intro: 'org-intro', qrShareText: 'org-share' };
+  const cfg = { st: null, drafts: {}, lang: I18n.defaultLang };
+  const cfgLang = () => (I18n.multi ? cfg.lang : I18n.defaultLang); // zonder meertalig bewerk je de standaardtaal
+  const draftFrom = (src, l, def) => {
+    const lab = src.labels || {};
+    return {
+      siteTitle: src.siteTitle || '', appName: src.appName || '', appShortName: src.appShortName || '',
+      residentInfo: src.residentInfo || '', intro: src.intro || '',
+      qrShareText: src.qrShareText || def.shareText[l],
+      labels: { green: lab.green || '', red: lab.red || '', none: lab.none || '' },
+    };
+  };
+  function storeFields() { // de velden van de getoonde taal naar het concept
+    const d = cfg.drafts[cfg.shown];
+    if (!d) return;
+    for (const [f, id] of Object.entries(FIELD_IDS)) d[f] = $(id).value;
+    for (const k of ['green', 'red', 'none']) d.labels[k] = $(`lbl-${k}`).value;
   }
+  function loadFields(l) { // het concept van taal l in de velden
+    cfg.shown = l;
+    const d = cfg.drafts[l], base = cfg.drafts.nl;
+    for (const [f, id] of Object.entries(FIELD_IDS)) {
+      const el = $(id);
+      el.value = d[f];
+      if (el.dataset.ph === undefined) el.dataset.ph = el.getAttribute('placeholder') || '';
+      // een andere taal toont de Nederlandse tekst als hint: leeg = die tekst
+      const fallback = l !== 'nl' && f !== 'qrShareText' ? base[f] : '';
+      el.setAttribute('placeholder', fallback ? I18n.t('Nederlands: {tekst}', { tekst: fallback.slice(0, 80) }) : el.dataset.ph);
+    }
+    for (const k of ['green', 'red', 'none']) {
+      const el = $(`lbl-${k}`);
+      if (el.dataset.ph === undefined) el.dataset.ph = el.getAttribute('placeholder') || '';
+      el.value = d.labels[k];
+      el.setAttribute('placeholder', l !== 'nl' && base.labels[k] ? base.labels[k] : el.dataset.ph);
+    }
+    renderOrg();
+    document.querySelectorAll('#cfg-langbar button').forEach((b) => b.setAttribute('aria-selected', b.dataset.lang === l));
+    document.querySelectorAll('.lang-chip').forEach((c) => c.replaceChildren(I18n.flag(l)));
+  }
+  function buildLangBar() {
+    const bar = $('cfg-langbar');
+    bar.classList.toggle('hidden', !I18n.multi);
+    bar.replaceChildren(...I18n.LANGS.map((x) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.setAttribute('role', 'tab'); b.dataset.lang = x.code;
+      b.append(I18n.flag(x.code), Object.assign(document.createElement('span'), { textContent: x.name }));
+      b.onclick = () => { if (x.code === cfg.shown) return; storeFields(); cfg.lang = x.code; loadFields(x.code); };
+      return b;
+    }));
+    // vlag-chipje bij elk veld dat per taal verschilt (alleen met meertalig)
+    document.querySelectorAll('#settings [data-perlang]').forEach((f) => {
+      let c = f.querySelector('.lang-chip');
+      if (!c) { c = document.createElement('span'); c.className = 'lang-chip'; f.querySelector('label').append(c); }
+      c.hidden = !I18n.multi;
+    });
+  }
+  async function fillOrg() {
+    $('org-err').textContent = '';
+    try {
+      const st = await api('/api/admin/settings');
+      cfg.st = st;
+      $('org-simple').checked = st.simpleUi;
+      $('org-multi').checked = st.multilingual;
+      langPicker.setValue(st.defaultLang);
+      const def = { shareText: st.defaultShareTexts };
+      const nl = draftFrom({ siteTitle: org.siteTitle, appName: org.appName, appShortName: org.appShortName, intro: org.intro, residentInfo: st.residentInfo, qrShareText: st.qrShareText, labels: customLabels(org.labels) }, 'nl', def);
+      cfg.drafts = { nl };
+      for (const [l, t] of Object.entries(st.translations || {})) cfg.drafts[l] = draftFrom(t, l, def);
+      buildLangBar();
+      if (!cfg.drafts[cfg.lang]) cfg.lang = I18n.defaultLang;
+      loadFields(cfgLang());
+    } catch (e) { $('org-err').textContent = e.message; }
+  }
+  // namen die van de standaardnaam afwijken (een gelijke naam is niet "eigen" en blijft leeg)
+  const customLabels = (labels) => Object.fromEntries(['green', 'red', 'none'].map((k) => [k, labels && labels[k] !== DEFAULT_LABELS[k] ? labels[k] : '']));
+  $('org-share-default').onclick = () => { $('org-share').value = cfg.st.defaultShareTexts[cfg.shown]; };
+  $('qr-share-goto').onclick = () => { openTab('org'); setTimeout(() => { $('org-share').scrollIntoView({ block: 'center' }); $('org-share').focus(); }, 150); };
   $('org-intro').oninput = renderOrg;
   $('org-simple').onchange = async () => {
     try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ simpleUi: $('org-simple').checked }), expectAuth: true }); toast($('org-simple').checked ? 'Eenvoudige weergave staat aan' : 'Eenvoudige weergave staat uit'); }
@@ -225,8 +294,13 @@
   $('org-save').onclick = async () => {
     $('org-err').textContent = '';
     try {
-      const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ intro: $('org-intro').value, residentInfo: $('org-info').value, introEn: $('org-intro-en').value, residentInfoEn: $('org-info-en').value, siteTitle: $('org-title').value, appName: $('org-appname').value, appShortName: $('org-short').value, labels: { green: $('lbl-green').value, red: $('lbl-red').value, none: $('lbl-none').value } }), expectAuth: true });
-      Wijk.setLabels(res.labels); org.labels = res.labels;
+      storeFields();
+      const norm = (l, d) => ({ ...d, qrShareText: d.qrShareText.trim() === cfg.st.defaultShareTexts[l] ? '' : d.qrShareText }); // gelijk aan de standaardtekst = leeg
+      const nl = norm('nl', cfg.drafts.nl);
+      const translations = Object.fromEntries(Object.entries(cfg.drafts).filter(([l]) => l !== 'nl').map(([l, d]) => [l, norm(l, d)]));
+      const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ ...nl, translations }), expectAuth: true });
+      const data = I18n.localize(await api('/api/map'));
+      Wijk.setLabels(data.labels); org.labels = res.labels;
       if (typeof render === 'function' && map) { render(); renderChangesIfOpen(); }
       org.intro = res.intro; org.siteTitle = res.siteTitle; org.appName = res.appName; org.appShortName = res.appShortName;
       toast('Opgeslagen ✔');
@@ -399,7 +473,7 @@
     if (h) { h.status = c.status; render(); }
   }
 
-  let shareDefault = 'Hallo! Dit is de persoonlijke link om jouw huis ({adres}) te koppelen in de wijkapp. Open de link op je telefoon: {link}', shareTpl = shareDefault;
+  let shareTexts = {}; // tekst bij delen via WhatsApp per taal (instelling in Config → Teksten)
   async function renderChanges() {
     $('chg-err').textContent = '';
     let data;
@@ -412,8 +486,7 @@
     $('res-until').disabled = false;
     const cd = data.code || {};
     $('res-qr-only').checked = !!data.qrOnly;
-    shareDefault = data.defaultShareText || shareDefault;
-    if (document.activeElement !== $('qr-share-text')) { $('qr-share-text').value = data.shareText || shareDefault; shareTpl = data.shareText || shareDefault; }
+    shareTexts = data.shareTexts || shareTexts;
     $('res-code-on').checked = !!cd.on;
     if (document.activeElement !== $('res-code')) $('res-code').value = cd.code || '';
     const gf = data.geofence || {};
@@ -552,7 +625,7 @@
   };
   $('res-code-gen').onclick = () => { $('res-code').value = String(Math.floor(1000 + Math.random() * 9000)); $('res-code').focus(); };
   // ---------- QR-codes ----------
-  const siteName = async () => I18n.tr((await api('/api/map')).title || 'Onze wijk');
+  const siteName = async () => I18n.localize(await api('/api/map')).title || I18n.tr('Onze wijk');
   async function fillQrStreets() {
     try {
       const items = await api('/api/admin/qr');
@@ -591,6 +664,7 @@
     $('qr-status-wrap').classList.toggle('hidden', !withStatus);
     $('qr-state').textContent = item.taken ? 'Dit huis is al aan een apparaat gekoppeld. Verwijder de koppeling (Instellingen → Bewoners → Apparaten) om opnieuw te kunnen scannen.' : 'Nog aan geen enkel apparaat gekoppeld.';
     syncQrStatus();
+    api('/api/admin/changes').then((d) => { shareTexts = d.shareTexts || shareTexts; }).catch(() => {}); // actuele deeltekst (Config → Teksten)
     if (!$('qr-dialog').open) $('qr-dialog').showModal(); // meteen tonen; het kaartje volgt zodra het getekend is
     const url = await Wijk.qrCardDataUrl({ title: item.title, url: item.url, siteTitle: await siteName(), logo: org.logo });
     $('qr-img').src = url;
@@ -626,19 +700,12 @@
     try { await navigator.clipboard.writeText($('qr-link').value); } catch { $('qr-link').select(); document.execCommand('copy'); }
     toast('Link gekopieerd ✔');
   };
-  // De tekst bij delen is instelbaar: {adres} en {link} worden ingevuld; ontbreekt {link}, dan komt de link erachter.
+  // De tekst bij delen is instelbaar per taal (Config → Teksten): {adres} en {link} worden ingevuld; ontbreekt {link}, dan komt de link erachter.
+  // Het bericht gaat in de standaardtaal van de site.
   const waText = () => {
-    const t = shareTpl.includes('{link}') ? shareTpl : `${shareTpl}\n${'{link}'}`;
+    const tpl = shareTexts[I18n.defaultLang] || '{adres} {link}';
+    const t = tpl.includes('{link}') ? tpl : `${tpl}\n{link}`;
     return t.replaceAll('{adres}', qrItem.title).replaceAll('{link}', qrItem.url);
-  };
-  $('qr-share-default').onclick = () => { $('qr-share-text').value = shareDefault; };
-  $('qr-share-save').onclick = async () => {
-    $('qr-err').textContent = '';
-    try {
-      await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ qrShareText: $('qr-share-text').value }), expectAuth: true });
-      shareTpl = $('qr-share-text').value.trim() || shareDefault;
-      toast('Tekst opgeslagen ✔');
-    } catch (e) { $('qr-err').textContent = e.message; }
   };
   $('qr-wa').onclick = () => window.open(`https://wa.me/?text=${encodeURIComponent(waText())}`, '_blank', 'noopener');
   $('qr-share').onclick = async () => { try { await navigator.share({ files: [qrFile], text: waText() }); } catch { /* geannuleerd */ } };
@@ -1170,10 +1237,11 @@
   }
 
   async function reloadFromServer() {
-    const data = await api('/api/map');
+    const raw = await api('/api/map');
+    const data = I18n.localize(raw);
     houses = data.houses;
     savedView = data.view;
-    org = { intro: data.intro || '', logo: data.logo, siteTitle: data.siteTitle || '', appName: data.appName || '', appShortName: data.appShortName || '', labels: data.labels };
+    org = { intro: raw.intro || '', logo: raw.logo, siteTitle: raw.siteTitle || '', appName: raw.appName || '', appShortName: raw.appShortName || '', labels: raw.labels };
     Wijk.setLabels(data.labels);
     selectedId = null; draft = [];
     setDirty(false);
@@ -1183,9 +1251,10 @@
 
   async function openEditor() {
     show('v-edit');
-    const data = await api('/api/map');
+    const raw = await api('/api/map');
+    const data = I18n.localize(raw);
     houses = data.houses;
-    org = { intro: data.intro || '', logo: data.logo, siteTitle: data.siteTitle || '', appName: data.appName || '', appShortName: data.appShortName || '', labels: data.labels };
+    org = { intro: raw.intro || '', logo: raw.logo, siteTitle: raw.siteTitle || '', appName: raw.appName || '', appShortName: raw.appShortName || '', labels: raw.labels };
     Wijk.setLabels(data.labels);
     initEditor(data);
     setDirty(false);
