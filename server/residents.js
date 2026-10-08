@@ -31,7 +31,14 @@ const untilMs = () => {
   return Number.isFinite(t) ? t : null;
 };
 const scheduled = () => untilMs() !== null;
-const enabled = () => (scheduled() ? Date.now() < untilMs() : storedEnabled());
+// Na de einddatum kan de beheerder nog toestaan dat bewoners hun eigen huis wisselen tussen groen en rood.
+const swapAfter = () => db().settings?.residentsSwapAfter === true;
+// 'open' = alles mag, 'swap' = alleen eigen huis groen <-> rood, 'closed' = niets
+const mode = () => {
+  if (scheduled()) return Date.now() < untilMs() ? 'open' : (swapAfter() ? 'swap' : 'closed');
+  return storedEnabled() ? 'open' : 'closed';
+};
+const enabled = () => mode() === 'open';
 const appOnly = () => (scheduled() ? false : storedAppOnly());
 const DEFAULT_INFO = 'Woon je in de wijk? Dan kun je in deze app zelf de status van jouw huis aanpassen. Tik op "Huis wijzigen", kies jouw huis en geef aan of het wel of niet is bezocht. Een wijziging wordt pas zichtbaar nadat de beheerder die heeft goedgekeurd.';
 const info = () => {
@@ -92,6 +99,7 @@ function view(rec) {
   const prop = proposalOf(rec);
   return {
     enabled: enabled(),
+    mode: mode(),
     claim: { houseId: house.id, title: titleOf(house) },
     approved: house.status,
     effective: prop ? prop.to : house.status,
@@ -128,7 +136,12 @@ function notifyAdmin() {
 const resident = express.Router();
 
 resident.use((req, res, next) => {
-  if (!enabled()) return res.status(403).json({ error: 'Wijzigen door bewoners staat uit', enabled: false });
+  const m = mode();
+  if (m === 'closed') return res.status(403).json({ error: 'Wijzigen door bewoners staat uit', enabled: false });
+  // na de einddatum: alleen bestaande koppelingen en alleen wisselen tussen groen en rood
+  if (m === 'swap' && !(req.path === '/me' || ['/set', '/restore', '/ack'].includes(req.path))) {
+    return res.status(403).json({ error: 'Wijzigen is gesloten; je kunt alleen nog je eigen huis wisselen tussen groen en rood', mode: m });
+  }
   if (isBlocked(req)) {
     if (req.method === 'GET') return res.json({ enabled: true, claim: null, blocked: true });
     return res.status(403).json({ error: 'Dit apparaat is geblokkeerd door de beheerder', blocked: true });
@@ -148,7 +161,7 @@ resident.use((req, res, next) => {
 
 resident.get('/me', (req, res) => {
   const rec = currentResident(req);
-  res.json(rec ? view(rec) : { enabled: true, claim: null });
+  res.json(rec ? view(rec) : { enabled: enabled(), mode: mode(), claim: null });
 });
 
 // Dit apparaat koppelen aan één huis.
@@ -183,6 +196,9 @@ resident.post('/set', (req, res) => {
   const status = req.body?.status;
   if (!STATUSES.includes(status)) return res.status(400).json({ error: 'Ongeldige status' });
   const house = houseOf(rec.houseId);
+  if (mode() === 'swap' && !(status !== 'none' && house.status !== 'none')) {
+    return res.status(403).json({ error: 'Na de einddatum kun je alleen nog wisselen tussen groen en rood', mode: 'swap' });
+  }
   const d = db();
   const prop = proposalOf(rec);
   let changed = false;
@@ -224,7 +240,7 @@ const list = () => {
   }).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const residents = d.residents.map((r) => ({ rid: r.rid, houseId: r.houseId, title: titleOf(houseOf(r.houseId)), createdAt: r.createdAt, lastActivity: r.lastActivity, ip: r.ip || null }));
   const blocked = (d.blocked || []).map((b) => ({ id: b.id, title: b.title, ip: b.ip || null, at: b.at }));
-  return { enabled: storedEnabled(), appOnly: storedAppOnly(), schedule: { on: db().settings?.residentsOff === true, until: db().settings?.residentsUntil || null, active: scheduled() }, pending: rows, residents, blocked };
+  return { enabled: storedEnabled(), appOnly: storedAppOnly(), schedule: { swap: swapAfter(), on: db().settings?.residentsOff === true, until: db().settings?.residentsUntil || null, active: scheduled() }, pending: rows, residents, blocked };
 };
 
 admin.get('/changes', (req, res) => res.json(list()));
@@ -302,4 +318,4 @@ admin.post('/push/test', async (req, res) => {
   res.json(r);
 });
 
-module.exports = { resident, admin, prune, reconcile, enabled, appOnly, info, untilMs, DEFAULT_INFO };
+module.exports = { resident, admin, prune, reconcile, enabled, mode, appOnly, info, untilMs, DEFAULT_INFO };

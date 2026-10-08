@@ -372,6 +372,8 @@
     $('res-sched').checked = !!sched.on;
     if (sched.until && document.activeElement !== $('res-until')) $('res-until').value = toLocalInput(sched.until);
     $('res-until').disabled = false;
+    $('res-swap').checked = !!sched.swap;
+    $('res-swap').disabled = !sched.on;
     $('res-enabled').disabled = !!sched.on;
     $('res-apponly').disabled = !!sched.on || !data.enabled;
     pendingCount = data.pending.length; setBadge(pendingCount);
@@ -453,6 +455,10 @@
     } catch (e) { $('chg-err').textContent = e.message; $('res-sched').checked = !on; }
     await renderChanges();
   }
+  $('res-swap').onchange = async () => {
+    try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ residentsSwapAfter: $('res-swap').checked }), expectAuth: true }); toast($('res-swap').checked ? 'Na de einddatum kan nog groen ↔ rood worden gewisseld' : 'Na de einddatum is wijzigen helemaal dicht'); }
+    catch (e) { $('chg-err').textContent = e.message; $('res-swap').checked = !$('res-swap').checked; }
+  };
   $('res-sched').onchange = () => saveSchedule($('res-sched').checked);
   $('res-until').onchange = () => { if ($('res-sched').checked) saveSchedule(true); };
 

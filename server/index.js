@@ -70,7 +70,8 @@ app.get('/api/map', (req, res) => {
     title: siteTitle(), siteTitle: settings?.siteTitle || '', view, houses,
     intro: settings?.intro || '', logo: settings?.logo || null,
     appName: settings?.appName || '', appShortName: settings?.appShortName || '',
-    residentsEnabled: residents.enabled(),
+    residentsEnabled: residents.mode() !== 'closed', // ook 'swap': dan blijft de knop zichtbaar voor wie al een huis heeft
+    residentsMode: residents.mode(),
     residentsAppOnly: residents.appOnly(),
     residentInfo: residents.enabled() ? residents.info() : '', // het infovlak verdwijnt zodra wijzigen uit staat
     labels: statusLabels(settings),
@@ -358,7 +359,7 @@ admin.delete('/logo', (req, res) => {
 // Instellingen zoals bewaard (voor het beheerscherm); /api/map geeft de actuele, effectieve waarden.
 admin.get('/settings', (req, res) => {
   const s = store.db().settings;
-  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null });
+  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null, residentsSwapAfter: s.residentsSwapAfter === true });
 });
 
 admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (req, res) => {
@@ -382,6 +383,7 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     db.settings.residentsOff = off;
     db.settings.residentsUntil = Number.isFinite(t) ? new Date(t).toISOString() : null;
   }
+  if ('residentsSwapAfter' in body) db.settings.residentsSwapAfter = body.residentsSwapAfter === true;
   if ('residentsEnabled' in body) db.settings.residentsEnabled = body.residentsEnabled === true;
   if ('residentsAppOnly' in body) db.settings.residentsAppOnly = body.residentsAppOnly === true;
   if (body.labels && typeof body.labels === 'object') {
