@@ -70,6 +70,12 @@ Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen.
 
 ![Bewerken en Meer-menu](docs/screenshots/bewerken-meer-mobiel.png)
 
+**Wijzigen plannen** – zet onder *Instellingen → Wijzigingen* de schakelaar *Wijzigen automatisch uitschakelen* aan en kies met de datum-/tijdkiezer wanneer. Tot dat moment kunnen bewoners wijzigen (browser én app); daarna staat het uit. De twee schakelaars eronder worden in die tijd uitgeschakeld en genegeerd; zet je de planning uit, dan gelden ze weer.
+
+**Infovlak** – onder *Instellingen → Logo & uitleg* staat een apart tekstveld voor het infovlak. Dat staat als opvallend groen blok bovenaan de uitleg op de website en legt uit dat bewoners hun eigen huis kunnen wijzigen. Het verdwijnt vanzelf zodra wijzigen door bewoners uit staat (of de geplande datum is verstreken).
+
+![Infovlak in de uitleg](docs/screenshots/info-vlak-mobiel.png)
+
 **Misbruik tegengaan** – onder *Instellingen → Wijzigingen* staat bij elke openstaande wijziging en bij elk aangemeld apparaat een knop **Blokkeren**. Het apparaat verliest zijn koppeling en openstaande wijzigingen, en kan niet meer wijzigen of een huis kiezen. Je kunt er ook het **IP-adres** bij blokkeren (let op: huisgenoten of buren achter dezelfde router delen vaak een IP). Onder *Geblokkeerd* haal je een blokkade weer weg.
 
 **Alleen in de app toestaan** – onder *Instellingen → Wijzigingen* zet je **Alleen in de geïnstalleerde app (niet in de browser)** aan. De schakelaar *Bewerken* verdwijnt dan voor browserbezoekers (ook bij een open pagina, na het verversen), en de server weigert wijzigingen die niet vanuit de app komen. De app meldt zich daarvoor met een kop (`X-App-Mode: standalone`). Dat is een gebruiksbeperking: wie de verzoeken zelf nabootst kan de kop meesturen, maar elke wijziging moet nog steeds door de beheerder worden goedgekeurd.

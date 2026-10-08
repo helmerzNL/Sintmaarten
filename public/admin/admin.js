@@ -180,6 +180,7 @@
   function fillOrg() {
     $('org-err').textContent = '';
     $('org-intro').value = org.intro;
+    api('/api/admin/settings').then((st) => { $('org-info').value = st.residentInfo; }).catch((e) => { $('org-err').textContent = e.message; });
     $('org-title').value = org.siteTitle;
     $('org-appname').value = org.appName;
     $('org-short').value = org.appShortName;
@@ -208,7 +209,7 @@
   $('org-save').onclick = async () => {
     $('org-err').textContent = '';
     try {
-      const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ intro: $('org-intro').value, siteTitle: $('org-title').value, appName: $('org-appname').value, appShortName: $('org-short').value, labels: { green: $('lbl-green').value, red: $('lbl-red').value, none: $('lbl-none').value } }), expectAuth: true });
+      const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ intro: $('org-intro').value, residentInfo: $('org-info').value, siteTitle: $('org-title').value, appName: $('org-appname').value, appShortName: $('org-short').value, labels: { green: $('lbl-green').value, red: $('lbl-red').value, none: $('lbl-none').value } }), expectAuth: true });
       Wijk.setLabels(res.labels); org.labels = res.labels;
       if (typeof render === 'function' && map) { render(); renderChangesIfOpen(); }
       org.intro = res.intro; org.siteTitle = res.siteTitle; org.appName = res.appName; org.appShortName = res.appShortName;
@@ -367,7 +368,12 @@
     try { data = await api('/api/admin/changes'); } catch (e) { $('chg-err').textContent = e.message; return; }
     $('res-enabled').checked = data.enabled;
     $('res-apponly').checked = !!data.appOnly;
-    $('res-apponly').disabled = !data.enabled;
+    const sched = data.schedule || {};
+    $('res-sched').checked = !!sched.on;
+    if (sched.until && document.activeElement !== $('res-until')) $('res-until').value = toLocalInput(sched.until);
+    $('res-until').disabled = false;
+    $('res-enabled').disabled = !!sched.on;
+    $('res-apponly').disabled = !!sched.on || !data.enabled;
     pendingCount = data.pending.length; setBadge(pendingCount);
     const box = $('pend-list');
     box.replaceChildren();
@@ -430,6 +436,25 @@
       bk.append(row);
     }
   }
+
+  // datum/tijd: <input type="datetime-local"> werkt in lokale tijd; de server bewaart UTC
+  const pad = (n) => String(n).padStart(2, '0');
+  function toLocalInput(iso) {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  async function saveSchedule(on) {
+    $('chg-err').textContent = '';
+    const v = $('res-until').value;
+    try {
+      if (on && !v) throw new Error('Kies eerst een datum en tijd');
+      await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ residentsOff: on, residentsUntil: v ? new Date(v).toISOString() : null }), expectAuth: true });
+      toast(on ? 'Wijzigen wordt automatisch uitgeschakeld' : 'Planning uitgezet');
+    } catch (e) { $('chg-err').textContent = e.message; $('res-sched').checked = !on; }
+    await renderChanges();
+  }
+  $('res-sched').onchange = () => saveSchedule($('res-sched').checked);
+  $('res-until').onchange = () => { if ($('res-sched').checked) saveSchedule(true); };
 
   async function blockDevice(rid, title, ip) {
     if (!confirm(`Het apparaat van ${title} blokkeren? De koppeling en openstaande wijzigingen worden verwijderd en dit apparaat kan niet meer wijzigen.`)) return;

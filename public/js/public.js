@@ -19,8 +19,12 @@
       $('logo').hidden = true;
     }
 
-    $('intro-btn').hidden = !data.intro;
-    if (data.intro) {
+    const info = data.residentInfo || ''; // leeg zodra wijzigen door bewoners uit staat
+    $('intro-btn').hidden = !(data.intro || info);
+    $('intro-info').hidden = !info;
+    $('intro-info-text').textContent = info;
+    $('intro-text').hidden = !data.intro;
+    if (data.intro || info) {
       $('intro-title').textContent = data.title;
       $('intro-text').textContent = data.intro; // platte tekst; alinea's via CSS
       $('intro-btn').onclick = () => $('intro-dialog').showModal();
@@ -29,7 +33,8 @@
       if (first) {
         let seen = '';
         const key = 'sm-intro-seen';
-        const hash = String(data.intro.length) + ':' + data.intro.slice(0, 40);
+        const all = data.intro + info;
+        const hash = String(all.length) + ':' + all.slice(0, 40);
         try { seen = localStorage.getItem(key); } catch {}
         if (seen !== hash) {
           $('intro-dialog').showModal();
@@ -180,7 +185,7 @@
   applyEditUi();
 
   // ---------- automatisch verversen (o.a. nadat de beheerder een wijziging goedkeurt) ----------
-  const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.logo, d.appName, d.appShortName, d.residentsEnabled, d.residentsAppOnly]);
+  const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.logo, d.appName, d.appShortName, d.residentsEnabled, d.residentsAppOnly, d.residentInfo]);
   let lastSig = signature(data);
   let busy = false;
   let lastSync = new Date();
