@@ -1,6 +1,6 @@
 # Sint Maarten – interactieve wijkkaart
 
-Een interactieve kaart van de wijk waarop elk huis **groen**, **rood** of **niet gemarkeerd** is (bijvoorbeeld voor een Sint Maarten-actie: welke huizen willen wel of niet dat er wordt aangebeld). Bezoekers bekijken de kaart in de browser of als app op hun telefoon; de beheerder tekent de huizen en beheert alles in `/beheer`, beveiligd met een **passkey**. Draait als één Docker-container op bijvoorbeeld een NAS.
+Een interactieve kaart van de wijk waarop elk huis **groen**, **rood** of **niet gemarkeerd** is (bijvoorbeeld voor een Sint Maarten-actie: welke huizen willen wel of niet dat er wordt aangebeld). Bezoekers bekijken de kaart in de browser of als app op hun telefoon; de beheerder tekent de huizen en beheert alles in `/beheer`, beveiligd met een **passkey**. Draait als één Docker-container op bijvoorbeeld een NAS: je deployt hem met [`docker-compose.yml`](docker-compose.yml) en een eigen `.env` (kopie van [`.env.example`](.env.example)); zie [Zelf deployen met Docker](#zelf-deployen-met-docker).
 
 ## Inhoud
 - [Functies in het kort](#functies-in-het-kort)
@@ -8,7 +8,8 @@ Een interactieve kaart van de wijk waarop elk huis **groen**, **rood** of **niet
 - [Bewoners: huis wijzigen](#bewoners-huis-wijzigen)
 - [Het beheer](#het-beheer-beheer)
 - [Instellingen](#instellingen)
-- [Installeren en draaien](#installeren-als-app-en-offline-gebruik)
+- [Installeren als app en offline gebruik](#installeren-als-app-en-offline-gebruik)
+- [Zelf deployen met Docker](#zelf-deployen-met-docker)
 
 ## Functies in het kort
 
@@ -207,15 +208,41 @@ Zonder invoer geldt de sitenaam (`SITE_TITLE`). Een al geïnstalleerde app neemt
   Zonder verbinding zie je de laatst bekende stand (met de melding *Offline*), en de PDF blijft te maken. Alleen het beheer vereist altijd een verbinding.
 - Dit werkt alleen via **HTTPS** (zie `ORIGIN`). Na een update van de site haalt de app de nieuwe versie bij het eerstvolgende bezoek op.
 
-## Draaien op de NAS
-1. Zet `docker-compose.yml` en een `.env` (kopie van `.env.example`) in een map op je NAS.
-2. Vul `.env` in: `ORIGIN` (`https://sintmaarten.flux76.app`), optioneel `PORT` (standaard 9888), `SETUP_TOKEN`, `SESSION_SECRET`.
-3. `docker compose up -d`. Data (huizen, passkeys, logo en uitleg) staat in `./data`. De container herstelt zelf de rechten op die map
-   (hij start kort als root en draait de app daarna als gebruiker `node`).
-4. Zet een reverse proxy met **HTTPS** voor de poort uit `PORT` (standaard **9888**) (Synology: *Inloggegevens → Reverse Proxy*, of Nginx Proxy Manager / Traefik).
-   Passkeys werken alleen over HTTPS (of op `localhost`), en `ORIGIN` moet exact het adres in de browser zijn.
+## Zelf deployen met Docker
+Je draait de app op je eigen Docker-omgeving (NAS, server, Raspberry Pi, VPS) met twee bestanden uit deze repository:
 
-> Is het GHCR-package privé? Maak het publiek (GitHub → Packages → Package settings), of log op de NAS in met
+| Bestand | Waarvoor |
+| --- | --- |
+| [`docker-compose.yml`](docker-compose.yml) | Beschrijft de container: het image `ghcr.io/helmerznl/sintmaarten:latest`, de poort, de map `./data` voor je gegevens en dat de instellingen uit `.env` komen. |
+| [`.env.example`](.env.example) | Voorbeeld van je instellingen. Kopieer het naar `.env` en vul het in; `.env` bevat geheimen en hoort **niet** in git. |
+
+Je hoeft de code niet te bouwen: het image wordt door [GitHub Actions](.github/workflows/docker.yml) automatisch gebouwd en gepubliceerd (zie [Dockerfile](Dockerfile) voor de bouwinstructies).
+
+**Stappen**
+1. Maak een map op je Docker-host, bijvoorbeeld `sintmaarten`, en download de twee bestanden:
+   ```sh
+   mkdir sintmaarten && cd sintmaarten
+   curl -O https://raw.githubusercontent.com/helmerzNL/Sintmaarten/main/docker-compose.yml
+   curl -o .env https://raw.githubusercontent.com/helmerzNL/Sintmaarten/main/.env.example
+   ```
+   (Of kopieer de inhoud van [`docker-compose.yml`](docker-compose.yml) en [`.env.example`](.env.example) met de hand; `.env.example` sla je op als `.env`.)
+2. Vul `.env` in:
+
+   | Variabele | Betekenis |
+   | --- | --- |
+   | `ORIGIN` | De volledige URL waarmee je de site opent, bijvoorbeeld `https://sintmaarten.flux76.app`. Moet exact het adres in de browser zijn; passkeys werken alleen via **HTTPS** (of op `localhost`). |
+   | `SETUP_TOKEN` | Geheime code voor het aanmaken van de allereerste passkey (onboarding). Genereer er een met `openssl rand -hex 12`. |
+   | `SESSION_SECRET` | Sleutel voor het ondertekenen van sessies (minstens 16 tekens), bijvoorbeeld `openssl rand -hex 32`. Laat je hem leeg, dan vervallen sessies bij elke herstart. |
+   | `SITE_TITLE` | Naam van de site (daarna aan te passen in het beheer). |
+   | `PORT` | Poort van de webserver, standaard **9888**. |
+   | `RP_ID`, `SESSION_HOURS` | Optioneel; zie de opmerkingen in [`.env.example`](.env.example). |
+3. Start de container: `docker compose up -d`. Je gegevens (huizen, passkeys, logo, uitleg, backups) staan in `./data`; de container herstelt zelf de rechten op die map (hij start kort als root en draait de app daarna als gebruiker `node`).
+4. Zet een reverse proxy met **HTTPS** voor de poort uit `PORT` (Synology: *Inloggegevens → Reverse Proxy*, of Nginx Proxy Manager / Traefik / Caddy), zodat `ORIGIN` klopt.
+5. Open `ORIGIN/beheer` en maak je eerste passkey aan met de `SETUP_TOKEN` (zie [Onboarding](#het-beheer-beheer)).
+
+**Bijwerken:** `docker compose pull && docker compose up -d`. **Back-up:** kopieer de map `data/` (of gebruik de backups in het beheer).
+
+> Is het GHCR-package privé? Maak het publiek (GitHub → Packages → Package settings), of log in met
 > `docker login ghcr.io` (gebruikersnaam + Personal Access Token met `read:packages`).
 
 ## GitHub Actions
