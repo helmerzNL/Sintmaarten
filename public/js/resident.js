@@ -17,6 +17,10 @@
     const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLng / 2) ** 2;
     return 2 * 6371000 * Math.asin(Math.sqrt(h));
   };
+  // Alleen telefoons/tablets hebben GPS; laptops en desktops positioneren via wifi/IP en zijn te onnauwkeurig.
+  const hasGps = () => navigator.userAgentData?.mobile === true || /android|iphone|ipad|ipod/i.test(navigator.userAgent)
+    || (/macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1); // iPadOS meldt zich als Mac
+  const MAX_ACC = 200; // m; zelfde grens als op de server
   function getFix() {
     if (fix && Date.now() - fix.t < 45000) return Promise.resolve(fix);
     return new Promise((resolve, reject) => {
@@ -32,8 +36,10 @@
   // true als wijzigen hier mag; anders een melding (geen geofence = altijd toegestaan)
   async function checkGeo() {
     if (!geo) return true;
+    if (!hasGps()) { toast('Met locatiecontrole kan alleen worden gewijzigd op een telefoon of tablet met GPS.'); return false; }
     try {
       const f = await getFix();
+      if (f.acc > MAX_ACC) { fix = null; toast(`Je GPS-locatie is niet nauwkeurig genoeg (ongeveer ${f.acc} m). Zet GPS aan, ga naar buiten en probeer het opnieuw.`); return false; }
       const dist = distanceM([f.lat, f.lng], geo.center);
       if (dist - Math.min(f.acc, 500) > geo.radius) { toast(`Je lijkt niet in de wijk te zijn (ongeveer ${Math.round(dist / 10) * 10} m van het midden). Wijzigen kan alleen in de wijk.`); return false; }
       return true;
@@ -45,6 +51,7 @@
     const geoHeader = {};
     if (geo && body !== undefined && (path === '/set' || path === '/claim')) {
       const f = await getFix();
+      geoHeader['X-Geo-Device'] = hasGps() ? 'gps' : 'desktop';
       geoHeader['X-Geo'] = `${f.lat.toFixed(6)},${f.lng.toFixed(6)},${f.acc}`;
     }
     const res = await fetch(`/api/resident${path}`, body === undefined ? {} : {
