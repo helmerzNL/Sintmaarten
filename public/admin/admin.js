@@ -264,7 +264,7 @@
     $('scrim').classList.remove('show');
     $('settings-open').focus();
   }
-  $('settings-open').onclick = () => (drawerOpen() ? closeSettings() : openSettings(pendingCount > 0 ? 'changes' : undefined));
+  $('settings-open').onclick = () => (drawerOpen() ? closeSettings() : openSettings(pendingCount + messageCount > 0 ? 'changes' : undefined));
   $('settings-close').onclick = closeSettings;
   $('scrim').onclick = closeSettings;
   document.querySelectorAll('#settings [data-tab]').forEach((b) => (b.onclick = () => openTab(b.dataset.tab)));
@@ -359,18 +359,24 @@
   };
   const activeTab = () => document.querySelector('#settings [data-tab].active')?.dataset.tab;
 
+  // Badges: teller op tab en tandwiel, in de paginatitel en (in de geïnstalleerde app) op het app-icoon.
+  let messageCount = 0;
   function setBadge(n) {
     for (const id of ['tab-badge', 'cog-badge']) { $(id).hidden = n === 0; $(id).textContent = n; }
+    $('pend-badge').hidden = pendingCount === 0; $('pend-badge').textContent = pendingCount;
+    $('msg-badge').hidden = messageCount === 0; $('msg-badge').textContent = messageCount;
     document.title = n ? `(${n}) Beheer` : 'Beheer';
+    try { if (navigator.setAppBadge) { if (n > 0) navigator.setAppBadge(n).catch(() => {}); else navigator.clearAppBadge().catch(() => {}); } } catch { /* niet ondersteund */ }
   }
 
   async function pollChanges(first) {
     try {
-      const { pending } = await api('/api/admin/changes/count');
+      const { pending, messages } = await api('/api/admin/changes/count');
       if (!first && pending > pendingCount) toast(`${pending} wijziging${pending === 1 ? '' : 'en'} wacht${pending === 1 ? '' : 'en'} op goedkeuring`);
-      const changed = pending !== pendingCount;
-      pendingCount = pending;
-      setBadge(pending);
+      if (!first && messages > messageCount) toast('Nieuw bericht van een bewoner');
+      const changed = pending !== pendingCount || messages !== messageCount;
+      pendingCount = pending; messageCount = messages;
+      setBadge(pending + messages);
       if (changed && drawerOpen() && ['changes', 'residents'].includes(activeTab())) renderChanges();
     } catch { /* offline of uitgelogd: volgende poging */ }
   }
@@ -403,7 +409,22 @@
     $('res-swap').disabled = !sched.on;
     $('res-enabled').disabled = !!sched.on;
     $('res-apponly').disabled = !!sched.on || !data.enabled;
-    pendingCount = data.pending.length; setBadge(pendingCount);
+    pendingCount = data.pending.length; messageCount = (data.messages || []).length; setBadge(pendingCount + messageCount);
+    const ml = $('msg-list');
+    ml.replaceChildren();
+    if (!messageCount) { const p = document.createElement('p'); p.className = 'muted'; p.style.padding = '8px 10px'; p.textContent = 'Geen berichten.'; ml.append(p); }
+    for (const m of data.messages || []) {
+      const row = document.createElement('div'); row.className = 'chg-row';
+      const info = document.createElement('div'); info.className = 'chg-info';
+      const t = document.createElement('strong'); t.textContent = m.text;
+      const d = document.createElement('span');
+      d.textContent = [m.ownTitle ? `Apparaat van ${m.ownTitle}` : 'Apparaat zonder huis', m.scannedTitle ? `scande de QR van ${m.scannedTitle}` : null, ago(m.createdAt)].filter(Boolean).join(' · ');
+      info.append(t, d);
+      const del = document.createElement('button'); del.textContent = 'Afgehandeld';
+      del.onclick = async () => { try { await api(`/api/admin/messages/${m.id}`, { method: 'DELETE', expectAuth: true }); renderChanges(); } catch (e) { $('chg-err').textContent = e.message; } };
+      row.append(info, del);
+      ml.append(row);
+    }
     const box = $('pend-list');
     box.replaceChildren();
     if (!data.pending.length) {

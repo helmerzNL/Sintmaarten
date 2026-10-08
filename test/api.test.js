@@ -748,6 +748,68 @@ test('QR-code per huis: alleen via QR koppelen (schakelaar), een apparaat per hu
   void cMap; void c1;
 });
 
+test('bericht aan de beheerder: versturen, beperken, badge-tellers en pushmelding met badge', async () => {
+  await adminReq('/settings', 'PUT', { residentsEnabled: true, residentsAppOnly: false, residentsOff: false, residentsGeofence: false, residentsCodeOn: false, residentsQrOnly: false });
+  await adminReq('/houses', 'PUT', { houses: [{ id: 'h1', street: 'Dorpsstraat', number: '1', status: 'none', points: ptsR }, { id: 'h2', street: 'Dorpsstraat', number: '2', status: 'none', points: ptsR }] });
+  for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
+  for (const m of (await (await adminReq('/changes')).json()).messages) await adminReq(`/messages/${m.id}`, 'DELETE');
+  const sent = [];
+  push._setSender({ sendNotification: async (sub, payload) => { sent.push(JSON.parse(payload)); } });
+  await adminReq('/push/subscribe', 'POST', { label: 'Telefoon', subscription: { endpoint: 'https://push.example/msg', keys: { p256dh: 'p'.repeat(20), auth: 'a'.repeat(10) } } });
+  const q2 = new URL((await (await adminReq('/qr')).json()).find((i) => i.houseId === 'h2').url).searchParams.get('q');
+  const c1 = (await post('/claim', { houseId: 'h1' })).headers.get('set-cookie').split(';')[0];
+  const msg = (body, ck) => res('/message', { method: 'POST', headers: ck ? { cookie: ck } : {}, body: JSON.stringify(body) });
+
+  // validatie
+  assert.equal((await msg({ text: '   ' })).status, 400);
+  assert.equal((await msg({ text: 'x'.repeat(301) })).status, 400);
+  assert.equal((await adminReq('/changes/count').then((r) => r.json())).total, 0);
+
+  // een gekoppeld apparaat scant de QR van een ander huis en stuurt een bericht
+  assert.equal((await msg({ text: 'Mijn  buurman   woont hier nu.', q: q2 }, c1)).status, 200);
+  const list = await (await adminReq('/changes')).json();
+  assert.equal(list.messages.length, 1);
+  assert.deepEqual([list.messages[0].text, list.messages[0].ownTitle, list.messages[0].scannedTitle], ['Mijn buurman woont hier nu.', 'Dorpsstraat 1', 'Dorpsstraat 2']);
+  assert.equal(list.messages[0].ip, undefined); // het IP-adres gaat niet naar de browser van de beheerder
+
+  // tellers voor de badges: wijzigingen + berichten
+  await post('/set', { status: 'green' }, c1);
+  assert.deepEqual(await (await adminReq('/changes/count')).json(), { pending: 1, messages: 1, total: 2 });
+  await wait(120);
+  const last = sent[sent.length - 1];
+  assert.equal(last.badge, 2);
+  assert.match(last.body, /1 wijziging en 1 bericht/);
+
+  // alleen een bericht: eigen titel en tekst in de melding
+  await adminReq('/changes/approve-all', 'POST');
+  await msg({ text: 'Tweede bericht' }, c1);
+  await wait(120);
+  assert.equal(sent[sent.length - 1].title, 'Bericht van een bewoner');
+  assert.equal(sent[sent.length - 1].badge, 2);
+
+  // beperking per IP (5 per kwartier), ook na het einde van wijzigen mag het nog (swap), maar niet als alles dicht is
+  for (let i = 0; i < 3; i++) assert.equal((await msg({ text: `Bericht ${i}` })).status, 200);
+  assert.equal((await msg({ text: 'Te veel' })).status, 429);
+
+  // beheer: verwijderen en rechten
+  const after = await (await adminReq('/changes')).json();
+  for (const m of after.messages) assert.equal((await adminReq(`/messages/${m.id}`, 'DELETE')).status, 200);
+  assert.equal((await (await adminReq('/changes/count')).json()).messages, 0);
+  assert.equal((await j('/api/admin/messages/x', { method: 'DELETE', headers: jsonH() })).status, 401);
+  for (const rr of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${rr.rid}`, 'DELETE');
+});
+
+test('gekoppelde apparaten staan alfabetisch (straat, dan huisnummer, numeriek)', async () => {
+  await adminReq('/settings', 'PUT', { residentsEnabled: true, residentsAppOnly: false, residentsOff: false, residentsGeofence: false, residentsCodeOn: false, residentsQrOnly: false });
+  const mk = (id, street, number) => ({ id, street, number, status: 'none', points: ptsR });
+  await adminReq('/houses', 'PUT', { houses: [mk('a', 'Loerikseweg', '10'), mk('b', 'Dorpsstraat', '9'), mk('c', 'Loerikseweg', '2'), mk('d', 'Dorpsstraat', '10'), mk('e', 'beukenlaan', '1')] });
+  for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
+  for (const id of ['a', 'b', 'c', 'd', 'e']) await post('/claim', { houseId: id }); // in willekeurige volgorde gekoppeld
+  const titles = (await (await adminReq('/changes')).json()).residents.map((r) => r.title);
+  assert.deepEqual(titles, ['beukenlaan 1', 'Dorpsstraat 9', 'Dorpsstraat 10', 'Loerikseweg 2', 'Loerikseweg 10']);
+  for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
+});
+
 test('bewoners: uitschakelen, beheerrechten en push-registratie', async () => {
   for (const [m, p] of [['GET', '/changes'], ['POST', '/changes/approve-all'], ['DELETE', '/residents/x'], ['GET', '/push/key'], ['POST', '/push/test']]) {
     assert.equal((await j(`/api/admin${p}`, { method: m, headers: jsonH() })).status, 401, p);

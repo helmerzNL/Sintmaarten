@@ -166,9 +166,14 @@
     <!-- ===== Goedkeuren ===== -->
     <section data-panel="changes" class="hidden">
       <div class="set-card">
-        <header class="set-card-head"><h4>Wachten op goedkeuring</h4><p>Wijzigingen die bewoners voor hun eigen huis hebben aangevraagd. Pas na jouw goedkeuring zien anderen de nieuwe kleur.</p></header>
+        <header class="set-card-head"><h4>Wachten op goedkeuring <span id="pend-badge" class="count-badge" hidden>0</span></h4><p>Wijzigingen die bewoners voor hun eigen huis hebben aangevraagd. Pas na jouw goedkeuring zien anderen de nieuwe kleur.</p></header>
         <div id="pend-list" class="bk-list"></div>
         <div class="set-actions"><button id="pend-all" class="primary" disabled>Alles goedkeuren</button></div>
+      </div>
+
+      <div class="set-card">
+        <header class="set-card-head"><h4>Berichten van bewoners <span id="msg-badge" class="count-badge" hidden>0</span></h4><p>Korte berichten, bijvoorbeeld van iemand die een QR-code scande met een apparaat dat al is gekoppeld. Verwijder een bericht als het is afgehandeld.</p></header>
+        <div id="msg-list" class="bk-list"></div>
       </div>
     </section>
 

@@ -101,6 +101,11 @@ self.addEventListener('fetch', (e) => {
 self.addEventListener('push', (e) => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch { data = { body: e.data ? e.data.text() : '' }; }
+  // badge op het app-icoon (aantal wachtende wijzigingen en berichten), ook als de app dicht is
+  const badge = typeof data.badge === 'number' && self.navigator.setAppBadge
+    ? (data.badge > 0 ? self.navigator.setAppBadge(data.badge) : self.navigator.clearAppBadge()).catch(() => {})
+    : null;
+  if (badge) e.waitUntil(badge);
   e.waitUntil(self.registration.showNotification(data.title || 'Melding', {
     body: data.body || '',
     icon: '/icons/admin-192.png',
