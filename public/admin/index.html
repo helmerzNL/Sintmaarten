@@ -176,11 +176,11 @@
       <label class="switch" style="margin:4px 0 8px">
         <input type="checkbox" id="res-geo" role="switch">
         <span class="track" aria-hidden="true"><span class="thumb"></span></span>
-        <span class="switch-text">Alleen wijzigen als je fysiek in de wijk bent (GPS/wifi-locatie)</span>
+        <span class="switch-text">Alleen wijzigen als je fysiek in de wijk bent (GPS-locatie)</span>
       </label>
       <label for="res-geo-radius">Straal rond het midden van de wijk (meter)</label>
       <input type="number" id="res-geo-radius" min="50" max="5000" step="50" value="500">
-      <p class="muted">Het midden is het midden van de kaartweergave (of anders van de huizen). Bewoners moeten bij het wijzigen en bij het kiezen van een huis toegang tot hun locatie geven; ze mogen er niet verder vandaan zijn dan de straal (een onnauwkeurige locatie telt tot 500 m mee). Lezen van de kaart blijft overal kunnen. De locatie komt van het apparaat zelf: dit is een gebruiksbeperking, geen harde beveiliging.</p>
+      <p class="muted">Het midden is het midden van de kaartweergave (of anders van de huizen). De controle geldt voor telefoons en tablets (GPS; de locatie moet nauwkeuriger zijn dan 200 m). Laptops en desktops, die geen GPS hebben, worden niet beperkt en kunnen gewoon wijzigen. Bewoners moeten bij het wijzigen en bij het kiezen van een huis toegang tot hun locatie geven; ze mogen er niet verder vandaan zijn dan de straal. Lezen van de kaart blijft overal kunnen. De locatie komt van het apparaat zelf: dit is een gebruiksbeperking, geen harde beveiliging.</p>
       <div id="pend-list" class="bk-list"></div>
       <p class="error" id="chg-err"></p>
       <div class="row"><button id="pend-all" class="primary" disabled>Alles goedkeuren</button></div>

@@ -17,6 +17,11 @@
     const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLng / 2) ** 2;
     return 2 * 6371000 * Math.asin(Math.sqrt(h));
   };
+  // Alleen telefoons/tablets hebben GPS. Laptops en desktops worden niet door de geofence beperkt (hun wifi/IP-locatie is te grof).
+  const hasGps = () => navigator.userAgentData?.mobile === true || /android|iphone|ipad|ipod/i.test(navigator.userAgent)
+    || (/macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1) // iPadOS meldt zich als Mac
+    || matchMedia('(pointer: coarse)').matches; // telefoon in "desktopsite"-modus
+  const MAX_ACC = 200; // m; zelfde grens als op de server
   function getFix() {
     if (fix && Date.now() - fix.t < 45000) return Promise.resolve(fix);
     return new Promise((resolve, reject) => {
@@ -32,8 +37,10 @@
   // true als wijzigen hier mag; anders een melding (geen geofence = altijd toegestaan)
   async function checkGeo() {
     if (!geo) return true;
+    if (!hasGps()) return true; // desktop/laptop: geen locatiecontrole
     try {
       const f = await getFix();
+      if (f.acc > MAX_ACC) { fix = null; toast(`Je GPS-locatie is niet nauwkeurig genoeg (ongeveer ${f.acc} m). Zet GPS aan, ga naar buiten en probeer het opnieuw.`); return false; }
       const dist = distanceM([f.lat, f.lng], geo.center);
       if (dist - Math.min(f.acc, 500) > geo.radius) { toast(`Je lijkt niet in de wijk te zijn (ongeveer ${Math.round(dist / 10) * 10} m van het midden). Wijzigen kan alleen in de wijk.`); return false; }
       return true;
@@ -44,8 +51,12 @@
   async function api(path, body) {
     const geoHeader = {};
     if (geo && body !== undefined && (path === '/set' || path === '/claim')) {
-      const f = await getFix();
-      geoHeader['X-Geo'] = `${f.lat.toFixed(6)},${f.lng.toFixed(6)},${f.acc}`;
+      if (!hasGps()) geoHeader['X-Geo-Device'] = 'desktop';
+      else {
+        const f = await getFix();
+        geoHeader['X-Geo-Device'] = 'gps';
+        geoHeader['X-Geo'] = `${f.lat.toFixed(6)},${f.lng.toFixed(6)},${f.acc}`;
+      }
     }
     const res = await fetch(`/api/resident${path}`, body === undefined ? {} : {
       method: 'POST',
@@ -155,7 +166,7 @@
 
     async function enter() {
       if (Wijk.residentNoAccess()) { toast('Wijzigen is gesloten'); return; }
-      if (geo) toast('Locatie controleren…');
+      if (geo && hasGps()) toast('Locatie controleren…');
       if (!(await checkGeo())) return;
       if (on) return;
       on = true;
