@@ -42,6 +42,11 @@ const mode = () => {
 const enabled = () => mode() === 'open';
 const appOnly = () => (scheduled() ? false : storedAppOnly());
 const DEFAULT_INFO = 'Woon je in de wijk? Dan kun je in deze app zelf de status van jouw huis aanpassen. Tik op "Huis wijzigen", kies jouw huis en geef aan of het wel of niet is bezocht. Een wijziging wordt pas zichtbaar nadat de beheerder die heeft goedgekeurd.';
+const DEFAULT_SHARE_TEXT = 'Hallo! Dit is de persoonlijke link om jouw huis ({adres}) te koppelen in de wijkapp. Open de link op je telefoon: {link}';
+const shareText = () => {
+  const t = db().settings?.qrShareText;
+  return typeof t === 'string' && t.trim() ? t : DEFAULT_SHARE_TEXT;
+};
 const info = () => {
   const t = db().settings?.residentInfo;
   return typeof t === 'string' ? t : DEFAULT_INFO;
@@ -394,7 +399,7 @@ const list = () => {
   const blocked = (d.blocked || []).map((b) => ({ id: b.id, title: b.title, ip: b.ip || null, at: b.at }))
     .sort((a, b) => String(a.title).localeCompare(String(b.title), 'nl', { numeric: true, sensitivity: 'base' }));
   const messages = (d.messages || []).map((m) => ({ id: m.id, createdAt: m.createdAt, text: m.text, ownTitle: m.ownTitle, scannedTitle: m.scannedTitle })).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  return { messages, qrOnly: qrOnly(), enabled: storedEnabled(), appOnly: storedAppOnly(), code: { on: db().settings?.residentsCodeOn === true, code: codeSetting() }, geofence: { on: db().settings?.residentsGeofence === true, radius: geofence().radius, hasCenter: !!geoCenter() }, schedule: { swap: swapAfter(), on: db().settings?.residentsOff === true, until: db().settings?.residentsUntil || null, active: scheduled() }, pending: rows, residents, blocked };
+  return { messages, qrOnly: qrOnly(), shareText: shareText(), defaultShareText: DEFAULT_SHARE_TEXT, enabled: storedEnabled(), appOnly: storedAppOnly(), code: { on: db().settings?.residentsCodeOn === true, code: codeSetting() }, geofence: { on: db().settings?.residentsGeofence === true, radius: geofence().radius, hasCenter: !!geoCenter() }, schedule: { swap: swapAfter(), on: db().settings?.residentsOff === true, until: db().settings?.residentsUntil || null, active: scheduled() }, pending: rows, residents, blocked };
 };
 
 admin.get('/changes', (req, res) => res.json(list()));
@@ -493,4 +498,4 @@ admin.post('/push/test', async (req, res) => {
   res.json(r);
 });
 
-module.exports = { resident, admin, prune, reconcile, enabled, mode, geofence, codeOn, qrOnly, GEO_MAX_ACC, GEO_MIN, GEO_MAX, GEO_DEFAULT_RADIUS, appOnly, info, untilMs, DEFAULT_INFO };
+module.exports = { resident, admin, prune, reconcile, enabled, mode, geofence, codeOn, qrOnly, GEO_MAX_ACC, GEO_MIN, GEO_MAX, GEO_DEFAULT_RADIUS, appOnly, info, untilMs, DEFAULT_INFO, DEFAULT_SHARE_TEXT };

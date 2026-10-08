@@ -387,6 +387,7 @@
     if (h) { h.status = c.status; render(); }
   }
 
+  let shareDefault = 'Hallo! Dit is de persoonlijke link om jouw huis ({adres}) te koppelen in de wijkapp. Open de link op je telefoon: {link}', shareTpl = shareDefault;
   async function renderChanges() {
     $('chg-err').textContent = '';
     let data;
@@ -399,6 +400,8 @@
     $('res-until').disabled = false;
     const cd = data.code || {};
     $('res-qr-only').checked = !!data.qrOnly;
+    shareDefault = data.defaultShareText || shareDefault;
+    if (document.activeElement !== $('qr-share-text')) { $('qr-share-text').value = data.shareText || shareDefault; shareTpl = data.shareText || shareDefault; }
     $('res-code-on').checked = !!cd.on;
     if (document.activeElement !== $('res-code')) $('res-code').value = cd.code || '';
     const gf = data.geofence || {};
@@ -611,7 +614,20 @@
     try { await navigator.clipboard.writeText($('qr-link').value); } catch { $('qr-link').select(); document.execCommand('copy'); }
     toast('Link gekopieerd ✔');
   };
-  const waText = () => `Hallo! Dit is de persoonlijke link om jouw huis (${qrItem.title}) te koppelen in de wijkapp. Open de link op je telefoon: ${qrItem.url}`;
+  // De tekst bij delen is instelbaar: {adres} en {link} worden ingevuld; ontbreekt {link}, dan komt de link erachter.
+  const waText = () => {
+    const t = shareTpl.includes('{link}') ? shareTpl : `${shareTpl}\n${'{link}'}`;
+    return t.replaceAll('{adres}', qrItem.title).replaceAll('{link}', qrItem.url);
+  };
+  $('qr-share-default').onclick = () => { $('qr-share-text').value = shareDefault; };
+  $('qr-share-save').onclick = async () => {
+    $('qr-err').textContent = '';
+    try {
+      await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ qrShareText: $('qr-share-text').value }), expectAuth: true });
+      shareTpl = $('qr-share-text').value.trim() || shareDefault;
+      toast('Tekst opgeslagen ✔');
+    } catch (e) { $('qr-err').textContent = e.message; }
+  };
   $('qr-wa').onclick = () => window.open(`https://wa.me/?text=${encodeURIComponent(waText())}`, '_blank', 'noopener');
   $('qr-share').onclick = async () => { try { await navigator.share({ files: [qrFile], text: waText() }); } catch { /* geannuleerd */ } };
   $('qr-png').onclick = () => {

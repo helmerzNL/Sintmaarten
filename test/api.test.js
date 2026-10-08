@@ -670,6 +670,19 @@ test('beheer heeft een eigen PWA-manifest, icoon en favicon', async () => {
   assert.equal(pub.start_url, '/');
 });
 
+test('Tekst bij delen via WhatsApp is instelbaar (standaard, opslaan, te lang, leeg = standaard)', async () => {
+  const get = async () => (await (await adminReq('/changes')).json());
+  const d0 = await get();
+  assert.match(d0.shareText, /\{adres\}.*\{link\}/);
+  assert.equal(d0.shareText, d0.defaultShareText);
+  assert.equal((await adminReq('/settings', 'PUT', { qrShareText: 'Hoi, jouw huis {adres}: {link}' })).status, 200);
+  assert.equal((await get()).shareText, 'Hoi, jouw huis {adres}: {link}');
+  assert.equal((await adminReq('/settings', 'PUT', { qrShareText: 'x'.repeat(501) })).status, 400);
+  assert.equal((await get()).shareText, 'Hoi, jouw huis {adres}: {link}');
+  assert.equal((await adminReq('/settings', 'PUT', { qrShareText: '  ' })).status, 200);
+  assert.equal((await get()).shareText, d0.defaultShareText);
+});
+
 test('QR-code per huis: alleen via QR koppelen (schakelaar), een apparaat per huis, vernieuwen', async () => {
   const mkh = (id) => ({ id, street: 'Dorpsstraat', number: id.slice(1), status: 'none', points: ptsR });
   await adminReq('/settings', 'PUT', { residentsEnabled: true, residentsAppOnly: false, residentsOff: false, residentsGeofence: false, residentsCodeOn: false, residentsQrOnly: false });

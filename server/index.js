@@ -415,6 +415,11 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     if (text.length > 1000) return res.status(400).json({ error: 'Het infovlak mag maximaal 1000 tekens zijn' });
     db.settings.residentInfo = text;
   }
+  if ('qrShareText' in body) {
+    const text = String(body.qrShareText ?? '').replace(/\r\n?/g, '\n').trim();
+    if (text.length > 500) return res.status(400).json({ error: 'De deeltekst mag maximaal 500 tekens zijn' });
+    db.settings.qrShareText = text; // leeg = standaardtekst
+  }
   if ('residentsOff' in body || 'residentsUntil' in body) {
     const off = 'residentsOff' in body ? body.residentsOff === true : db.settings.residentsOff === true;
     const rawUntil = 'residentsUntil' in body ? body.residentsUntil : db.settings.residentsUntil;
