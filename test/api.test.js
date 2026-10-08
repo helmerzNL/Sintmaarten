@@ -568,9 +568,12 @@ test('geofence: wijzigen alleen in de wijk (schakelaar in het beheer)', async ()
   r = await postG('/set', { status: 'red' }, geo(52.0005, 5.0005, 800), c);
   assert.equal(r.status, 403);
   assert.equal((await r.json()).geofence, 'inaccurate');
-  r = await postG('/set', { status: 'red' }, { 'X-Geo': '52.0005,5.0005,20', 'X-Geo-Device': 'desktop' }, c);
-  assert.equal((await r.json()).geofence, 'device');
-  assert.equal((await postG('/set', { status: 'red' }, { 'X-Geo': '52.0005,5.0005,20' }, c)).status, 403);
+  // desktops/laptops (geen GPS) worden niet beperkt, ook ver van de wijk; een mobiele user-agent telt niet als desktop
+  assert.equal((await postG('/set', { status: 'red' }, { 'X-Geo-Device': 'desktop', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0' }, c)).status, 200);
+  r = await postG('/set', { status: 'green' }, { 'X-Geo-Device': 'desktop', 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) Mobile Safari/537.36' }, c);
+  assert.equal(r.status, 403);
+  assert.equal((await r.json()).geofence, 'missing');
+  assert.equal((await postG('/set', { status: 'red' }, { 'X-Geo': '52.0005,5.0005,20' }, c)).status, 200); // zonder apparaatkop telt de locatie gewoon
   assert.equal((await postG('/set', { status: 'red' }, geo(52.0045, 5.0045, 150), c)).status, 200); // net buiten, maar binnen de nauwkeurigheid
   assert.equal((await postG('/claim', { houseId: 'h1' }, geo(52.05, 5.05, 10))).status, 403); // ook huis kiezen
 

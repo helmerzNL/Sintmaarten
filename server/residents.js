@@ -82,7 +82,7 @@ function currentResident(req) {
 
 // ---- geofence: wijzigen alleen als het apparaat (volgens GPS/wifi-locatie) in de wijk is ----
 const GEO_DEFAULT_RADIUS = 500, GEO_MIN = 50, GEO_MAX = 5000;
-const GEO_MAX_ACC = 200; // alleen een GPS-achtige fix (m); wifi/IP-locaties van desktops zijn te grof
+const GEO_MAX_ACC = 200; // een telefoon/tablet moet een GPS-achtige fix hebben (m)
 function geoCenter() {
   const d = db();
   const c = d.view?.center;
@@ -108,10 +108,10 @@ const distanceM = (a, b) => { // haversine
 function geoCheck(req) {
   const g = geofence();
   if (!g.on) return null;
+  // Laptops en desktops (geen GPS) worden niet beperkt: zij melden zich als 'desktop' en hebben ook geen mobiele user-agent.
+  if (req.get('X-Geo-Device') === 'desktop' && !/android|iphone|ipad|ipod|mobile/i.test(req.get('User-Agent') || '')) return null;
   const m = /^(-?\d{1,3}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?),(\d{1,6}(?:\.\d+)?)$/.exec(String(req.get('X-Geo') || ''));
   if (!m) return { geofence: 'missing', error: 'Wijzigen kan alleen in de wijk. Sta toegang tot je locatie toe en probeer het opnieuw.' };
-  // Locatiecontrole werkt alleen op een apparaat met GPS (telefoon/tablet); desktops melden zich als 'desktop'.
-  if (req.get('X-Geo-Device') !== 'gps') return { geofence: 'device', error: 'Met locatiecontrole kan alleen worden gewijzigd op een telefoon of tablet met GPS.' };
   const pos = [Number(m[1]), Number(m[2])], acc = Number(m[3]);
   if (Math.abs(pos[0]) > 90 || Math.abs(pos[1]) > 180) return { geofence: 'missing', error: 'Ongeldige locatie' };
   if (acc > GEO_MAX_ACC) return { geofence: 'inaccurate', error: `Je GPS-locatie is niet nauwkeurig genoeg (ongeveer ${Math.round(acc)} m). Zet GPS aan, ga naar buiten en probeer het opnieuw.` };
