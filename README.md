@@ -143,9 +143,9 @@ Scripts en stijlen worden per build met `?v=<versie>-<commit>` opgevraagd en de 
 *Cannot set properties of null*). Zie je zo'n fout toch na een update, ververs dan hard (Ctrl+Shift+R) of wis de sitegegevens; eventueel staat een proxy/CDN (bijv. Cloudflare) te agressief te cachen.
 
 ## Versienummer
-Onderin het instellingenmenu (⚙) staat de versie en de commit van de draaiende build, bijvoorbeeld **v0.1.3 (9f2c4e1)**.
-Bij elke geslaagde build van de GitHub Action gaat het patchnummer met 1 omhoog (de eerste build is v0.1.0); de build krijgt een git-tag `v0.1.N` en het image wordt
-ook onder die tag gepubliceerd (`ghcr.io/helmerznl/sintmaarten:v0.1.3`). Het deel `0.1` komt uit het bestand `VERSION`: pas dat aan voor een nieuwe minor- of major-versie, dan begint de teller opnieuw bij 0.
+Onderin het instellingenmenu (⚙) staat de versie en de commit van de draaiende build, bijvoorbeeld **v1.0.3 (9f2c4e1)**.
+Bij elke geslaagde build van de GitHub Action gaat het patchnummer met 1 omhoog (de eerste build is v1.0.0); de build krijgt een git-tag `v1.0.N` en het image wordt
+ook onder die tag gepubliceerd (`ghcr.io/helmerznl/sintmaarten:v1.0.3`). Het deel `1.0` komt uit het bestand `VERSION`: pas dat aan voor een nieuwe minor- of major-versie, dan begint de teller opnieuw bij 0.
 Lokaal (zonder build) toont de app `dev` met de commit uit git. De workflow heeft schrijfrechten op de repo nodig om de tag te zetten (staat in `docker.yml`).
 
 ## Backups
