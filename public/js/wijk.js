@@ -289,6 +289,52 @@
     });
   }
 
+  // ---------- QR-codes (qrcode-generator, /vendor/qrcode.js) ----------
+  // PNG-data-URL van een QR; px = breedte in pixels (incl. rustige rand van 2 modules).
+  function qrDataUrl(text, px = 512) {
+    const qr = window.qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    const n = qr.getModuleCount(), quiet = 2, total = n + quiet * 2;
+    const cell = Math.max(1, Math.floor(px / total));
+    const c = document.createElement('canvas');
+    c.width = c.height = cell * total;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = '#000';
+    for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (qr.isDark(r, k)) g.fillRect((k + quiet) * cell, (r + quiet) * cell, cell, cell);
+    return c.toDataURL('image/png');
+  }
+
+  // Afdrukbare A4 met per huis een kaartje (2 x 4): adres, QR-code en uitleg, gesorteerd per straat.
+  async function buildQrPdf({ title, items, logo }) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const logoImg = logo ? await loadLogo(logo.url) : null;
+    const cols = 2, rows = 4, mx = 10, my = 12, cw = (210 - mx * 2) / cols, ch = (297 - my * 2) / rows, qr = 42;
+    const sorted = [...items].sort((a, b) => compareHouses({ street: a.street, number: a.number }, { street: b.street, number: b.number }));
+    sorted.forEach((it, i) => {
+      if (i > 0 && i % (cols * rows) === 0) doc.addPage();
+      const k = i % (cols * rows), x = mx + (k % cols) * cw, y = my + Math.floor(k / cols) * ch;
+      doc.setDrawColor(190); doc.setLineDashPattern([1.5, 1.5], 0); doc.rect(x + 1, y + 1, cw - 2, ch - 2); doc.setLineDashPattern([], 0);
+      let ty = y + 10;
+      if (logoImg) {
+        const kk = Math.min(8 / logoImg.h, 30 / logoImg.w);
+        doc.addImage(logoImg.data, logoImg.format, x + 5, y + 4, logoImg.w * kk, logoImg.h * kk);
+        ty = y + 14;
+      }
+      doc.setTextColor(0); doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+      doc.text(String(it.title || ''), x + cw - 5, y + 9, { align: 'right', maxWidth: cw - 40 });
+      doc.addImage(qrDataUrl(it.url, 480), 'PNG', x + 5, ty, qr, qr);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60);
+      const lines = doc.splitTextToSize('Scan deze code met de camera van je telefoon en wijzig in de app de status van jouw huis.', cw - qr - 18);
+      doc.text([String(title || ''), '', ...lines], x + qr + 11, ty + 8);
+      doc.setFontSize(7); doc.setTextColor(120);
+      doc.text('Persoonlijke code voor dit huis: niet delen.', x + 5, y + ch - 3.5);
+    });
+    return doc;
+  }
+
   // ---------- tekst met emoji in de PDF ----------
   // De standaardlettertypen van jsPDF kennen geen emoji (en geen tekens buiten WinAnsi). Zulke tekens
   // tekenen we als plaatje via een canvas, met het emoji-lettertype van het apparaat zelf.
@@ -483,5 +529,5 @@
     setTimeout(() => t.remove(), 2800);
   }
 
-  window.Wijk = { toast, setLabels, applyLabels, STATUS, createMap, houseStyle, buildPdf, prefetchTiles, DEFAULT_VIEW, houseTitle, compareHouses, natCompare, labelPoint, createNumberLayer };
+  window.Wijk = { qrDataUrl, buildQrPdf, toast, setLabels, applyLabels, STATUS, createMap, houseStyle, buildPdf, prefetchTiles, DEFAULT_VIEW, houseTitle, compareHouses, natCompare, labelPoint, createNumberLayer };
 })();

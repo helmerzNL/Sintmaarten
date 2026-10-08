@@ -73,6 +73,7 @@ app.get('/api/map', (req, res) => {
     residentsEnabled: residents.mode() !== 'closed', // ook 'swap': dan blijft de knop zichtbaar voor wie al een huis heeft
     residentsMode: residents.mode(),
     simpleUi: settings?.simpleUi === true,
+    qrOnly: residents.qrOnly(),
     deviceCode: residents.codeOn(), // alleen of er een code nodig is, nooit de code zelf
     geofence: residents.geofence().on ? { center: residents.geofence().center, radius: residents.geofence().radius } : null,
     residentsAppOnly: residents.appOnly(),
@@ -398,7 +399,7 @@ admin.delete('/logo', (req, res) => {
 // Instellingen zoals bewaard (voor het beheerscherm); /api/map geeft de actuele, effectieve waarden.
 admin.get('/settings', (req, res) => {
   const s = store.db().settings;
-  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null, residentsSwapAfter: s.residentsSwapAfter === true, residentsGeofence: s.residentsGeofence === true, simpleUi: s.simpleUi === true, residentsCodeOn: s.residentsCodeOn === true, residentsCode: s.residentsCode || '', residentsGeofenceRadius: residents.geofence().radius });
+  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null, residentsSwapAfter: s.residentsSwapAfter === true, residentsGeofence: s.residentsGeofence === true, simpleUi: s.simpleUi === true, residentsQrOnly: s.residentsQrOnly === true, residentsCodeOn: s.residentsCodeOn === true, residentsCode: s.residentsCode || '', residentsGeofenceRadius: residents.geofence().radius });
 });
 
 admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (req, res) => {
@@ -432,6 +433,7 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     if (on && !residents.geofence().center && !db.houses.length) return res.status(400).json({ error: 'Stel eerst de kaartweergave in of teken huizen: daaruit volgt het midden van de wijk' });
     db.settings.residentsGeofence = on;
   }
+  if ('residentsQrOnly' in body) db.settings.residentsQrOnly = body.residentsQrOnly === true;
   if ('residentsCode' in body) {
     const code = String(body.residentsCode ?? '').trim();
     if (code && !/^\d{4,6}$/.test(code)) return res.status(400).json({ error: 'De code moet uit 4 tot 6 cijfers bestaan' });
@@ -548,6 +550,7 @@ const vendorFile = (file) => (req, res) => res
   .sendFile(file, { cacheControl: false });
 app.get('/vendor/webauthn.js', vendorFile(nm('@simplewebauthn', 'browser', 'dist', 'bundle', 'index.umd.min.js')));
 app.get('/vendor/jspdf.js', vendorFile(nm('jspdf', 'dist', 'jspdf.umd.min.js')));
+app.get('/vendor/qrcode.js', vendorFile(nm('qrcode-generator', 'dist', 'qrcode.js')));
 app.use('/vendor/leaflet', express.static(nm('leaflet', 'dist'), {
   index: false,
   setHeaders: (res, file) => res.set('Cache-Control', res.req.query.v && /\.(js|css)$/.test(file) ? 'public, max-age=31536000, immutable' : 'no-cache'),

@@ -13,6 +13,7 @@
   let geo = null; // { center: [lat, lng], radius } of null
   let codeRequired = false; // de beheerder vraagt een toegangscode voor apparaten zonder GPS
   let codeOk = false; // dit apparaat heeft de code al ingevuld (cookie)
+  let qrOnly = false; // een huis kiezen kan alleen met de QR-code uit de brief
   let fix = null; // laatste bepaalde positie
   const distanceM = (a, b) => {
     const rad = (x) => (x * Math.PI) / 180, dLat = rad(b[0] - a[0]), dLng = rad(b[1] - a[1]);
@@ -71,6 +72,7 @@
   }
   Wijk.setResidentGeofence = (g) => { geo = g && g.center ? g : null; };
   Wijk.setResidentCode = (flag) => { codeRequired = flag === true; };
+  const QR_HINT = 'Scan de QR-code uit je brief om jouw huis te kiezen.';
 
   async function api(path, body) {
     const geoHeader = {};
@@ -103,8 +105,9 @@
     setTimeout(() => t.remove(), 3500);
   }
 
-  Wijk.initResident = async function ({ map, houses, enabled, mode: startMode, geofence, deviceCode }) {
+  Wijk.initResident = async function ({ map, houses, enabled, mode: startMode, geofence, deviceCode, qrOnly: startQrOnly }) {
     if (!enabled) return;
+    qrOnly = startQrOnly === true;
     Wijk.setResidentGeofence(geofence);
     Wijk.setResidentCode(deviceCode);
     let mode = startMode || 'open'; // 'swap': na de einddatum alleen het eigen huis wisselen tussen groen en rood
@@ -143,6 +146,7 @@
     const nextStatus = (st) => (swap() ? (st === 'green' ? 'red' : st === 'red' ? 'green' : st) : cycle(st));
     const changed = () => window.dispatchEvent(new Event('sm-resident'));
     Wijk.residentNoAccess = () => swap() && !me.claim; // geen huis gekozen en wijzigen is gesloten
+    Wijk.setResidentQrOnly = (flag) => { qrOnly = flag === true; if (on) render(); };
     Wijk.setResidentMode = (m) => {
       if (!m || m === mode) return;
       mode = m;
@@ -235,6 +239,7 @@
 
     function confirmClaim(h) {
       if (swap()) { toast('Wijzigen is gesloten: je kunt geen huis meer kiezen'); return; }
+      if (qrOnly) { toast(QR_HINT); return; }
       const dlg = $('claim-dialog');
       $('claim-title').textContent = Wijk.houseTitle(h);
       dlg.returnValue = '';
@@ -281,7 +286,10 @@
           el('button', { type: 'button', textContent: 'OK', onclick: async () => { try { await api('/ack', {}); } catch {} me.notice = null; render(); } })));
       }
 
-      if (!me.claim) {
+      if (!me.claim && qrOnly) {
+        parts.push(el('p', { textContent: '📷 ' + QR_HINT }));
+        parts.push(el('p', { className: 'muted', textContent: 'Open de camera van je telefoon, richt hem op de QR-code en tik op de link. Geen brief ontvangen of kwijt? Vraag het de beheerder.' }));
+      } else if (!me.claim) {
         parts.push(el('p', { textContent: 'Tik op jouw huis op de kaart of kies je adres. Je kunt per apparaat één huis kiezen.' }));
         const sel = el('select', { ariaLabel: 'Kies je adres' }, el('option', { value: '', textContent: 'Kies je adres…' }),
           ...sorted.map((h) => el('option', { value: h.id, textContent: Wijk.houseTitle(h) })));
@@ -349,6 +357,31 @@
     changed();
 
     Wijk.leaveResident = () => { if (on) leave(); };
+    // Gescande QR-code (?q=...): bij welk huis hoort die, bevestigen, koppelen en de wijzigmodus openen.
+    Wijk.claimFromQr = async (q) => {
+      try { document.getElementById('intro-dialog')?.close(); } catch {}
+      if (swap() || mode === 'closed') { toast('Wijzigen is gesloten.'); return; }
+      if (me.claim) { toast(`Dit apparaat is al gekoppeld aan ${me.claim.title}.`); return; }
+      let info;
+      try { info = await api('/qr/lookup', { q }); } catch (e) { toast(e.message); return; }
+      if (info.taken) { toast('Dit huis is al aan een ander apparaat gekoppeld. Neem contact op met de beheerder.'); return; }
+      const dlg = $('claim-dialog');
+      $('claim-title').textContent = info.title;
+      dlg.returnValue = '';
+      dlg.onclose = async () => {
+        if (dlg.returnValue !== 'ja') return;
+        try {
+          if (!(await checkGeo())) return;
+          me = await api('/claim', { q, token: store.get(TOKEN) || undefined });
+          if (me.deviceToken) store.set(TOKEN, me.deviceToken);
+          store.set(CACHE, JSON.stringify(me));
+          changed();
+          toast(`Gekoppeld aan ${me.claim.title} ✔`);
+          await enter();
+        } catch (e) { toast(e.message); }
+      };
+      dlg.showModal();
+    };
     // Dubbelklik op een huis: wijzigmodus aan en dit huis selecteren (inzoomen; nog geen huis? dan vragen of het van jou is).
     Wijk.selectResidentHouse = async (id) => {
       const h = byId.get(id);

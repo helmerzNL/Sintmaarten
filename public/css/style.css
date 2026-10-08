@@ -319,3 +319,6 @@ body.simple-ui #num-switch-wrap, body.simple-ui #edit-switch-wrap, body.simple-u
 #settings .error:empty { display: none; }
 #settings button { border-radius: 8px; }
 #settings .bk-row, #settings .chg-row { padding: 10px 12px; }
+#settings select { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font-size: .9rem; max-width: 55%; }
+#qr-dialog input[type=text] { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); min-width: 0; }
+#qr-dialog .row { flex-wrap: nowrap; }

@@ -100,7 +100,7 @@
         <button data-status="red"><i class="dot red"></i><span data-label="red">Rood</span></button>
         <button data-status="none"><span data-label="none">Niet gemarkeerd</span></button>
       </div>
-      <p><button class="danger" id="p-del">Huis verwijderen</button></p>
+      <p class="row"><button id="p-qr" type="button">📷 QR-code</button><button class="danger" id="p-del">Huis verwijderen</button></p>
     </div>
     <div>
       <label for="street-filter">Filter op straat</label>
@@ -136,6 +136,15 @@
   <p class="error" id="v-err"></p>
   <div class="row"><button id="v-apply">Toon op kaart</button><button id="v-auto" class="danger" title="De site toont dan alle huizen">Automatisch</button></div>
   <div class="row"><button id="v-save" class="primary">Opslaan</button><button id="v-close">Sluiten</button></div>
+</dialog>
+
+<dialog id="qr-dialog" aria-labelledby="qr-title">
+  <div class="intro-head"><h3 id="qr-title">QR-code</h3><button id="qr-x" class="icon-btn" type="button" aria-label="Sluiten">✕</button></div>
+  <p class="muted">Persoonlijke code van dit huis: bewoners scannen hem om hun huis te koppelen. Deel hem alleen met de bewoners.</p>
+  <p style="text-align:center"><img id="qr-img" alt="QR-code" width="240" height="240"></p>
+  <p class="row"><input type="text" id="qr-link" readonly aria-label="Link"><button id="qr-copy" type="button">Link kopiëren</button></p>
+  <p class="muted" id="qr-state"></p>
+  <p class="row"><button id="qr-png" type="button">PNG downloaden</button><button id="qr-rotate" type="button" class="danger">Vernieuwen</button></p>
 </dialog>
 
 <div id="scrim" class="scrim"></div>
@@ -210,6 +219,17 @@
             <button id="res-code-save" class="primary">Opslaan</button>
           </div>
         </div>
+      </div>
+
+      <div class="set-card">
+        <header class="set-card-head"><h4>Toegang via QR-code</h4><p>Elk huis heeft een eigen QR-code met een geheim dat niet op de kaart staat. Druk ze af en bezorg ze bij de bewoners.</p></header>
+        <div class="set-row">
+          <div class="set-text"><div class="set-title">Huis kiezen alleen via QR-code</div><div class="set-hint">Aan: bewoners kunnen hun huis niet meer op de kaart of in de lijst kiezen en moeten scannen. Eén apparaat per huis; verwijder een koppeling om opnieuw te kunnen scannen. Een geldige QR vervangt de toegangscode; de locatiecontrole blijft gelden.</div></div>
+          <label class="switch"><input type="checkbox" id="res-qr-only" role="switch" aria-label="Huis kiezen alleen via QR-code"><span class="track" aria-hidden="true"><span class="thumb"></span></span></label>
+        </div>
+        <div class="field field-inline"><label for="qr-street">Afdrukken voor</label><select id="qr-street"><option value="">Alle straten</option></select></div>
+        <div class="set-actions"><button id="qr-rotate-all" class="danger" type="button">Alle QR-codes vernieuwen</button><button id="qr-print" class="primary" type="button">QR-codes afdrukken (PDF)</button></div>
+        <p class="error" id="qr-err"></p>
       </div>
 
       <div class="set-card">
@@ -315,6 +335,8 @@
 
 <script src="/vendor/webauthn.js?v={{v}}"></script>
 <script src="/vendor/leaflet/leaflet.js?v={{v}}"></script>
+<script src="/vendor/jspdf.js?v={{v}}"></script>
+<script src="/vendor/qrcode.js?v={{v}}"></script>
 <script src="/js/wijk.js?v={{v}}"></script>
 <script src="/admin/admin.js?v={{v}}"></script>
 </body>
