@@ -150,7 +150,7 @@
   // bewoners: huis wijzigen. In de geïnstalleerde app staat de knop er altijd; in de browser
   // verschijnt hij na de schakelaar "Bewerken" (dan gaan PDF opslaan en Installeer app naar "Meer").
   const residentsOn = data.residentsEnabled !== false;
-  Wijk.initResident?.({ map, houses: data.houses, enabled: residentsOn, mode: data.residentsMode });
+  Wijk.initResident?.({ map, houses: data.houses, enabled: residentsOn, mode: data.residentsMode, geofence: data.geofence });
   const inApp = window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches || window.navigator.standalone === true;
 
   const bar = document.querySelector('.actions');
@@ -244,7 +244,7 @@
   }
 
   // ---------- automatisch verversen (o.a. nadat de beheerder een wijziging goedkeurt) ----------
-  const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.logo, d.appName, d.appShortName, d.residentsEnabled, d.residentsMode, d.residentsAppOnly, d.residentInfo]);
+  const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.logo, d.appName, d.appShortName, d.residentsEnabled, d.residentsMode, d.geofence, d.residentsAppOnly, d.residentInfo]);
   let lastSig = signature(data);
   let busy = false;
   let lastSync = new Date();
@@ -263,6 +263,7 @@
         applyMeta(false);
         buildHouses();
         Wijk.setResidentMode?.(data.residentsMode);
+        Wijk.setResidentGeofence?.(data.geofence);
         applyEditUi();
         changed = true;
       }

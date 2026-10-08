@@ -80,6 +80,42 @@ function currentResident(req) {
   return rec && houseOf(rec.houseId) ? rec : null;
 }
 
+// ---- geofence: wijzigen alleen als het apparaat (volgens GPS/wifi-locatie) in de wijk is ----
+const GEO_DEFAULT_RADIUS = 500, GEO_MIN = 50, GEO_MAX = 5000;
+function geoCenter() {
+  const d = db();
+  const c = d.view?.center;
+  if (Array.isArray(c) && c.length === 2 && c.every(Number.isFinite)) return [c[0], c[1]];
+  const pts = d.houses.flatMap((h) => h.points || []);
+  if (!pts.length) return null;
+  return [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length];
+}
+const geofence = () => {
+  const s = db().settings || {};
+  const radius = Math.min(GEO_MAX, Math.max(GEO_MIN, Number(s.residentsGeofenceRadius) || GEO_DEFAULT_RADIUS));
+  const center = geoCenter();
+  return { on: s.residentsGeofence === true && !!center, radius, center };
+};
+const distanceM = (a, b) => { // haversine
+  const R = 6371000, rad = (x) => (x * Math.PI) / 180;
+  const dLat = rad(b[0] - a[0]), dLng = rad(b[1] - a[1]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+};
+// De locatie komt van het apparaat zelf (kop X-Geo: lat,lng,nauwkeurigheid in m). De server kan die niet
+// controleren: het is een gebruiksbeperking tegen "even vanaf de bank", geen harde beveiliging.
+function geoCheck(req) {
+  const g = geofence();
+  if (!g.on) return null;
+  const m = /^(-?\d{1,3}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?),(\d{1,6}(?:\.\d+)?)$/.exec(String(req.get('X-Geo') || ''));
+  if (!m) return { geofence: 'missing', error: 'Wijzigen kan alleen in de wijk. Sta toegang tot je locatie toe en probeer het opnieuw.' };
+  const pos = [Number(m[1]), Number(m[2])], acc = Math.min(Number(m[3]), 500); // een vage fix telt maximaal 500 m mee
+  if (Math.abs(pos[0]) > 90 || Math.abs(pos[1]) > 180) return { geofence: 'missing', error: 'Ongeldige locatie' };
+  const dist = distanceM(pos, g.center);
+  if (dist - acc > g.radius) return { geofence: 'outside', error: `Je lijkt niet in de wijk te zijn (ongeveer ${Math.round(dist / 10) * 10} m van het midden). Wijzigen kan alleen in de wijk.` };
+  return null;
+}
+
 // Geblokkeerde apparaten (cookie/token) en IP-adressen mogen niet meer wijzigen of een huis kiezen.
 function isBlocked(req) {
   const list = db().blocked || [];
@@ -145,6 +181,10 @@ resident.use((req, res, next) => {
   if (isBlocked(req)) {
     if (req.method === 'GET') return res.json({ enabled: true, claim: null, blocked: true });
     return res.status(403).json({ error: 'Dit apparaat is geblokkeerd door de beheerder', blocked: true });
+  }
+  if (req.method !== 'GET' && (req.path === '/claim' || req.path === '/set')) {
+    const bad = geoCheck(req);
+    if (bad) return res.status(403).json(bad);
   }
   if (req.method !== 'GET') {
     // Alleen in de geïnstalleerde app: de app meldt zich met X-App-Mode. Dit is een gebruiksbeperking
@@ -240,7 +280,7 @@ const list = () => {
   }).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const residents = d.residents.map((r) => ({ rid: r.rid, houseId: r.houseId, title: titleOf(houseOf(r.houseId)), createdAt: r.createdAt, lastActivity: r.lastActivity, ip: r.ip || null }));
   const blocked = (d.blocked || []).map((b) => ({ id: b.id, title: b.title, ip: b.ip || null, at: b.at }));
-  return { enabled: storedEnabled(), appOnly: storedAppOnly(), schedule: { swap: swapAfter(), on: db().settings?.residentsOff === true, until: db().settings?.residentsUntil || null, active: scheduled() }, pending: rows, residents, blocked };
+  return { enabled: storedEnabled(), appOnly: storedAppOnly(), geofence: { on: db().settings?.residentsGeofence === true, radius: geofence().radius, hasCenter: !!geoCenter() }, schedule: { swap: swapAfter(), on: db().settings?.residentsOff === true, until: db().settings?.residentsUntil || null, active: scheduled() }, pending: rows, residents, blocked };
 };
 
 admin.get('/changes', (req, res) => res.json(list()));
@@ -318,4 +358,4 @@ admin.post('/push/test', async (req, res) => {
   res.json(r);
 });
 
-module.exports = { resident, admin, prune, reconcile, enabled, mode, appOnly, info, untilMs, DEFAULT_INFO };
+module.exports = { resident, admin, prune, reconcile, enabled, mode, geofence, GEO_MIN, GEO_MAX, GEO_DEFAULT_RADIUS, appOnly, info, untilMs, DEFAULT_INFO };

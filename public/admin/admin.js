@@ -386,6 +386,10 @@
     $('res-sched').checked = !!sched.on;
     if (sched.until && document.activeElement !== $('res-until')) $('res-until').value = toLocalInput(sched.until);
     $('res-until').disabled = false;
+    const gf = data.geofence || {};
+    $('res-geo').checked = !!gf.on;
+    if (document.activeElement !== $('res-geo-radius')) $('res-geo-radius').value = gf.radius || 500;
+    $('res-geo-radius').disabled = !gf.on;
     $('res-swap').checked = !!sched.swap;
     $('res-swap').disabled = !sched.on;
     $('res-enabled').disabled = !!sched.on;
@@ -469,6 +473,16 @@
     } catch (e) { $('chg-err').textContent = e.message; $('res-sched').checked = !on; }
     await renderChanges();
   }
+  async function saveGeo(body, undo) {
+    $('chg-err').textContent = '';
+    try {
+      await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify(body), expectAuth: true });
+      if ('residentsGeofence' in body) toast(body.residentsGeofence ? 'Wijzigen kan alleen nog in de wijk' : 'Locatiecontrole staat uit');
+    } catch (e) { $('chg-err').textContent = e.message; undo?.(); }
+    await renderChanges();
+  }
+  $('res-geo').onchange = () => saveGeo({ residentsGeofence: $('res-geo').checked, residentsGeofenceRadius: Number($('res-geo-radius').value) || 500 }, () => { $('res-geo').checked = !$('res-geo').checked; });
+  $('res-geo-radius').onchange = () => saveGeo({ residentsGeofenceRadius: Number($('res-geo-radius').value) });
   $('res-swap').onchange = async () => {
     try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ residentsSwapAfter: $('res-swap').checked }), expectAuth: true }); toast($('res-swap').checked ? 'Na de einddatum kan nog groen ↔ rood worden gewisseld' : 'Na de einddatum is wijzigen helemaal dicht'); }
     catch (e) { $('chg-err').textContent = e.message; $('res-swap').checked = !$('res-swap').checked; }

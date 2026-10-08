@@ -9,10 +9,47 @@
   const isInstalledApp = Wijk.isInstalledApp = () => window.matchMedia('(display-mode: standalone)').matches
     || window.matchMedia('(display-mode: fullscreen)').matches || window.navigator.standalone === true;
 
+  // ---- geofence: de beheerder kan wijzigen beperken tot mensen die (volgens GPS/wifi-locatie) in de wijk zijn ----
+  let geo = null; // { center: [lat, lng], radius } of null
+  let fix = null; // laatste bepaalde positie
+  const distanceM = (a, b) => {
+    const rad = (x) => (x * Math.PI) / 180, dLat = rad(b[0] - a[0]), dLng = rad(b[1] - a[1]);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLng / 2) ** 2;
+    return 2 * 6371000 * Math.asin(Math.sqrt(h));
+  };
+  function getFix() {
+    if (fix && Date.now() - fix.t < 45000) return Promise.resolve(fix);
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) return reject(new Error('Dit apparaat ondersteunt geen locatiebepaling. Wijzigen kan alleen in de wijk.'));
+      navigator.geolocation.getCurrentPosition(
+        (p) => { fix = { lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy || 0), t: Date.now() }; resolve(fix); },
+        (err) => reject(new Error(err.code === 1
+          ? 'Wijzigen kan alleen in de wijk. Geef deze site toegang tot je locatie (instellingen van je browser of telefoon) en probeer het opnieuw.'
+          : 'Je locatie kon niet worden bepaald. Probeer het buiten of met wifi/GPS aan opnieuw.')),
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+    });
+  }
+  // true als wijzigen hier mag; anders een melding (geen geofence = altijd toegestaan)
+  async function checkGeo() {
+    if (!geo) return true;
+    try {
+      const f = await getFix();
+      const dist = distanceM([f.lat, f.lng], geo.center);
+      if (dist - Math.min(f.acc, 500) > geo.radius) { toast(`Je lijkt niet in de wijk te zijn (ongeveer ${Math.round(dist / 10) * 10} m van het midden). Wijzigen kan alleen in de wijk.`); return false; }
+      return true;
+    } catch (e) { toast(e.message); return false; }
+  }
+  Wijk.setResidentGeofence = (g) => { geo = g && g.center ? g : null; };
+
   async function api(path, body) {
+    const geoHeader = {};
+    if (geo && body !== undefined && (path === '/set' || path === '/claim')) {
+      const f = await getFix();
+      geoHeader['X-Geo'] = `${f.lat.toFixed(6)},${f.lng.toFixed(6)},${f.acc}`;
+    }
     const res = await fetch(`/api/resident${path}`, body === undefined ? {} : {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(isInstalledApp() ? { 'X-App-Mode': 'standalone' } : {}) },
+      headers: { 'Content-Type': 'application/json', ...geoHeader, ...(isInstalledApp() ? { 'X-App-Mode': 'standalone' } : {}) },
       body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
@@ -27,8 +64,9 @@
     setTimeout(() => t.remove(), 3500);
   }
 
-  Wijk.initResident = async function ({ map, houses, enabled, mode: startMode }) {
+  Wijk.initResident = async function ({ map, houses, enabled, mode: startMode, geofence }) {
     if (!enabled) return;
+    Wijk.setResidentGeofence(geofence);
     let mode = startMode || 'open'; // 'swap': na de einddatum alleen het eigen huis wisselen tussen groen en rood
     const btn = $('house-edit');
     if (!btn) return;
@@ -115,8 +153,11 @@
       badge.getElement()?.setAttribute('title', me.pending ? 'Jouw huis: wacht op goedkeuring' : 'Jouw huis');
     }
 
-    function enter() {
+    async function enter() {
       if (Wijk.residentNoAccess()) { toast('Wijzigen is gesloten'); return; }
+      if (geo) toast('Locatie controleren…');
+      if (!(await checkGeo())) return;
+      if (on) return;
       on = true;
       clearMine();
       document.body.classList.add('editing');
@@ -268,10 +309,11 @@
 
     Wijk.leaveResident = () => { if (on) leave(); };
     // Dubbelklik op een huis: wijzigmodus aan en dit huis selecteren (inzoomen; nog geen huis? dan vragen of het van jou is).
-    Wijk.selectResidentHouse = (id) => {
+    Wijk.selectResidentHouse = async (id) => {
       const h = byId.get(id);
       if (!h) return;
-      if (!on) enter();
+      if (!on) await enter();
+      if (!on) return;
       map.fitBounds(L.latLngBounds(h.points).pad(2), { maxZoom: 19 });
       const layer = layers.get(id);
       if (layer) layer.bringToFront();

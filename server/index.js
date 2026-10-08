@@ -72,6 +72,7 @@ app.get('/api/map', (req, res) => {
     appName: settings?.appName || '', appShortName: settings?.appShortName || '',
     residentsEnabled: residents.mode() !== 'closed', // ook 'swap': dan blijft de knop zichtbaar voor wie al een huis heeft
     residentsMode: residents.mode(),
+    geofence: residents.geofence().on ? { center: residents.geofence().center, radius: residents.geofence().radius } : null,
     residentsAppOnly: residents.appOnly(),
     residentInfo: residents.enabled() ? residents.info() : '', // het infovlak verdwijnt zodra wijzigen uit staat
     labels: statusLabels(settings),
@@ -372,7 +373,7 @@ admin.delete('/logo', (req, res) => {
 // Instellingen zoals bewaard (voor het beheerscherm); /api/map geeft de actuele, effectieve waarden.
 admin.get('/settings', (req, res) => {
   const s = store.db().settings;
-  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null, residentsSwapAfter: s.residentsSwapAfter === true });
+  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null, residentsSwapAfter: s.residentsSwapAfter === true, residentsGeofence: s.residentsGeofence === true, residentsGeofenceRadius: residents.geofence().radius });
 });
 
 admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (req, res) => {
@@ -395,6 +396,16 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     if (off && !Number.isFinite(t)) return res.status(400).json({ error: 'Kies eerst een geldige datum en tijd' });
     db.settings.residentsOff = off;
     db.settings.residentsUntil = Number.isFinite(t) ? new Date(t).toISOString() : null;
+  }
+  if ('residentsGeofenceRadius' in body) {
+    const r = Number(body.residentsGeofenceRadius);
+    if (!Number.isFinite(r) || r < residents.GEO_MIN || r > residents.GEO_MAX) return res.status(400).json({ error: `De straal moet tussen ${residents.GEO_MIN} en ${residents.GEO_MAX} meter liggen` });
+    db.settings.residentsGeofenceRadius = Math.round(r);
+  }
+  if ('residentsGeofence' in body) {
+    const on = body.residentsGeofence === true;
+    if (on && !residents.geofence().center && !db.houses.length) return res.status(400).json({ error: 'Stel eerst de kaartweergave in of teken huizen: daaruit volgt het midden van de wijk' });
+    db.settings.residentsGeofence = on;
   }
   if ('residentsSwapAfter' in body) db.settings.residentsSwapAfter = body.residentsSwapAfter === true;
   if ('residentsEnabled' in body) db.settings.residentsEnabled = body.residentsEnabled === true;
