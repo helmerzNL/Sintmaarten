@@ -21,10 +21,12 @@ function normalizeHouse(h) {
 const DEFAULT_LABELS = { green: 'Groen', red: 'Rood', none: 'Niet gemarkeerd' };
 
 // Namen van de statussen (door de beheerder aan te passen); ontbrekende of lege namen vallen terug op de standaard.
-function statusLabels(settings) {
+// Met lang: de namen in die taal (een lege vertaling valt terug op de Nederlandse naam).
+function statusLabels(settings, lang) {
   const l = settings?.labels || {};
+  const tl = (lang && lang !== 'nl' && settings?.translations?.[lang]?.labels) || {};
   const out = {};
-  for (const k of STATUSES) out[k] = clean(l[k], 24) || DEFAULT_LABELS[k];
+  for (const k of STATUSES) out[k] = clean(tl[k], 24) || clean(l[k], 24) || DEFAULT_LABELS[k];
   return out;
 }
 

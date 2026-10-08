@@ -678,34 +678,79 @@ test('Meertaligheid: standaard uit en Nederlands; instelbaar; taal staat in de p
   assert.match(page0, /<html lang="nl">/);
   assert.match(page0, /<meta name="sm-lang" content="nl">/);
   assert.equal((await adminReq('/settings', 'PUT', { defaultLang: 'fr' })).status, 400);
-  assert.equal((await adminReq('/settings', 'PUT', { multilingual: true, defaultLang: 'en', introEn: 'Welcome', residentInfoEn: 'Hello residents' })).status, 200);
+  assert.equal((await adminReq('/settings', 'PUT', { multilingual: true, defaultLang: 'en', translations: { en: { intro: 'Welcome', residentInfo: 'Hello residents', siteTitle: 'Our street' } } })).status, 200);
   const m1 = await (await j('/api/map')).json();
   assert.equal(m1.multilingual, true);
   assert.equal(m1.defaultLang, 'en');
-  assert.equal(m1.introEn, 'Welcome');
+  assert.equal(m1.translations.en.intro, 'Welcome');
+  assert.equal(m1.translations.en.siteTitle, 'Our street');
   const page1 = await (await j('/beheer')).text();
   assert.match(page1, /<html lang="en">/);
   assert.match(page1, /<meta name="sm-lang" content="en" data-multi="1">/);
-  assert.equal((await (await j('/manifest.webmanifest')).json()).lang, 'en');
+  const man = await (await j('/manifest.webmanifest')).json();
+  assert.equal(man.lang, 'en');
+  assert.equal(man.name, 'Our street'); // de naam in de standaardtaal
   const st = await (await adminReq('/settings')).json();
-  assert.deepEqual([st.multilingual, st.defaultLang, st.introEn, st.residentInfoEn], [true, 'en', 'Welcome', 'Hello residents']);
-  assert.equal((await adminReq('/settings', 'PUT', { introEn: 'x'.repeat(5001) })).status, 400);
+  assert.deepEqual([st.multilingual, st.defaultLang, st.translations.en.intro, st.translations.en.residentInfo], [true, 'en', 'Welcome', 'Hello residents']);
+  assert.equal((await adminReq('/settings', 'PUT', { translations: { en: { intro: 'x'.repeat(5001) } } })).status, 400);
+  assert.equal((await adminReq('/settings', 'PUT', { translations: { fr: { intro: 'x' } } })).status, 400);
+  assert.equal((await adminReq('/settings', 'PUT', { translations: { nl: { intro: 'x' } } })).status, 400);
+  assert.equal((await adminReq('/settings', 'PUT', { translations: { en: { labels: { green: 'x'.repeat(25) } } } })).status, 400);
+  assert.equal((await adminReq('/settings', 'PUT', { translations: 'x' })).status, 400);
+  // alleen opgegeven velden veranderen; een lege vertaling valt terug op het Nederlands
+  assert.equal((await adminReq('/settings', 'PUT', { intro: 'Welkom', translations: { en: { labels: { green: 'Agreed' }, intro: '' } } })).status, 200);
+  const m2 = await (await j('/api/map')).json();
+  assert.equal(m2.intro, 'Welkom');
+  assert.equal(m2.translations.en.intro, '');
+  assert.equal(m2.translations.en.siteTitle, 'Our street');
+  assert.equal(m2.translations.en.labels.green, 'Agreed');
+  assert.equal(m2.labels.green, 'Groen');
   // terug naar de standaard
-  assert.equal((await adminReq('/settings', 'PUT', { multilingual: false, defaultLang: 'nl', introEn: '', residentInfoEn: '' })).status, 200);
+  assert.equal((await adminReq('/settings', 'PUT', { multilingual: false, defaultLang: 'nl', intro: '', translations: { en: { siteTitle: '', labels: { green: '' }, residentInfo: '' } } })).status, 200);
   assert.equal((await (await j('/api/map')).json()).defaultLang, 'nl');
 });
 
-test('Tekst bij delen via WhatsApp is instelbaar (standaard, opslaan, te lang, leeg = standaard)', async () => {
+test('Teksten van een vertaling gaan mee in een backup en worden teruggezet', async () => {
+  const backups = require('../server/backups');
+  assert.equal((await adminReq('/settings', 'PUT', { translations: { en: { intro: 'English intro' } } })).status, 200);
+  const id = backups.create('test', true, { force: true });
+  assert.equal(backups.read(id).texts.translations.en.intro, 'English intro');
+  assert.equal((await adminReq('/settings', 'PUT', { translations: { en: { intro: 'Changed' } } })).status, 200);
+  assert.ok(backups.restore(id));
+  assert.equal((await (await j('/api/map')).json()).translations.en.intro, 'English intro');
+  assert.equal((await adminReq('/settings', 'PUT', { translations: { en: { intro: '' } } })).status, 200);
+});
+
+test('Oude losse velden introEn/residentInfoEn worden gemigreerd naar translations.en', () => {
+  const store = require('../server/store');
+  const lang = require('../server/lang');
+  const s = store.db().settings;
+  s.introEn = 'Old intro'; s.residentInfoEn = 'Old info';
+  lang.migrate();
+  assert.equal(s.translations.en.intro, 'Old intro');
+  assert.equal(s.translations.en.residentInfo, 'Old info');
+  assert.ok(!('introEn' in s) && !('residentInfoEn' in s));
+  s.translations.en.intro = ''; s.translations.en.residentInfo = '';
+});
+
+test('Tekst bij delen via WhatsApp is instelbaar per taal (standaard, opslaan, te lang, leeg = standaard)', async () => {
   const get = async () => (await (await adminReq('/changes')).json());
   const d0 = await get();
-  assert.match(d0.shareText, /\{adres\}.*\{link\}/);
-  assert.equal(d0.shareText, d0.defaultShareText);
-  assert.equal((await adminReq('/settings', 'PUT', { qrShareText: 'Hoi, jouw huis {adres}: {link}' })).status, 200);
-  assert.equal((await get()).shareText, 'Hoi, jouw huis {adres}: {link}');
+  assert.match(d0.shareTexts.nl, /\{adres\}.*\{link\}/);
+  assert.equal(d0.shareTexts.nl, d0.defaultShareTexts.nl);
+  assert.match(d0.defaultShareTexts.en, /\{adres\}.*\{link\}/);
+  assert.notEqual(d0.defaultShareTexts.en, d0.defaultShareTexts.nl); // Engelse standaardtekst
+  assert.equal((await adminReq('/settings', 'PUT', { qrShareText: 'Hoi, jouw huis {adres}: {link}', translations: { en: { qrShareText: 'Hi, your house {adres}: {link}' } } })).status, 200);
+  const d1 = await get();
+  assert.equal(d1.shareTexts.nl, 'Hoi, jouw huis {adres}: {link}');
+  assert.equal(d1.shareTexts.en, 'Hi, your house {adres}: {link}');
   assert.equal((await adminReq('/settings', 'PUT', { qrShareText: 'x'.repeat(501) })).status, 400);
-  assert.equal((await get()).shareText, 'Hoi, jouw huis {adres}: {link}');
-  assert.equal((await adminReq('/settings', 'PUT', { qrShareText: '  ' })).status, 200);
-  assert.equal((await get()).shareText, d0.defaultShareText);
+  assert.equal((await adminReq('/settings', 'PUT', { translations: { en: { qrShareText: 'x'.repeat(501) } } })).status, 400);
+  assert.equal((await get()).shareTexts.nl, 'Hoi, jouw huis {adres}: {link}');
+  assert.equal((await adminReq('/settings', 'PUT', { qrShareText: '  ', translations: { en: { qrShareText: '' } } })).status, 200);
+  const d2 = await get();
+  assert.equal(d2.shareTexts.nl, d0.defaultShareTexts.nl);
+  assert.equal(d2.shareTexts.en, d0.defaultShareTexts.en);
 });
 
 test('QR-code per huis: alleen via QR koppelen (schakelaar), een apparaat per huis, vernieuwen', async () => {

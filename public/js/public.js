@@ -1,10 +1,6 @@
 (async () => {
   const $ = (id) => document.getElementById(id);
-  const getData = async () => {
-    const d = await (await fetch('/api/map', { cache: 'no-cache' })).json();
-    d.title = I18n.tr(d.title); // de standaardnaam ("Onze wijk") ook in de PDF in de gekozen taal
-    return d;
-  };
+  const getData = async () => I18n.localize(await (await fetch('/api/map', { cache: 'no-cache' })).json()); // teksten in de gekozen taal
   let data = await getData();
 
   I18n.mountPrefs($('prefs'));
@@ -26,8 +22,8 @@
     }
 
     document.body.classList.toggle('simple-ui', data.simpleUi === true); // eenvoudige weergave: geen huisnummers/Bewerken/straten
-    const intro = I18n.pick(data.intro, data.introEn);
-    const info = data.residentInfo ? I18n.pick(data.residentInfo, data.residentInfoEn) : ''; // leeg zodra wijzigen door bewoners uit staat
+    const intro = data.intro;
+    const info = data.residentInfo || ''; // leeg zodra wijzigen door bewoners uit staat
     $('intro-btn').hidden = !(intro || info);
     $('intro-info').hidden = !info;
     $('intro-info-text').textContent = info;
@@ -263,7 +259,7 @@
   }
 
   // ---------- automatisch verversen (o.a. nadat de beheerder een wijziging goedkeurt) ----------
-  const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.introEn, d.residentInfoEn, d.multilingual, d.defaultLang, d.logo, d.appName, d.appShortName, d.residentsEnabled, d.residentsMode, d.geofence, d.deviceCode, d.qrOnly, d.residentsAppOnly, d.residentInfo, d.simpleUi]);
+  const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.translations, d.multilingual, d.defaultLang, d.logo, d.appName, d.appShortName, d.residentsEnabled, d.residentsMode, d.geofence, d.deviceCode, d.qrOnly, d.residentsAppOnly, d.residentInfo, d.simpleUi]);
   let lastSig = signature(data);
   let busy = false;
   let lastSync = new Date();
@@ -331,7 +327,7 @@
     catch (e) { alert(I18n.tr('PDF maken mislukt: ' + e.message)); }
     finally { btn.innerHTML = html; pdfButtons.forEach((b) => (b.disabled = false)); }
   }
-  const make = () => Wijk.buildPdf({ title: data.title, houses: data.houses.filter((h) => h.status === 'none' || !hidden.has(streetName(h))), view: data.view, intro: I18n.pick(data.intro, data.introEn), logo: data.logo, showNumbers: $('num-switch').checked });
+  const make = () => Wijk.buildPdf({ title: data.title, houses: data.houses.filter((h) => h.status === 'none' || !hidden.has(streetName(h))), view: data.view, intro: data.intro, logo: data.logo, showNumbers: $('num-switch').checked });
 
   $('pdf-dl').onclick = (e) => run(e.currentTarget, async () => (await make()).save(pdfName()));
   $('pdf-view').onclick = (e) => {

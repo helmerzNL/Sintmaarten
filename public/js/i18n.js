@@ -136,7 +136,16 @@
   window.I18n = {
     LANGS, lang, multi, defaultLang: def, tr, t, picker, flag, mountPrefs,
     locale: (LANGS.find((l) => l.code === lang) || LANGS[0]).locale,
-    // tekst van de beheerder: de Engelse versie als die er is, anders de Nederlandse
-    pick: (nl, en) => (lang === 'en' && en && String(en).trim() ? en : nl),
+    // Gegevens van /api/map in de gekozen taal: de tekst van de beheerder in die taal (als ingevuld), anders de Nederlandse.
+    localize(d) {
+      const own = (lang !== 'nl' && d.translations && d.translations[lang]) || {};
+      const has = (v) => typeof v === 'string' && v.trim();
+      const out = { ...d };
+      for (const k of ['siteTitle', 'appName', 'appShortName', 'intro', 'residentInfo']) if (has(own[k])) out[k] = own[k];
+      out.title = has(own.siteTitle) ? own.siteTitle : tr(d.title);
+      out.labels = { ...(d.labels || {}) };
+      for (const k of Object.keys(out.labels)) if (has(own.labels && own.labels[k])) out.labels[k] = own.labels[k];
+      return out;
+    },
   };
 })();

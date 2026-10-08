@@ -177,12 +177,13 @@
     <h3 id="settings-title">Instellingen</h3>
     <button id="settings-close" class="icon-btn" aria-label="Instellingen sluiten">✕</button>
   </div>
+  <!-- Tab-iconen: Material Design Icons (Pictogrammers, Apache License 2.0), https://pictogrammers.com/library/mdi/ -->
   <nav class="tabs" role="tablist" aria-label="Instellingen">
-    <button role="tab" data-tab="changes"><span class="tab-ico" aria-hidden="true">🔔</span><span>Goedkeuren</span><span id="tab-badge" class="count-badge" hidden>0</span></button>
-    <button role="tab" data-tab="residents"><span class="tab-ico" aria-hidden="true">🏘</span><span>Bewoners</span></button>
-    <button role="tab" data-tab="org"><span class="tab-ico" aria-hidden="true">🏷</span><span>Site</span></button>
-    <button role="tab" data-tab="security" class="active"><span class="tab-ico" aria-hidden="true">🔐</span><span>Beveiliging</span></button>
-    <button role="tab" data-tab="backups"><span class="tab-ico" aria-hidden="true">🗂</span><span>Backups</span></button>
+    <button role="tab" data-tab="changes"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 21H14C14 22.1 13.1 23 12 23S10 22.1 10 21M21 19V20H3V19L5 17V11C5 7.9 7 5.2 10 4.3V4C10 2.9 10.9 2 12 2S14 2.9 14 4V4.3C17 5.2 19 7.9 19 11V17L21 19M17 11C17 8.2 14.8 6 12 6S7 8.2 7 11V18H17V11Z"/></svg><span>Goedkeuren</span><span id="tab-badge" class="count-badge" hidden>0</span></button>
+    <button role="tab" data-tab="residents"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M17,16H15V22H12V17H8V22H5V16H3L10,10L17,16M6,2L10,6H9V9H7V6H5V9H3V6H2L6,2M18,3L23,8H22V12H19V9H17V12H15.34L14,10.87V8H13L18,3Z"/></svg><span>Bewoners</span></button>
+    <button role="tab" data-tab="org"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 13C6.14 13 4.59 14.28 4.14 16H2V18H4.14C4.59 19.72 6.14 21 8 21S11.41 19.72 11.86 18H22V16H11.86C11.41 14.28 9.86 13 8 13M8 19C6.9 19 6 18.1 6 17C6 15.9 6.9 15 8 15S10 15.9 10 17C10 18.1 9.1 19 8 19M19.86 6C19.41 4.28 17.86 3 16 3S12.59 4.28 12.14 6H2V8H12.14C12.59 9.72 14.14 11 16 11S19.41 9.72 19.86 8H22V6H19.86M16 9C14.9 9 14 8.1 14 7C14 5.9 14.9 5 16 5S18 5.9 18 7C18 8.1 17.1 9 16 9Z"/></svg><span>Config</span></button>
+    <button role="tab" data-tab="security" class="active"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21,11C21,16.55 17.16,21.74 12,23C6.84,21.74 3,16.55 3,11V5L12,1L21,5V11M12,21C15.75,20 19,15.54 19,11.22V6.3L12,3.18L5,6.3V11.22C5,15.54 8.25,20 12,21M14.8,11V9.5C14.8,8.1 13.4,7 12,7C10.6,7 9.2,8.1 9.2,9.5V11C8.6,11 8,11.6 8,12.2V15.7C8,16.4 8.6,17 9.2,17H14.7C15.4,17 16,16.4 16,15.8V12.3C16,11.6 15.4,11 14.8,11M13.5,11H10.5V9.5C10.5,8.7 11.2,8.2 12,8.2C12.8,8.2 13.5,8.7 13.5,9.5V11Z"/></svg><span>Beveiliging</span></button>
+    <button role="tab" data-tab="backups"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12,3A9,9 0 0,0 3,12H0L4,16L8,12H5A7,7 0 0,1 12,5A7,7 0 0,1 19,12A7,7 0 0,1 12,19C10.5,19 9.09,18.5 7.94,17.7L6.5,19.14C8.04,20.3 9.94,21 12,21A9,9 0 0,0 21,12A9,9 0 0,0 12,3M14,12A2,2 0 0,0 12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12Z"/></svg><span>Backups</span></button>
   </nav>
   <div class="drawer-body">
     <p class="error set-error" id="chg-err" role="alert"></p>
@@ -256,10 +257,9 @@
           <div class="set-text"><div class="set-title">Huis kiezen alleen via QR-code</div><div class="set-hint">Aan: bewoners kunnen hun huis niet meer op de kaart of in de lijst kiezen en moeten scannen. Eén apparaat per huis; verwijder een koppeling om opnieuw te kunnen scannen. Een geldige QR vervangt de toegangscode; de locatiecontrole blijft gelden.</div></div>
           <label class="switch"><input type="checkbox" id="res-qr-only" role="switch" aria-label="Huis kiezen alleen via QR-code"><span class="track" aria-hidden="true"><span class="thumb"></span></span></label>
         </div>
-        <div class="field"><label for="qr-share-text">Tekst bij delen via WhatsApp</label>
-          <textarea id="qr-share-text" rows="4" maxlength="500"></textarea>
-          <div class="set-hint">Gebruik <code>{adres}</code> voor het adres van het huis en <code>{link}</code> voor de persoonlijke link (ontbreekt <code>{link}</code>, dan komt de link achter de tekst). Leeg = standaardtekst.</div>
-          <div class="set-actions"><button id="qr-share-default" type="button">Standaardtekst</button><button id="qr-share-save" class="primary" type="button">Tekst opslaan</button></div>
+        <div class="set-row">
+          <div class="set-text"><div class="set-title">Tekst bij delen via WhatsApp</div><div class="set-hint">Het bericht dat bij <em>Delen via WhatsApp</em> wordt voorgevuld stel je in onder <em>Config → Teksten</em>, per taal.</div></div>
+          <button id="qr-share-goto" type="button">Naar Config</button>
         </div>
         <div class="field field-inline"><label for="qr-street">Afdrukken voor</label><select id="qr-street"><option value="">Alle straten</option></select></div>
         <div class="set-actions"><button id="qr-rotate-all" class="danger" type="button">Alle QR-codes vernieuwen</button><button id="qr-print" class="primary" type="button">QR-codes afdrukken (PDF)</button></div>
@@ -290,8 +290,10 @@
           <div class="set-text"><div class="set-title">Meertalig</div><div class="set-hint">Aan: rechtsboven in de menubalk verschijnt een vlag met een uitklapmenu, zodat bezoekers zelf een taal kiezen. Uit: iedereen krijgt de standaardtaal.</div></div>
           <label class="switch"><input type="checkbox" id="org-multi" role="switch" aria-label="Meertalig"><span class="track" aria-hidden="true"><span class="thumb"></span></span></label>
         </div>
-        <div class="field"><label>Standaardtaal</label><div id="org-lang-slot"></div><div class="set-hint">Deze taal geldt voor iedereen die niet zelf een taal kiest, en voor iedereen als meertalig uit staat. Eigen teksten (uitleg, infovlak) voer je hieronder per taal in.</div></div>
+        <div class="field"><label>Standaardtaal</label><div id="org-lang-slot"></div><div class="set-hint">Deze taal geldt voor iedereen die niet zelf een taal kiest, en voor iedereen als meertalig uit staat. Is meertalig aan, dan kies je hieronder met de vlaggen de taal waarin je de velden bewerkt.</div></div>
       </div>
+
+      <div id="cfg-langbar" class="lang-tabs hidden" role="tablist" aria-label="Taal om te bewerken"></div>
 
       <div class="set-card">
         <header class="set-card-head"><h4>Identiteit</h4><p>Logo en naam van de wijkvereniging.</p></header>
@@ -300,13 +302,13 @@
           <input type="file" id="org-file" accept="image/png,image/jpeg,image/webp" hidden>
           <div class="row row-tight"><button id="org-upload">Logo uploaden</button><button id="org-remove" class="danger">Logo verwijderen</button></div>
         </div>
-        <div class="field"><label for="org-title">Naam van de site</label><input type="text" id="org-title" maxlength="60" placeholder="Standaard: de naam uit de serverinstelling (SITE_TITLE)"><div class="set-hint">Staat naast het logo en bovenaan de PDF.</div></div>
+        <div class="field" data-perlang><label for="org-title">Naam van de site</label><input type="text" id="org-title" maxlength="60" placeholder="Standaard: de naam uit de serverinstelling (SITE_TITLE)"><div class="set-hint">Staat naast het logo en bovenaan de PDF.</div></div>
       </div>
 
       <div class="set-card">
         <header class="set-card-head"><h4>App</h4><p>Zo komt de site op het beginscherm van een telefoon te staan.</p></header>
-        <div class="field"><label for="org-appname">Naam van de app</label><input type="text" id="org-appname" maxlength="45" placeholder="Standaard: de sitenaam"></div>
-        <div class="field"><label for="org-short">Korte naam onder het icoon (max. 12 tekens)</label><input type="text" id="org-short" maxlength="12" placeholder="Standaard: de eerste 12 tekens van de naam"><div class="set-hint">Een al geïnstalleerde app neemt een nieuwe naam pas over na een tijdje (of na opnieuw installeren).</div></div>
+        <div class="field" data-perlang><label for="org-appname">Naam van de app</label><input type="text" id="org-appname" maxlength="45" placeholder="Standaard: de sitenaam"></div>
+        <div class="field" data-perlang><label for="org-short">Korte naam onder het icoon (max. 12 tekens)</label><input type="text" id="org-short" maxlength="12" placeholder="Standaard: de eerste 12 tekens van de naam"><div class="set-hint">Een al geïnstalleerde app neemt een nieuwe naam pas over na een tijdje (of na opnieuw installeren).</div></div>
       </div>
 
       <div class="set-card">
@@ -315,7 +317,7 @@
           <div class="set-text"><div class="set-title">Eenvoudige weergave</div><div class="set-hint">Verbergt <em>Huisnummers</em>, <em>Bewerken</em> en <em>Straten</em>. <em>Huis wijzigen</em> en <em>PDF opslaan</em> blijven in de menubalk.</div></div>
           <label class="switch"><input type="checkbox" id="org-simple" role="switch" aria-label="Eenvoudige weergave voor bezoekers"><span class="track" aria-hidden="true"><span class="thumb"></span></span></label>
         </div>
-        <div class="field"><label>Namen van de statussen</label>
+        <div class="field" data-perlang><label>Namen van de statussen</label>
           <div class="grid-3">
             <div><label for="lbl-green" class="sub">Groen heet</label><input type="text" id="lbl-green" maxlength="24" placeholder="Groen"></div>
             <div><label for="lbl-red" class="sub">Rood heet</label><input type="text" id="lbl-red" maxlength="24" placeholder="Rood"></div>
@@ -327,10 +329,13 @@
 
       <div class="set-card">
         <header class="set-card-head"><h4>Teksten</h4><p>Het infovlak en de uitleg die bezoekers zien (de uitleg staat ook in de PDF).</p></header>
-        <div class="field"><label for="org-info">Infovlak voor bewoners</label><textarea id="org-info" rows="4" maxlength="1000" placeholder="Bijvoorbeeld: woon je in de wijk? Pas in de app zelf de status van jouw huis aan."></textarea><div class="set-hint">Valt op bovenin de uitleg; verdwijnt als wijzigen uit staat.</div></div>
-        <div class="field"><label for="org-intro">Uitleg</label><textarea id="org-intro" rows="10" maxlength="5000" placeholder="Plak hier de toelichting. Lege regels worden alinea's."></textarea><div class="set-hint"><span id="org-count">0</span> / 5000 tekens</div></div>
-        <div class="field"><label for="org-info-en">Infovlak voor bewoners (Engels, optioneel)</label><textarea id="org-info-en" rows="3" maxlength="1000"></textarea><div class="set-hint">Leeg = de Nederlandse tekst (of de standaardtekst) wordt in het Engels getoond zo goed als dat kan.</div></div>
-        <div class="field"><label for="org-intro-en">Uitleg (Engels, optioneel)</label><textarea id="org-intro-en" rows="6" maxlength="5000"></textarea><div class="set-hint">Leeg = Engelssprekende bezoekers zien de Nederlandse uitleg.</div></div>
+        <div class="field" data-perlang><label for="org-info">Infovlak voor bewoners</label><textarea id="org-info" rows="4" maxlength="1000" placeholder="Bijvoorbeeld: woon je in de wijk? Pas in de app zelf de status van jouw huis aan."></textarea><div class="set-hint">Valt op bovenin de uitleg; verdwijnt als wijzigen uit staat.</div></div>
+        <div class="field" data-perlang><label for="org-intro">Uitleg</label><textarea id="org-intro" rows="10" maxlength="5000" placeholder="Plak hier de toelichting. Lege regels worden alinea's."></textarea><div class="set-hint"><span id="org-count">0</span> / 5000 tekens</div></div>
+        <div class="field" data-perlang><label for="org-share">Tekst bij delen via WhatsApp</label>
+          <textarea id="org-share" rows="4" maxlength="500"></textarea>
+          <div class="set-hint">Gebruik <code>{adres}</code> voor het adres van het huis en <code>{link}</code> voor de persoonlijke link (ontbreekt <code>{link}</code>, dan komt de link achter de tekst). Het bericht gaat in de standaardtaal van de site. Leeg = standaardtekst.</div>
+          <div class="set-actions"><button id="org-share-default" type="button">Standaardtekst</button></div>
+        </div>
         <p class="error" id="org-err"></p>
         <div class="set-actions"><button id="org-save" class="primary">Opslaan</button></div>
       </div>

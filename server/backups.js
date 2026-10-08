@@ -23,7 +23,7 @@ function snapshotData() {
   return {
     houses: JSON.parse(JSON.stringify(houses)),
     view: view ? { ...view } : null,
-    texts: { labels: { ...(settings?.labels || {}) }, siteTitle: settings?.siteTitle || '', intro: settings?.intro || '', appName: settings?.appName || '', appShortName: settings?.appShortName || '' },
+    texts: { labels: { ...(settings?.labels || {}) }, siteTitle: settings?.siteTitle || '', intro: settings?.intro || '', appName: settings?.appName || '', appShortName: settings?.appShortName || '', translations: JSON.parse(JSON.stringify(settings?.translations || {})) },
   };
 }
 
@@ -91,6 +91,7 @@ function restore(id) {
   if ('siteTitle' in b.texts) db.settings.siteTitle = b.texts.siteTitle; // oudere backups kennen dit veld nog niet
   db.settings.appName = b.texts.appName;
   db.settings.appShortName = b.texts.appShortName;
+  if (b.texts.translations) db.settings.translations = JSON.parse(JSON.stringify(b.texts.translations)); // oudere backups kennen dit veld nog niet
   store.save();
   create('Teruggezet');
   return true;
