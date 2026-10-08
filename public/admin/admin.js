@@ -612,6 +612,12 @@
           L.DomEvent.stopPropagation(e);
           select(h.id);
         });
+        // dubbelklik (muis): selecteermodus aan en dit huis selecteren (tijdens het tekenen alleen als er nog geen vlak loopt)
+        l.on('dblclick', (e) => {
+          if (mode === 'draw' && draft.length >= 3) return;
+          L.DomEvent.stopPropagation(e);
+          editHouse(h.id);
+        });
         layers.set(h.id, l);
       }
       l.setStyle(Wijk.houseStyle(h.status, h.id === selectedId));
@@ -710,6 +716,43 @@
       else if (!h.number && activeStreet) { h.street = activeStreet; setDirty(); } // nieuw, nog leeg huis: straat alvast invullen
     }
     render();
+  }
+
+  function editHouse(id) {
+    setMode('select');
+    select(id);
+    if (matchMedia('(pointer: fine)').matches) $('p-number').focus();
+  }
+
+  const insidePoly = (pt, poly) => {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [yi, xi] = poly[i], [yj, xj] = poly[j];
+      if ((yi > pt.lat) !== (yj > pt.lat) && pt.lng < ((xj - xi) * (pt.lat - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+
+  // Touchscreen: lang indrukken op een huis doet hetzelfde als dubbelklikken.
+  function initLongPress() {
+    const el = map.getContainer();
+    let timer = null, start = null, swallow = false;
+    const cancel = () => { clearTimeout(timer); timer = null; };
+    el.addEventListener('pointerdown', (e) => {
+      cancel();
+      if (e.pointerType !== 'touch' || !e.isPrimary || (mode === 'draw' && draft.length)) return;
+      start = { x: e.clientX, y: e.clientY };
+      timer = setTimeout(() => {
+        timer = null;
+        const r = el.getBoundingClientRect();
+        const ll = map.containerPointToLatLng([start.x - r.left, start.y - r.top]);
+        const h = houses.find((x) => insidePoly(ll, x.points));
+        if (h) { swallow = true; setTimeout(() => { swallow = false; }, 800); navigator.vibrate?.(30); editHouse(h.id); }
+      }, 600);
+    });
+    el.addEventListener('pointermove', (e) => { if (timer && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) cancel(); });
+    for (const t of ['pointerup', 'pointercancel']) el.addEventListener(t, cancel);
+    for (const t of ['click', 'contextmenu']) el.addEventListener(t, (e) => { if (swallow) { e.preventDefault(); e.stopPropagation(); } }, true);
   }
 
   function setMode(m) {
@@ -827,7 +870,9 @@
     savedView = data.view;
     // in het beheer altijd het volledige zoombereik, ook als bezoekers beperkt zijn
     map = Wijk.createMap($('vp'), data.view && { ...data.view, minZoom: 1, maxZoom: 19 }, data.houses);
+    Wijk.map = map;
     map.on('click', onMapClick);
+    initLongPress();
     map.on('dblclick', () => { if (mode === 'draw' && draft.length >= 3) finishDraft(); });
 
     $('t-select').onclick = () => setMode('select');
