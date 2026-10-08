@@ -306,6 +306,32 @@
     return c.toDataURL('image/png');
   }
 
+  // Het QR-kaartje (logo, adres, QR en uitleg) als PNG-data-URL, om te tonen, te downloaden en te delen.
+  async function qrCardDataUrl({ title, url, siteTitle, logo }) {
+    const W = 900, H = 520, c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+    g.strokeStyle = '#b8c2bc'; g.lineWidth = 3; g.setLineDash([12, 10]); g.strokeRect(10, 10, W - 20, H - 20); g.setLineDash([]);
+    const logoImg = logo ? await loadLogo(logo.url) : null;
+    if (logoImg) {
+      const k = Math.min(70 / logoImg.h, 240 / logoImg.w), w = logoImg.w * k, h = logoImg.h * k;
+      const im = new Image(); im.src = logoImg.data; await new Promise((r) => { im.onload = r; im.onerror = r; });
+      g.drawImage(im, 40, 36, w, h);
+    }
+    g.fillStyle = '#111'; g.textAlign = 'right'; g.textBaseline = 'top'; g.font = 'bold 46px system-ui, sans-serif';
+    g.fillText(String(title || ''), W - 40, 40, W - 340);
+    const qr = new Image(); qr.src = qrDataUrl(url, 640);
+    await new Promise((r) => { qr.onload = r; qr.onerror = r; });
+    const qs = 340; g.imageSmoothingEnabled = false; g.drawImage(qr, 40, 130, qs, qs); g.imageSmoothingEnabled = true;
+    g.textAlign = 'left'; g.fillStyle = '#444'; g.font = '30px system-ui, sans-serif';
+    const lines = [String(siteTitle || ''), '', 'Scan deze code met de camera', 'van je telefoon en wijzig in de', 'app de status van jouw huis.'];
+    lines.forEach((t, i) => g.fillText(t, 420, 150 + i * 44, W - 460));
+    g.fillStyle = '#888'; g.font = '22px system-ui, sans-serif'; g.textBaseline = 'alphabetic';
+    g.fillText('Persoonlijke code voor dit huis: niet delen.', 40, H - 28);
+    return c.toDataURL('image/png');
+  }
+
   // Afdrukbare A4 met per huis een kaartje (2 x 4): adres, QR-code en uitleg, gesorteerd per straat.
   async function buildQrPdf({ title, items, logo }) {
     const { jsPDF } = window.jspdf;
@@ -529,5 +555,5 @@
     setTimeout(() => t.remove(), 2800);
   }
 
-  window.Wijk = { qrDataUrl, buildQrPdf, toast, setLabels, applyLabels, STATUS, createMap, houseStyle, buildPdf, prefetchTiles, DEFAULT_VIEW, houseTitle, compareHouses, natCompare, labelPoint, createNumberLayer };
+  window.Wijk = { qrDataUrl, qrCardDataUrl, buildQrPdf, toast, setLabels, applyLabels, STATUS, createMap, houseStyle, buildPdf, prefetchTiles, DEFAULT_VIEW, houseTitle, compareHouses, natCompare, labelPoint, createNumberLayer };
 })();

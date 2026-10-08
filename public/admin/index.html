@@ -51,12 +51,13 @@
 </section>
 
 <!-- Editor -->
-<div id="v-edit" class="hidden" style="display:contents">
+<div id="v-edit" class="hidden view-mode" style="display:contents">
 <header class="bar">
   <h1>Beheer</h1>
   <span class="muted" id="dirty"></span>
   <button class="primary" id="save">Opslaan</button>
-  <a class="btn" href="/" target="_blank">Bekijk site</a>
+  <button id="edit-toggle" class="primary" type="button" aria-pressed="false">✏️ Bewerken</button>
+  <a class="btn" href="/" target="_blank"><span class="lbl-site">Bekijk site</span><span class="ico-site" aria-hidden="true">↗</span></a>
   <button id="settings-open" class="icon-btn cog" aria-label="Instellingen" title="Instellingen" aria-controls="settings">⚙<span id="cog-badge" class="count-badge cog-badge" hidden>0</span></button>
   <button id="logout">Uitloggen</button>
 </header>
@@ -111,6 +112,7 @@
   </aside>
   <div class="viewport" id="vp">
   </div>
+  <div id="view-hint" class="view-hint">Dubbelklik (of druk lang) op een huis voor de status en de QR-code</div>
 </div>
 </div>
 
@@ -139,13 +141,33 @@
 </dialog>
 
 <dialog id="qr-dialog" aria-labelledby="qr-title">
-  <div class="intro-head"><h3 id="qr-title">QR-code</h3><button id="qr-x" class="icon-btn" type="button" aria-label="Sluiten">✕</button></div>
-  <p class="muted">Persoonlijke code van dit huis: bewoners scannen hem om hun huis te koppelen. Deel hem alleen met de bewoners.</p>
-  <p style="text-align:center"><img id="qr-img" alt="QR-code" width="240" height="240"></p>
-  <p class="row"><input type="text" id="qr-link" readonly aria-label="Link"><button id="qr-copy" type="button">Link kopiëren</button></p>
+  <div class="intro-head"><h3 id="qr-title">Huis</h3><button id="qr-x" class="icon-btn" type="button" aria-label="Sluiten">✕</button></div>
+  <div id="qr-status-wrap">
+    <label>Status</label>
+    <div class="row" id="qr-status">
+      <button type="button" data-st="green"><i class="dot green"></i><span data-label="green">Groen</span></button>
+      <button type="button" data-st="red"><i class="dot red"></i><span data-label="red">Rood</span></button>
+      <button type="button" data-st="none"><i class="dot"></i><span data-label="none">Niet gemarkeerd</span></button>
+    </div>
+  </div>
+  <label>QR-kaartje voor de bewoners</label>
+  <p class="qr-card"><img id="qr-img" alt="QR-kaartje van dit huis"></p>
+  <label for="qr-link">Directe link</label>
+  <div class="row row-tight"><input type="text" id="qr-link" readonly aria-label="Directe link"><button id="qr-copy" type="button" title="Link kopiëren">📋 Kopiëren</button></div>
+  <div class="row qr-actions">
+    <button id="qr-wa" type="button" class="wa">💬 Delen via WhatsApp</button>
+    <button id="qr-share" type="button" class="hidden">📤 Kaartje delen…</button>
+    <button id="qr-png" type="button">⬇ PNG</button>
+  </div>
   <p class="muted" id="qr-state"></p>
-  <p class="row"><button id="qr-png" type="button">PNG downloaden</button><button id="qr-rotate" type="button" class="danger">Vernieuwen</button></p>
+  <p class="muted">Persoonlijke code van dit huis: deel hem alleen met de bewoners. <button id="qr-rotate" type="button" class="linklike">Vernieuwen</button></p>
 </dialog>
+
+<!-- onderbalk voor telefoon en app: Bewerken en Instellingen (de knoppen in de kopbalk verdwijnen daar) -->
+<nav id="admin-nav" class="admin-nav" aria-label="Beheer">
+  <button id="nav-edit" type="button" aria-pressed="false"><span class="ico" aria-hidden="true">✏️</span><span class="lbl">Bewerken</span></button>
+  <button id="nav-cog" type="button" aria-controls="settings"><span class="ico" aria-hidden="true">⚙</span><span class="lbl">Instellingen</span><span id="nav-badge" class="count-badge" hidden>0</span></button>
+</nav>
 
 <div id="scrim" class="scrim"></div>
 <aside id="settings" class="drawer" aria-hidden="true" aria-labelledby="settings-title" role="dialog">

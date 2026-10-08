@@ -322,3 +322,52 @@ body.simple-ui #num-switch-wrap, body.simple-ui #edit-switch-wrap, body.simple-u
 #settings select { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font-size: .9rem; max-width: 55%; }
 #qr-dialog input[type=text] { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); min-width: 0; }
 #qr-dialog .row { flex-wrap: nowrap; }
+
+/* ===== beheer: weergave (standaard) en bewerken ===== */
+#v-edit.view-mode .side, #v-edit.view-mode #save, #v-edit.view-mode #dirty { display: none !important; }
+#v-edit:not(.view-mode) .view-hint { display: none; }
+.editor { position: relative; }
+.view-hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 700; background: rgba(29,42,34,.88); color: #fff; padding: 7px 14px;
+  border-radius: 999px; font-size: .85rem; max-width: calc(100% - 28px); text-align: center; pointer-events: none; box-shadow: var(--shadow); }
+#edit-toggle[aria-pressed=true] { background: var(--accent); color: #fff; }
+.ico-site { display: none; }
+@media (max-width: 560px) {
+  header.bar h1 { min-width: 0; flex: 1; }
+  header.bar { gap: 6px; padding: 8px 10px; }
+  header.bar .lbl-site { display: none; }
+  header.bar .ico-site { display: inline; }
+  header.bar #logout { padding: 6px 8px; }
+}
+/* huis-popup met QR-kaartje */
+#qr-dialog { max-width: 560px; width: min(560px, 94vw); max-height: 92dvh; overflow-y: auto; padding: 14px 16px 16px; }
+#qr-dialog label { display: block; font-size: .8rem; font-weight: 600; margin: 12px 0 5px; }
+#qr-dialog .qr-card { margin: 0; }
+#qr-dialog .qr-card img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+#qr-dialog input[type=text] { width: 100%; min-width: 0; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font-size: .85rem; }
+#qr-dialog .row-tight { flex-wrap: nowrap; gap: 8px; align-items: stretch; }
+#qr-dialog .row-tight > input { flex: 1 1 auto; }
+#qr-dialog .row-tight > button { flex: 0 0 auto; white-space: nowrap; }
+#qr-dialog .qr-actions { margin-top: 12px; gap: 8px; }
+#qr-dialog .qr-actions > button { flex: 1 1 auto; white-space: nowrap; }
+#qr-dialog .wa { background: #1faa5b; border-color: #1faa5b; color: #fff; font-weight: 600; }
+#qr-dialog .wa:hover { background: #17924d; }
+#qr-status button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 8px; }
+#qr-status button.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--panel)); font-weight: 600; box-shadow: inset 0 0 0 1px var(--accent); }
+#qr-dialog .linklike { border: 0; background: none; color: var(--red); padding: 0; text-decoration: underline; cursor: pointer; font-size: inherit; }
+@media (max-width: 480px) { #qr-dialog .qr-actions > button { flex-basis: 100%; } #qr-status { flex-wrap: nowrap; } #qr-status button { font-size: .85rem; padding-inline: 4px; } }
+
+/* ===== beheer: onderbalk (telefoon en app) ===== */
+.admin-nav { display: none; }
+@media (max-width: 760px) {
+  .admin-nav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 1300; background: var(--panel); border-top: 1px solid var(--line);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); justify-content: space-around; box-shadow: 0 -2px 10px rgba(0,0,0,.08); }
+  #v-edit.hidden ~ .admin-nav { display: none; }
+  .admin-nav button { position: relative; flex: 1; max-width: 220px; display: flex; flex-direction: column; align-items: center; gap: 2px; border: 0; background: none; padding: 4px 6px; font-size: .75rem; color: var(--text); }
+  .admin-nav .ico { font-size: 1.5rem; line-height: 1.1; }
+  .admin-nav button[aria-pressed=true] { color: var(--accent); font-weight: 700; }
+  .admin-nav .count-badge { position: absolute; top: -2px; left: calc(50% + 6px); margin: 0; }
+  header.bar #edit-toggle, header.bar #settings-open { display: none; }
+  .view-hint { bottom: 14px; }
+  .toast { top: 62px; }
+}
+@media (min-width: 641px) and (max-width: 760px) { body { padding-bottom: calc(62px + env(safe-area-inset-bottom)); } }
