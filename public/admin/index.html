@@ -254,6 +254,11 @@
           <div class="set-text"><div class="set-title">Huis kiezen alleen via QR-code</div><div class="set-hint">Aan: bewoners kunnen hun huis niet meer op de kaart of in de lijst kiezen en moeten scannen. Eén apparaat per huis; verwijder een koppeling om opnieuw te kunnen scannen. Een geldige QR vervangt de toegangscode; de locatiecontrole blijft gelden.</div></div>
           <label class="switch"><input type="checkbox" id="res-qr-only" role="switch" aria-label="Huis kiezen alleen via QR-code"><span class="track" aria-hidden="true"><span class="thumb"></span></span></label>
         </div>
+        <div class="field"><label for="qr-share-text">Tekst bij delen via WhatsApp</label>
+          <textarea id="qr-share-text" rows="4" maxlength="500"></textarea>
+          <div class="set-hint">Gebruik <code>{adres}</code> voor het adres van het huis en <code>{link}</code> voor de persoonlijke link (ontbreekt <code>{link}</code>, dan komt de link achter de tekst). Leeg = standaardtekst.</div>
+          <div class="set-actions"><button id="qr-share-default" type="button">Standaardtekst</button><button id="qr-share-save" class="primary" type="button">Tekst opslaan</button></div>
+        </div>
         <div class="field field-inline"><label for="qr-street">Afdrukken voor</label><select id="qr-street"><option value="">Alle straten</option></select></div>
         <div class="set-actions"><button id="qr-rotate-all" class="danger" type="button">Alle QR-codes vernieuwen</button><button id="qr-print" class="primary" type="button">QR-codes afdrukken (PDF)</button></div>
         <p class="error" id="qr-err"></p>
