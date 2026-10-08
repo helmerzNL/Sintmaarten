@@ -290,9 +290,22 @@
   }
 
   // ---------- QR-codes (qrcode-generator, /vendor/qrcode.js) ----------
+  // Het Sint Maarten-icoon (PWA) staat in het midden van elke QR, zodat de codes herkenbaar zijn.
+  let qrIconPromise = null;
+  function loadQrIcon() {
+    qrIconPromise = qrIconPromise || new Promise((resolve) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => resolve(null); // zonder icoon blijft de code gewoon scanbaar
+      im.src = '/icons/icon-512.png';
+    });
+    return qrIconPromise;
+  }
+
   // PNG-data-URL van een QR; px = breedte in pixels (incl. rustige rand van 2 modules).
-  function qrDataUrl(text, px = 512) {
-    const qr = window.qrcode(0, 'M');
+  // Foutcorrectie H (±30 % herstelbaar): het icoon dekt in het midden ruim minder dan 6 % af.
+  function qrDataUrl(text, px = 512, icon = null) {
+    const qr = window.qrcode(0, 'H');
     qr.addData(text);
     qr.make();
     const n = qr.getModuleCount(), quiet = 2, total = n + quiet * 2;
@@ -303,61 +316,100 @@
     g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
     g.fillStyle = '#000';
     for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (qr.isDark(r, k)) g.fillRect((k + quiet) * cell, (r + quiet) * cell, cell, cell);
+    if (icon) {
+      const plate = Math.round(n * 0.2) * cell, pad = Math.max(2, Math.round(cell * 0.6)), x = Math.round((c.width - plate) / 2);
+      g.fillStyle = '#fff';
+      g.beginPath();
+      if (g.roundRect) g.roundRect(x, x, plate, plate, plate * 0.18); else g.rect(x, x, plate, plate);
+      g.fill();
+      g.drawImage(icon, x + pad, x + pad, plate - pad * 2, plate - pad * 2);
+    }
     return c.toDataURL('image/png');
   }
 
-  // Het QR-kaartje (logo, adres, QR en uitleg) als PNG-data-URL, om te tonen, te downloaden en te delen.
+  // De QR als één geheel: sitetitel in een band bovenaan, de code met het icoon, straat + huisnummer in een band onderaan.
+  // Titel en adres zitten dus in de afbeelding zelf (ook als die los wordt gedeeld of afgedrukt). Geeft { data, w, h } terug.
+  async function qrBadgeDataUrl({ url, top, bottom, icon, px = 640 }) {
+    const band = Math.round(px * 0.17), W = px, H = px + band * 2, c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+    const qr = new Image(); qr.src = qrDataUrl(url, px, icon);
+    await new Promise((r) => { qr.onload = r; qr.onerror = r; });
+    g.imageSmoothingEnabled = false; g.drawImage(qr, 0, band, W, W); g.imageSmoothingEnabled = true;
+    const text = (t, y, weight) => {
+      let size = Math.round(band * 0.5);
+      g.font = `${weight} ${size}px system-ui, sans-serif`;
+      while (size > 12 && g.measureText(t).width > W - 40) { size -= 2; g.font = `${weight} ${size}px system-ui, sans-serif`; }
+      g.fillStyle = '#111'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(t, W / 2, y);
+    };
+    text(String(top || ''), band / 2 + 2, '600');
+    text(String(bottom || ''), band + W + band / 2 - 2, 'bold');
+    g.strokeStyle = '#111'; g.lineWidth = Math.max(4, Math.round(W * 0.012));
+    g.strokeRect(g.lineWidth / 2, g.lineWidth / 2, W - g.lineWidth, H - g.lineWidth);
+    return { data: c.toDataURL('image/png'), w: W, h: H };
+  }
+
+  // Het QR-kaartje als PNG-data-URL, om te tonen, te downloaden en te delen: links de QR met titel en adres
+  // erin verwerkt, rechts logo en uitleg.
   async function qrCardDataUrl({ title, url, siteTitle, logo }) {
-    const W = 900, H = 520, c = document.createElement('canvas');
+    const W = 900, H = 580, c = document.createElement('canvas');
     c.width = W; c.height = H;
     const g = c.getContext('2d');
     g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
     g.strokeStyle = '#b8c2bc'; g.lineWidth = 3; g.setLineDash([12, 10]); g.strokeRect(10, 10, W - 20, H - 20); g.setLineDash([]);
+    const icon = await loadQrIcon();
+    const badge = await qrBadgeDataUrl({ url, top: siteTitle, bottom: title, icon });
+    const bh = H - 80, bw = Math.round(bh * badge.w / badge.h);
+    const im = new Image(); im.src = badge.data; await new Promise((r) => { im.onload = r; im.onerror = r; });
+    g.drawImage(im, 40, 40, bw, bh);
+    const rx = 40 + bw + 40, rw = W - rx - 40;
     const logoImg = logo ? await loadLogo(logo.url) : null;
+    let ty = 60;
     if (logoImg) {
-      const k = Math.min(70 / logoImg.h, 240 / logoImg.w), w = logoImg.w * k, h = logoImg.h * k;
-      const im = new Image(); im.src = logoImg.data; await new Promise((r) => { im.onload = r; im.onerror = r; });
-      g.drawImage(im, 40, 36, w, h);
+      const k = Math.min(110 / logoImg.h, rw / logoImg.w), w = logoImg.w * k, h = logoImg.h * k;
+      const li = new Image(); li.src = logoImg.data; await new Promise((r) => { li.onload = r; li.onerror = r; });
+      g.drawImage(li, rx, 50, w, h);
+      ty = 50 + h + 30;
     }
-    g.fillStyle = '#111'; g.textAlign = 'right'; g.textBaseline = 'top'; g.font = 'bold 46px system-ui, sans-serif';
-    g.fillText(String(title || ''), W - 40, 40, W - 340);
-    const qr = new Image(); qr.src = qrDataUrl(url, 640);
-    await new Promise((r) => { qr.onload = r; qr.onerror = r; });
-    const qs = 340; g.imageSmoothingEnabled = false; g.drawImage(qr, 40, 130, qs, qs); g.imageSmoothingEnabled = true;
-    g.textAlign = 'left'; g.fillStyle = '#444'; g.font = '30px system-ui, sans-serif';
-    const lines = [String(siteTitle || ''), '', 'Scan deze code met de camera', 'van je telefoon en wijzig in de', 'app de status van jouw huis.'];
-    lines.forEach((t, i) => g.fillText(t, 420, 150 + i * 44, W - 460));
+    g.textAlign = 'left'; g.textBaseline = 'top'; g.fillStyle = '#444'; g.font = '30px system-ui, sans-serif';
+    ['Scan deze code met de', 'camera van je telefoon en', 'wijzig in de app de status', 'van jouw huis.'].forEach((t, i) => g.fillText(t, rx, ty + i * 44, rw));
     g.fillStyle = '#888'; g.font = '22px system-ui, sans-serif'; g.textBaseline = 'alphabetic';
-    g.fillText('Persoonlijke code voor dit huis: niet delen.', 40, H - 28);
+    g.fillText('Persoonlijke code voor dit huis:', rx, H - 70, rw);
+    g.fillText('niet delen.', rx, H - 42, rw);
     return c.toDataURL('image/png');
   }
 
-  // Afdrukbare A4 met per huis een kaartje (2 x 4): adres, QR-code en uitleg, gesorteerd per straat.
+  // Afdrukbare A4 met per huis een kaartje (2 x 4): links de QR (met titel en adres erin verwerkt), rechts logo en uitleg; gesorteerd per straat.
   async function buildQrPdf({ title, items, logo }) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const logoImg = logo ? await loadLogo(logo.url) : null;
-    const cols = 2, rows = 4, mx = 10, my = 12, cw = (210 - mx * 2) / cols, ch = (297 - my * 2) / rows, qr = 42;
+    const icon = await loadQrIcon();
+    const cols = 2, rows = 4, mx = 10, my = 12, cw = (210 - mx * 2) / cols, ch = (297 - my * 2) / rows;
     const sorted = [...items].sort((a, b) => compareHouses({ street: a.street, number: a.number }, { street: b.street, number: b.number }));
-    sorted.forEach((it, i) => {
+    let i = 0;
+    for (const it of sorted) {
       if (i > 0 && i % (cols * rows) === 0) doc.addPage();
       const k = i % (cols * rows), x = mx + (k % cols) * cw, y = my + Math.floor(k / cols) * ch;
+      i++;
       doc.setDrawColor(190); doc.setLineDashPattern([1.5, 1.5], 0); doc.rect(x + 1, y + 1, cw - 2, ch - 2); doc.setLineDashPattern([], 0);
-      let ty = y + 10;
+      const badge = await qrBadgeDataUrl({ url: it.url, top: title, bottom: it.title, icon, px: 560 });
+      const bh = ch - 8, bw = bh * badge.w / badge.h;
+      doc.addImage(badge.data, 'PNG', x + 4, y + 4, bw, bh);
+      const rx = x + bw + 10, rw = cw - bw - 16;
+      let ty = y + 12;
       if (logoImg) {
-        const kk = Math.min(8 / logoImg.h, 30 / logoImg.w);
-        doc.addImage(logoImg.data, logoImg.format, x + 5, y + 4, logoImg.w * kk, logoImg.h * kk);
-        ty = y + 14;
+        const kk = Math.min(12 / logoImg.h, rw / logoImg.w);
+        doc.addImage(logoImg.data, logoImg.format, rx, y + 5, logoImg.w * kk, logoImg.h * kk);
+        ty = y + 5 + logoImg.h * kk + 6;
       }
-      doc.setTextColor(0); doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
-      doc.text(String(it.title || ''), x + cw - 5, y + 9, { align: 'right', maxWidth: cw - 40 });
-      doc.addImage(qrDataUrl(it.url, 480), 'PNG', x + 5, ty, qr, qr);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60);
-      const lines = doc.splitTextToSize('Scan deze code met de camera van je telefoon en wijzig in de app de status van jouw huis.', cw - qr - 18);
-      doc.text([String(title || ''), '', ...lines], x + qr + 11, ty + 8);
+      doc.text(doc.splitTextToSize('Scan deze code met de camera van je telefoon en wijzig in de app de status van jouw huis.', rw), rx, ty);
       doc.setFontSize(7); doc.setTextColor(120);
-      doc.text('Persoonlijke code voor dit huis: niet delen.', x + 5, y + ch - 3.5);
-    });
+      doc.text(doc.splitTextToSize('Persoonlijke code voor dit huis: niet delen.', rw), rx, y + ch - 8);
+    }
     return doc;
   }
 
@@ -555,5 +607,5 @@
     setTimeout(() => t.remove(), 2800);
   }
 
-  window.Wijk = { qrDataUrl, qrCardDataUrl, buildQrPdf, toast, setLabels, applyLabels, STATUS, createMap, houseStyle, buildPdf, prefetchTiles, DEFAULT_VIEW, houseTitle, compareHouses, natCompare, labelPoint, createNumberLayer };
+  window.Wijk = { loadQrIcon, qrDataUrl, qrCardDataUrl, buildQrPdf, toast, setLabels, applyLabels, STATUS, createMap, houseStyle, buildPdf, prefetchTiles, DEFAULT_VIEW, houseTitle, compareHouses, natCompare, labelPoint, createNumberLayer };
 })();
