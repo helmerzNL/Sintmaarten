@@ -67,21 +67,23 @@ Voorbeeld met willekeurige huizen (kaartgegevens © OpenStreetMap-bijdragers).
 
 **In het beheer** werkt dit ook: dubbelklik (of druk lang) op een huis en de selecteermodus gaat aan met dat huis geselecteerd, ook als je net aan het tekenen was (zolang er nog geen vlak loopt).
 
-**Wijzigen plannen** – zet onder *Instellingen → Wijzigingen* de schakelaar *Wijzigen automatisch uitschakelen* aan en kies met de datum-/tijdkiezer wanneer. Tot dat moment kunnen bewoners wijzigen (browser én app); daarna staat het uit. De twee schakelaars eronder worden in die tijd uitgeschakeld en genegeerd; zet je de planning uit, dan gelden ze weer.
+**Wijzigen plannen** – zet onder *Instellingen → Bewoners → Planning* de schakelaar *Wijzigen uitschakelen op een datum en tijd* aan en kies met de datum-/tijdkiezer wanneer. Tot dat moment kunnen bewoners wijzigen (browser én app); daarna staat het uit. De twee schakelaars eronder worden in die tijd uitgeschakeld en genegeerd; zet je de planning uit, dan gelden ze weer.
 
 **Na de einddatum nog groen ↔ rood wisselen** – naast de planning staat de schakelaar *Na die datum mogen bewoners hun eigen huis nog wisselen tussen groen en rood*. Staat die aan, dan kunnen bewoners die al een huis hebben na de einddatum nog hun eigen huis wisselen van groen naar rood of andersom (niet van of naar *niet gemarkeerd*, en geen nieuw huis kiezen), nog steeds met jouw goedkeuring. De knop *Huis wijzigen* toont dan alleen nog die twee kleuren; bezoekers zonder huis zien de knop (en *Bewerken*) niet meer. Deze schakelaar gaat voor de twee schakelaars eronder en werkt alleen als de planning aan staat.
 
-**Eenvoudige weergave** – onder *Instellingen → Logo & uitleg* zet je *Eenvoudige weergave voor bezoekers* aan. Op de website verdwijnen dan de schakelaars *Huisnummers* en *Bewerken* en de knop *Straten*; *Uitleg*, *Huis wijzigen* en *PDF opslaan* staan dan direct in de menubalk (het menu *Meer* vervalt) en Bewerken staat vast aan.
+**Eenvoudige weergave** – onder *Instellingen → Site → Weergave* zet je *Eenvoudige weergave* aan. Op de website verdwijnen dan de schakelaars *Huisnummers* en *Bewerken* en de knop *Straten*; *Uitleg*, *Huis wijzigen* en *PDF opslaan* staan dan direct in de menubalk (het menu *Meer* vervalt) en Bewerken staat vast aan.
 
-**Geofence (optioneel)** – onder *Instellingen → Wijzigingen → Locatie (geofence)* zet je de schakelaar *Alleen wijzigen als je fysiek in de wijk bent* aan en kies je een straal (50–5000 m, standaard 500). Het midden is het midden van de kaartweergave (of anders van de huizen). De controle geldt **alleen voor telefoons en tablets met GPS**; laptops en desktops (zonder GPS) worden niet beperkt en kunnen gewoon wijzigen. Bij het openen van de wijzigmodus en bij elke wijziging vraagt de browser om de locatie; staat die buiten de straal, is hij minder nauwkeurig dan 200 m, uit of niet toegestaan, dan kan er niet worden gewijzigd en volgt een duidelijke melding. De kaart bekijken kan overal. Vereist HTTPS. De locatie komt van het apparaat zelf en de server kan die niet controleren: het is een gebruiksbeperking, geen harde beveiliging.
+**Toegangscode voor apparaten zonder GPS (optioneel)** – onder *Instellingen → Bewoners → Toegang* stel je een code van 4 tot 6 cijfers in (of kies *Willekeurig*) en zet je de schakelaar aan. Wie dan op een laptop of desktop op *Huis wijzigen* drukt, krijgt eerst een veld om de code in te vullen (die deel je bijvoorbeeld in de buurtapp op WhatsApp). Het apparaat onthoudt de code (cookie, 1 jaar); wijzig je de code, dan moet iedereen hem opnieuw invullen. Telefoons en tablets met GPS hoeven niets in te vullen. Standaard staat dit uit. Foute pogingen worden per IP-adres beperkt. Het is een gebruiksbeperking, geen harde beveiliging (de code staat bij de beheerder in leesbare vorm, en het apparaattype komt van de browser).
 
-**Infovlak** – onder *Instellingen → Logo & uitleg* staat een apart tekstveld voor het infovlak. Dat staat als opvallend groen blok bovenaan de uitleg op de website en legt uit dat bewoners hun eigen huis kunnen wijzigen. Het verdwijnt vanzelf zodra wijzigen door bewoners uit staat (of de geplande datum is verstreken).
+**Geofence (optioneel)** – onder *Instellingen → Bewoners → Toegang* zet je de schakelaar *Alleen in de wijk (locatie)* aan en kies je een straal (50–5000 m, standaard 500). Het midden is het midden van de kaartweergave (of anders van de huizen). De controle geldt **alleen voor telefoons en tablets met GPS**; laptops en desktops (zonder GPS) worden niet beperkt en kunnen gewoon wijzigen. Bij het openen van de wijzigmodus en bij elke wijziging vraagt de browser om de locatie; staat die buiten de straal, is hij minder nauwkeurig dan 200 m, uit of niet toegestaan, dan kan er niet worden gewijzigd en volgt een duidelijke melding. De kaart bekijken kan overal. Vereist HTTPS. De locatie komt van het apparaat zelf en de server kan die niet controleren: het is een gebruiksbeperking, geen harde beveiliging.
+
+**Infovlak** – onder *Instellingen → Site → Teksten* staat een apart tekstveld voor het infovlak. Dat staat als opvallend groen blok bovenaan de uitleg op de website en legt uit dat bewoners hun eigen huis kunnen wijzigen. Het verdwijnt vanzelf zodra wijzigen door bewoners uit staat (of de geplande datum is verstreken).
 
 ![Infovlak in de uitleg](docs/screenshots/info-vlak-mobiel.png)
 
-**Misbruik tegengaan** – onder *Instellingen → Wijzigingen* staat bij elke openstaande wijziging en bij elk aangemeld apparaat een knop **Blokkeren**. Het apparaat verliest zijn koppeling en openstaande wijzigingen, en kan niet meer wijzigen of een huis kiezen. Je kunt er ook het **IP-adres** bij blokkeren (let op: huisgenoten of buren achter dezelfde router delen vaak een IP). Onder *Geblokkeerd* haal je een blokkade weer weg.
+**Misbruik tegengaan** – onder *Instellingen → Goedkeuren* en *Bewoners → Apparaten* staat bij elke openstaande wijziging en bij elk aangemeld apparaat een knop **Blokkeren**. Het apparaat verliest zijn koppeling en openstaande wijzigingen, en kan niet meer wijzigen of een huis kiezen. Je kunt er ook het **IP-adres** bij blokkeren (let op: huisgenoten of buren achter dezelfde router delen vaak een IP). Onder *Geblokkeerd* haal je een blokkade weer weg.
 
-**Alleen in de app toestaan** – onder *Instellingen → Wijzigingen* zet je **Alleen in de geïnstalleerde app (niet in de browser)** aan. De schakelaar *Bewerken* verdwijnt dan voor browserbezoekers (ook bij een open pagina, na het verversen), en de server weigert wijzigingen die niet vanuit de app komen. De app meldt zich daarvoor met een kop (`X-App-Mode: standalone`). Dat is een gebruiksbeperking: wie de verzoeken zelf nabootst kan de kop meesturen, maar elke wijziging moet nog steeds door de beheerder worden goedgekeurd.
+**Alleen in de app toestaan** – onder *Instellingen → Bewoners* zet je **Alleen in de geïnstalleerde app** aan. De schakelaar *Bewerken* verdwijnt dan voor browserbezoekers (ook bij een open pagina, na het verversen), en de server weigert wijzigingen die niet vanuit de app komen. De app meldt zich daarvoor met een kop (`X-App-Mode: standalone`). Dat is een gebruiksbeperking: wie de verzoeken zelf nabootst kan de kop meesturen, maar elke wijziging moet nog steeds door de beheerder worden goedgekeurd.
 
 ![Alleen in de app](docs/screenshots/instellingen-alleen-app.png)
 - Een bewoner tikt op zijn huis (of kiest zijn adres) en bevestigt dat. Dat apparaat is dan aan **één huis** gekoppeld (cookie, 1 jaar). Daarna wisselt elke tik op dat huis (of een keuze in het venster) de kleur: niet gemarkeerd → groen → rood → niet gemarkeerd. Andere huizen kunnen niet worden gewijzigd.
@@ -112,19 +114,27 @@ Voorbeeld met willekeurige huizen (kaartgegevens © OpenStreetMap-bijdragers).
 ![Beheerscherm](docs/screenshots/beheer.png)
 
 ## Instellingen
-Het tandwiel (⚙) in de balk schuift het instellingen-menu in beeld, met vier onderdelen.
+Het tandwiel (⚙) in de balk schuift het instellingen-menu in beeld. Het is ingedeeld in vijf tabs; elke tab bestaat uit kaarten met duidelijke schakelaars en een korte uitleg (ook op een telefoon).
 
-**Wijzigingen** – goedkeuren van wijzigingen van bewoners, plannen, blokkeren en meldingen:
-- Een rode teller bij het tandwiel en in de paginatitel toont het aantal openstaande wijzigingen; hier keur je ze goed of af (of alles tegelijk).
-- **Wijzigen plannen**: zet *Wijzigen automatisch uitschakelen* aan en kies met de datum-/tijdkiezer wanneer. Tot dat moment kunnen bewoners wijzigen (browser én app); daarna staat het uit. De twee schakelaars eronder ("Bewoners mogen wijzigen" en "Alleen in de geïnstalleerde app") worden in die tijd uitgeschakeld en genegeerd; zet je de planning uit, dan gelden ze weer. Het infovlak verdwijnt als wijzigen uit staat.
-- **Alleen in de geïnstalleerde app**: de schakelaar *Bewerken* verdwijnt dan voor browserbezoekers en de server weigert wijzigingen die niet vanuit de app komen (kop `X-App-Mode: standalone`). Dat is een gebruiksbeperking, geen harde beveiliging; elke wijziging moet toch door de beheerder worden goedgekeurd.
-- **Aangemelde apparaten** beheren (een verkeerde koppeling verwijderen) en **meldingen** aanzetten.
+![Instellingen op een telefoon](docs/screenshots/instellingen-mobiel.png)
 
-![Wijzigingen goedkeuren en plannen](docs/screenshots/instellingen-wijzigingen.png)
+**Goedkeuren** – de wijzigingen die bewoners voor hun eigen huis hebben aangevraagd. Een rode teller bij het tandwiel en bij de tab toont het aantal; keur ze goed of af, of alles tegelijk.
 
-**Misbruik tegengaan** – bij elke openstaande wijziging en bij elk aangemeld apparaat staat een knop **Blokkeren**. Het apparaat verliest zijn koppeling en openstaande wijzigingen en kan niet meer wijzigen of een huis kiezen. Je kunt er ook het **IP-adres** bij blokkeren (let op: huisgenoten of buren achter dezelfde router delen vaak een IP). Onder *Geblokkeerd* haal je een blokkade weer weg.
+![Goedkeuren](docs/screenshots/instellingen-goedkeuren.png)
 
-![Geblokkeerde apparaten](docs/screenshots/instellingen-geblokkeerd.png)
+**Bewoners** – alles rond het wijzigen door bewoners:
+- *Wijzigen door bewoners*: aan/uit, en eventueel alleen in de geïnstalleerde app (de schakelaar *Bewerken* verdwijnt dan in de browser en de server weigert wijzigingen zonder de app-kop `X-App-Mode: standalone`).
+- *Planning*: wijzigen automatisch afsluiten op een datum en tijd (met datumkiezer), met eventueel daarna nog groen ↔ rood wisselen.
+- *Toegang*: alleen in de wijk (locatie/geofence) en een toegangscode voor apparaten zonder GPS.
+- *Apparaten*: aangemelde apparaten (koppeling verwijderen of **blokkeren**, eventueel met IP-adres) en de lijst *Geblokkeerd*.
+- *Meldingen op dit apparaat*: pushmeldingen voor nieuwe wijzigingen.
+
+![Bewoners](docs/screenshots/instellingen-bewoners.png)
+![Bewoners: apparaten en meldingen](docs/screenshots/instellingen-bewoners-apparaten.png)
+
+**Site** – logo, naam van de site en de app, de eenvoudige weergave, de namen van de statussen, het infovlak en de uitleg.
+
+![Site](docs/screenshots/instellingen-site.png)
 
 **Beveiliging** – passkeys toevoegen/verwijderen en een optioneel wachtwoord (bevestigen met passkey).
 
@@ -134,24 +144,16 @@ Het tandwiel (⚙) in de balk schuift het instellingen-menu in beeld, met vier o
 
 ![Instellingen: backups](docs/screenshots/instellingen-backups.png)
 
-**Logo & uitleg** – logo uploaden, naam van de site en de app, namen van de statussen, het **infovlak** voor bewoners en de uitlegtekst voor de site en de PDF.
-
-![Instellingen: logo, infovlak en uitleg](docs/screenshots/instellingen-logo-info.png)
-
-![Instellingen: logo en uitleg](docs/screenshots/instellingen-logo.png)
-
 **Versie** – onderin het menu staat de versie en commit van de draaiende build (zie [Versienummer](#versienummer)).
 
-![Versie](docs/screenshots/instellingen-versie.png)
-
 ### Pushmeldingen voor de beheerder
-- Zet in *Instellingen → Wijzigingen → Meldingen op dit apparaat* meldingen aan op je eigen telefoon of computer. De server maakt daarvoor zelf de (VAPID-)sleutels en bewaart ze in `data/db.json`.
+- Zet in *Instellingen → Bewoners → Meldingen op dit apparaat* meldingen aan op je eigen telefoon of computer. De server maakt daarvoor zelf de (VAPID-)sleutels en bewaart ze in `data/db.json`.
 - Bij een nieuwe wijziging ontvang je een pushmelding (meerdere wijzigingen kort na elkaar worden samengevoegd). Tik je erop, dan opent het beheer bij *Wijzigingen* en kun je goedkeuren of afwijzen; pas dan wordt de wijziging doorgevoerd.
 - Vereist **HTTPS**. Op een iPhone/iPad werkt Web Push alleen als je het beheer eerst aan het beginscherm toevoegt (iOS 16.4 of nieuwer) en het daar opent. Een knop *Testmelding* controleert of het werkt.
 - Verlopen apparaten worden automatisch opgeruimd.
 
 ## Namen van de statussen
-Onder *Instellingen (⚙) → Logo & uitleg* kun je de namen **Groen**, **Rood** en **Niet gemarkeerd** aanpassen, bijvoorbeeld naar *Akkoord* en *Nog niet bezocht*. De kleuren blijven groen en rood. De namen gelden overal: legenda, popups, straten-filter, de PDF, het beheer en de pushmelding. Leeg laten = standaardnaam.
+Onder *Instellingen (⚙) → Site → Weergave* kun je de namen **Groen**, **Rood** en **Niet gemarkeerd** aanpassen, bijvoorbeeld naar *Akkoord* en *Nog niet bezocht*. De kleuren blijven groen en rood. De namen gelden overal: legenda, popups, straten-filter, de PDF, het beheer en de pushmelding. Leeg laten = standaardnaam.
 
 ## Nieuwe huizen tekenen
 Een nieuw getekend huis heeft standaard **geen status** (niet gemarkeerd; kies in het beheer desgewenst een andere status voor nieuwe huizen). Het veld **Straat voor nieuwe huizen** toont de actieve of laatst gebruikte straat: die volgt het huis dat je selecteert, het straat-filter of wat je zelf invult. Nieuwe, nog lege huizen krijgen die straat vooraf ingevuld, zodat je alleen het huisnummer hoeft in te vullen.
@@ -194,7 +196,7 @@ Terugzetten kan in *Instellingen → Backups* (de huidige staat wordt eerst zelf
 Elke backup kan een **korte titel** krijgen (max. 40 tekens, knop ✎), bijvoorbeeld "Alles" of "Alleen layout". Met *Backup maken* maak je handmatig een backup met een eigen titel, ook als er niets is veranderd.
 
 ## Naam van de app
-Bij *Instellingen* (⚙) → *Logo & uitleg* stel je ook de **naam van de site** in (naast het logo en in de PDF; standaard `SITE_TITLE`) en de **naam van de app** en een korte naam (max. 12 tekens, onder het icoon) in. Die worden gebruikt als de site op een telefoon of computer wordt geïnstalleerd.
+Bij *Instellingen* (⚙) → *Site* stel je ook de **naam van de site** in (naast het logo en in de PDF; standaard `SITE_TITLE`) en de **naam van de app** en een korte naam (max. 12 tekens, onder het icoon) in. Die worden gebruikt als de site op een telefoon of computer wordt geïnstalleerd.
 Zonder invoer geldt de sitenaam (`SITE_TITLE`). Een al geïnstalleerde app neemt een nieuwe naam pas na een tijdje over.
 
 ## Installeren als app en offline gebruik

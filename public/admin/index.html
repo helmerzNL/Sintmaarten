@@ -136,136 +136,169 @@
     <h3 id="settings-title">Instellingen</h3>
     <button id="settings-close" class="icon-btn" aria-label="Instellingen sluiten">✕</button>
   </div>
-  <nav class="tabs" role="tablist">
-    <button role="tab" data-tab="changes">🔔 Wijzigingen <span id="tab-badge" class="count-badge" hidden>0</span></button>
-    <button role="tab" data-tab="security" class="active">🔐 Beveiliging</button>
-    <button role="tab" data-tab="backups">🗂 Backups</button>
-    <button role="tab" data-tab="org">🏷 Logo &amp; uitleg</button>
+  <nav class="tabs" role="tablist" aria-label="Instellingen">
+    <button role="tab" data-tab="changes"><span class="tab-ico" aria-hidden="true">🔔</span><span>Goedkeuren</span><span id="tab-badge" class="count-badge" hidden>0</span></button>
+    <button role="tab" data-tab="residents"><span class="tab-ico" aria-hidden="true">🏘</span><span>Bewoners</span></button>
+    <button role="tab" data-tab="org"><span class="tab-ico" aria-hidden="true">🏷</span><span>Site</span></button>
+    <button role="tab" data-tab="security" class="active"><span class="tab-ico" aria-hidden="true">🔐</span><span>Beveiliging</span></button>
+    <button role="tab" data-tab="backups"><span class="tab-ico" aria-hidden="true">🗂</span><span>Backups</span></button>
   </nav>
   <div class="drawer-body">
+    <p class="error set-error" id="chg-err" role="alert"></p>
 
+    <!-- ===== Goedkeuren ===== -->
     <section data-panel="changes" class="hidden">
-      <h4>Wijzigen van bewoners</h4>
-      <label class="switch" style="margin:4px 0 8px">
-        <input type="checkbox" id="res-sched" role="switch">
-        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
-        <span class="switch-text">Wijzigen automatisch uitschakelen op een datum en tijd</span>
-      </label>
-      <label for="res-until">Wijzigen kan tot</label>
-      <input type="datetime-local" id="res-until">
-      <p class="muted" id="res-sched-note">Staat dit aan, dan kunnen bewoners (in de browser en in de app) tot dit moment wijzigen en daarna niet meer. De twee schakelaars hieronder worden dan genegeerd.</p>
-      <label class="switch" style="margin:4px 0 8px">
-        <input type="checkbox" id="res-swap" role="switch">
-        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
-        <span class="switch-text">Na die datum mogen bewoners hun eigen huis nog wisselen tussen groen en rood</span>
-      </label>
-      <p class="muted">Alleen bewoners met een gekoppeld huis, alleen van groen naar rood of andersom (niet van of naar niet gemarkeerd), en nog steeds met jouw goedkeuring. Dit gaat voor de twee schakelaars hieronder.</p>
-      <label class="switch" style="margin:4px 0 8px">
-        <input type="checkbox" id="res-enabled" role="switch">
-        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
-        <span class="switch-text">Bewoners mogen via de app hun eigen huis wijzigen</span>
-      </label>
-      <label class="switch" style="margin:4px 0 8px">
-        <input type="checkbox" id="res-apponly" role="switch">
-        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
-        <span class="switch-text">Alleen in de geïnstalleerde app (niet in de browser)</span>
-      </label>
-      <p class="muted">Staat dit aan, dan verdwijnt de schakelaar <em>Bewerken</em> in de browser en kan een huis alleen via de geïnstalleerde app worden gewijzigd.</p>
-      <p class="muted">In de geïnstalleerde app staat dan een knop <em>Huis wijzigen</em>. Elk apparaat kiest één huis; een wijziging wordt pas zichtbaar nadat jij die goedkeurt.</p>
-      <h4>Locatie (geofence)</h4>
-      <label class="switch" style="margin:4px 0 8px">
-        <input type="checkbox" id="res-geo" role="switch">
-        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
-        <span class="switch-text">Alleen wijzigen als je fysiek in de wijk bent (GPS-locatie)</span>
-      </label>
-      <label for="res-geo-radius">Straal rond het midden van de wijk (meter)</label>
-      <input type="number" id="res-geo-radius" min="50" max="5000" step="50" value="500">
-      <p class="muted">Het midden is het midden van de kaartweergave (of anders van de huizen). De controle geldt voor telefoons en tablets (GPS; de locatie moet nauwkeuriger zijn dan 200 m). Laptops en desktops, die geen GPS hebben, worden niet beperkt en kunnen gewoon wijzigen. Bewoners moeten bij het wijzigen en bij het kiezen van een huis toegang tot hun locatie geven; ze mogen er niet verder vandaan zijn dan de straal. Lezen van de kaart blijft overal kunnen. De locatie komt van het apparaat zelf: dit is een gebruiksbeperking, geen harde beveiliging.</p>
-      <div id="pend-list" class="bk-list"></div>
-      <p class="error" id="chg-err"></p>
-      <div class="row"><button id="pend-all" class="primary" disabled>Alles goedkeuren</button></div>
-
-      <h4>Meldingen op dit apparaat</h4>
-      <p class="muted" id="push-status"></p>
-      <div class="row"><button id="push-on" class="primary">Meldingen aanzetten</button><button id="push-test" class="hidden">Testmelding</button><button id="push-off" class="danger hidden">Uitzetten</button></div>
-      <p class="error" id="push-err"></p>
-      <div id="push-devices" class="bk-list hidden"></div>
-
-      <h4>Aangemelde apparaten</h4>
-      <p class="muted">Elk apparaat is aan één huis gekoppeld. Verwijder een koppeling als iemand een verkeerd huis koos; die kan dan opnieuw kiezen.</p>
-      <div id="res-list" class="bk-list"></div>
-
-      <h4>Geblokkeerd</h4>
-      <p class="muted">Tegen misbruik kun je een apparaat blokkeren (met <em>Blokkeren</em> bij een wijziging of apparaat), eventueel inclusief het IP-adres.</p>
-      <div id="blk-list" class="bk-list"></div>
-    </section>
-
-    <section data-panel="security">
-      <h4>Passkeys</h4>
-      <div id="pk-list"></div>
-      <label for="pk-name">Nieuwe passkey toevoegen</label>
-      <input type="text" id="pk-name" value="Extra apparaat" maxlength="60">
-      <p class="error" id="pk-err"></p>
-      <div class="row"><button id="pk-add" class="primary">Toevoegen</button></div>
-
-      <h4>Wachtwoord</h4>
-      <p class="muted" id="pw-status"></p>
-      <div id="pw-edit">
-        <p class="muted">Het instellen, wijzigen en verwijderen van het wachtwoord moet je bevestigen met een passkey.</p>
-        <p class="error" id="pw-err"></p>
-        <div class="row"><button id="pw-start" class="primary">Wachtwoord instellen…</button><button id="pw-remove" class="danger">Wachtwoord verwijderen</button></div>
-        <!-- De wachtwoordvelden worden pas ingevoegd na een klik op de knop, zodat wachtwoordmanagers niet onnodig reageren. -->
-        <form id="pw-form-set" class="hidden" autocomplete="off"></form>
-      </div>
-      <p class="muted hidden" id="pw-locked">Je bent met een wachtwoord ingelogd. Log in met een passkey om passkeys of het wachtwoord te wijzigen.</p>
-    </section>
-
-    <section data-panel="backups" class="hidden">
-      <p class="muted">Na elke opslagpoging wordt automatisch een backup gemaakt van de layout (huizen en kaartweergave) en de teksten (uitleg en appnaam). Het logo valt buiten de backups. De nieuwste 200 blijven bewaard.</p>
-      <p class="muted">Elke backup bevat de layout (huizen en kaartweergave) én de teksten (uitleg, namen, statusnamen). Geef een backup een korte titel (✎) zodat je ze later makkelijk herkent, bijvoorbeeld "Alles" of "Alleen layout".</p>
-      <div class="row">
-        <input type="text" id="bk-title" maxlength="40" placeholder="Titel voor een nieuwe backup (max. 40 tekens)" aria-label="Titel voor een nieuwe backup">
-        <button id="bk-make">Backup maken</button>
-      </div>
-      <div id="bk-list" class="bk-list"></div>
-      <p class="error" id="bk-err"></p>
-      <div class="row">
-        <button id="bk-delete" class="danger" disabled>Geselecteerde verwijderen (bevestig met passkey)</button>
+      <div class="set-card">
+        <header class="set-card-head"><h4>Wachten op goedkeuring</h4><p>Wijzigingen die bewoners voor hun eigen huis hebben aangevraagd. Pas na jouw goedkeuring zien anderen de nieuwe kleur.</p></header>
+        <div id="pend-list" class="bk-list"></div>
+        <div class="set-actions"><button id="pend-all" class="primary" disabled>Alles goedkeuren</button></div>
       </div>
     </section>
 
+    <!-- ===== Bewoners ===== -->
+    <section data-panel="residents" class="hidden">
+      <div class="set-card">
+        <header class="set-card-head"><h4>Wijzigen door bewoners</h4><p>Elk apparaat kiest één huis; wijzigingen worden pas zichtbaar nadat jij ze goedkeurt.</p></header>
+        <div class="set-row">
+          <div class="set-text"><div class="set-title">Bewoners mogen hun eigen huis wijzigen</div><div class="set-hint">Zet je dit uit, dan verdwijnt <em>Huis wijzigen</em> voor iedereen.</div></div>
+          <label class="switch"><input type="checkbox" id="res-enabled" role="switch" aria-label="Bewoners mogen hun eigen huis wijzigen"><span class="track" aria-hidden="true"><span class="thumb"></span></span></label>
+        </div>
+        <div class="set-row">
+          <div class="set-text"><div class="set-title">Alleen in de geïnstalleerde app</div><div class="set-hint">Niet in de browser: de schakelaar <em>Bewerken</em> verdwijnt daar.</div></div>
+          <label class="switch"><input type="checkbox" id="res-apponly" role="switch" aria-label="Alleen in de geïnstalleerde app"><span class="track" aria-hidden="true"><span class="thumb"></span></span></label>
+        </div>
+      </div>
+
+      <div class="set-card">
+        <header class="set-card-head"><h4>Planning</h4><p>Wijzigen automatisch afsluiten op een moment. Zolang de planning aan staat, gelden de twee schakelaars hierboven niet.</p></header>
+        <div class="set-row">
+          <div class="set-text"><div class="set-title">Wijzigen uitschakelen op een datum en tijd</div><div class="set-hint">Tot dat moment kunnen bewoners wijzigen (browser én app), daarna niet meer.</div></div>
+          <label class="switch"><input type="checkbox" id="res-sched" role="switch" aria-label="Wijzigen uitschakelen op een datum en tijd"><span class="track" aria-hidden="true"><span class="thumb"></span></span></label>
+        </div>
+        <div class="field"><label for="res-until">Wijzigen kan tot</label><input type="datetime-local" id="res-until"></div>
+        <div class="set-row">
+          <div class="set-text"><div class="set-title">Daarna nog wisselen tussen groen en rood</div><div class="set-hint">Alleen bewoners met een gekoppeld huis, niet van of naar <em>niet gemarkeerd</em>, en nog steeds met jouw goedkeuring.</div></div>
+          <label class="switch"><input type="checkbox" id="res-swap" role="switch" aria-label="Na de einddatum nog wisselen tussen groen en rood"><span class="track" aria-hidden="true"><span class="thumb"></span></span></label>
+        </div>
+      </div>
+
+      <div class="set-card">
+        <header class="set-card-head"><h4>Toegang</h4><p>Beperk wie kan wijzigen. Beide opties zijn een gebruiksbeperking, geen harde beveiliging: de gegevens komen van het apparaat zelf.</p></header>
+        <div class="set-row">
+          <div class="set-text"><div class="set-title">Alleen in de wijk (locatie)</div><div class="set-hint">Geldt voor telefoons en tablets met GPS (nauwkeuriger dan 200 m). Laptops en desktops worden niet beperkt. Het midden is dat van de kaartweergave.</div></div>
+          <label class="switch"><input type="checkbox" id="res-geo" role="switch" aria-label="Alleen wijzigen als je fysiek in de wijk bent"><span class="track" aria-hidden="true"><span class="thumb"></span></span></label>
+        </div>
+        <div class="field field-inline"><label for="res-geo-radius">Straal rond het midden</label><div class="input-unit"><input type="number" id="res-geo-radius" min="50" max="5000" step="50" value="500"><span>meter</span></div></div>
+        <hr class="set-sep">
+        <div class="set-row">
+          <div class="set-text"><div class="set-title">Toegangscode voor apparaten zonder GPS</div><div class="set-hint">Laptops en desktops vullen eenmalig een code in (deel die in de buurtapp). Wijzig je de code, dan moet iedereen hem opnieuw invullen.</div></div>
+          <label class="switch"><input type="checkbox" id="res-code-on" role="switch" aria-label="Toegangscode voor apparaten zonder GPS"><span class="track" aria-hidden="true"><span class="thumb"></span></span></label>
+        </div>
+        <div class="field"><label for="res-code">Code (4 tot 6 cijfers)</label>
+          <div class="row row-tight">
+            <input type="text" id="res-code" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" placeholder="Bijvoorbeeld 4821" autocomplete="off">
+            <button id="res-code-copy" type="button" class="icon-btn" title="Code kopiëren" aria-label="Code kopiëren">📋</button>
+            <button id="res-code-gen" type="button">Willekeurig</button>
+            <button id="res-code-save" class="primary">Opslaan</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="set-card">
+        <header class="set-card-head"><h4>Apparaten</h4><p>Elk apparaat is aan één huis gekoppeld. Verwijder een koppeling als iemand een verkeerd huis koos; die kan dan opnieuw kiezen.</p></header>
+        <div id="res-list" class="bk-list"></div>
+        <h5 class="set-sub">Geblokkeerd</h5>
+        <p class="set-hint">Tegen misbruik blokkeer je een apparaat (eventueel met het IP-adres) via <em>Blokkeren</em> bij een wijziging of apparaat.</p>
+        <div id="blk-list" class="bk-list"></div>
+      </div>
+
+      <div class="set-card">
+        <header class="set-card-head"><h4>Meldingen op dit apparaat</h4><p id="push-status"></p></header>
+        <div class="row row-tight"><button id="push-on" class="primary">Meldingen aanzetten</button><button id="push-test" class="hidden">Testmelding</button><button id="push-off" class="danger hidden">Uitzetten</button></div>
+        <p class="error" id="push-err"></p>
+        <div id="push-devices" class="bk-list hidden"></div>
+      </div>
+    </section>
+
+    <!-- ===== Site ===== -->
     <section data-panel="org" class="hidden">
-      <label>Logo van de wijkvereniging (PNG, JPEG of WebP, max 5 MB)</label>
-      <img id="org-logo" class="logo-preview" alt="" hidden>
-      <input type="file" id="org-file" accept="image/png,image/jpeg,image/webp" hidden>
-      <div class="row"><button id="org-upload">Logo uploaden</button><button id="org-remove" class="danger">Logo verwijderen</button></div>
-      <label for="org-title">Naam van de site (staat naast het logo en bovenaan de PDF)</label>
-      <input type="text" id="org-title" maxlength="60" placeholder="Standaard: de naam uit de serverinstelling (SITE_TITLE)">
-      <label>Namen van de statussen (zoals bezoekers ze zien)</label>
-      <div class="row">
-        <div><label for="lbl-green" style="margin-top:0">Groen heet</label><input type="text" id="lbl-green" maxlength="24" placeholder="Groen"></div>
-        <div><label for="lbl-red" style="margin-top:0">Rood heet</label><input type="text" id="lbl-red" maxlength="24" placeholder="Rood"></div>
-        <div><label for="lbl-none" style="margin-top:0">Zonder status heet</label><input type="text" id="lbl-none" maxlength="24" placeholder="Niet gemarkeerd"></div>
+      <div class="set-card">
+        <header class="set-card-head"><h4>Identiteit</h4><p>Logo en naam van de wijkvereniging.</p></header>
+        <div class="field"><label>Logo (PNG, JPEG of WebP, max 5 MB)</label>
+          <img id="org-logo" class="logo-preview" alt="" hidden>
+          <input type="file" id="org-file" accept="image/png,image/jpeg,image/webp" hidden>
+          <div class="row row-tight"><button id="org-upload">Logo uploaden</button><button id="org-remove" class="danger">Logo verwijderen</button></div>
+        </div>
+        <div class="field"><label for="org-title">Naam van de site</label><input type="text" id="org-title" maxlength="60" placeholder="Standaard: de naam uit de serverinstelling (SITE_TITLE)"><div class="set-hint">Staat naast het logo en bovenaan de PDF.</div></div>
       </div>
-      <p class="muted">Bijvoorbeeld "Akkoord" en "Nog niet bezocht". De kleuren blijven groen en rood; leeg laten = standaardnaam.</p>
-      <label for="org-appname">Naam van de app (zoals die op het beginscherm van een telefoon komt te staan)</label>
-      <input type="text" id="org-appname" maxlength="45" placeholder="Standaard: de sitenaam">
-      <label for="org-short">Korte naam onder het icoon (max. 12 tekens)</label>
-      <input type="text" id="org-short" maxlength="12" placeholder="Standaard: de eerste 12 tekens van de naam">
-      <p class="muted">Een al geïnstalleerde app neemt een nieuwe naam pas over na een tijdje (of na opnieuw installeren).</p>
-      <label class="switch" style="margin:4px 0 8px">
-        <input type="checkbox" id="org-simple" role="switch">
-        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
-        <span class="switch-text">Eenvoudige weergave voor bezoekers</span>
-      </label>
-      <p class="muted">Verbergt op de website de schakelaars <em>Huisnummers</em> en <em>Bewerken</em> en de knop <em>Straten</em>. <em>Huis wijzigen</em> blijft beschikbaar (Bewerken staat dan vast aan).</p>
-      <label for="org-info">Infovlak: bewoners kunnen hun eigen huis wijzigen (valt op bovenin de uitleg, verdwijnt als wijzigen uit staat)</label>
-      <textarea id="org-info" rows="4" maxlength="1000" placeholder="Bijvoorbeeld: woon je in de wijk? Pas in de app zelf de status van jouw huis aan."></textarea>
-      <label for="org-intro">Uitleg (zichtbaar op de website en in de PDF)</label>
-      <textarea id="org-intro" rows="10" maxlength="5000" placeholder="Plak hier de toelichting. Lege regels worden alinea's."></textarea>
-      <p class="muted"><span id="org-count">0</span> / 5000 tekens</p>
-      <p class="error" id="org-err"></p>
-      <div class="row"><button id="org-save" class="primary">Opslaan</button></div>
+
+      <div class="set-card">
+        <header class="set-card-head"><h4>App</h4><p>Zo komt de site op het beginscherm van een telefoon te staan.</p></header>
+        <div class="field"><label for="org-appname">Naam van de app</label><input type="text" id="org-appname" maxlength="45" placeholder="Standaard: de sitenaam"></div>
+        <div class="field"><label for="org-short">Korte naam onder het icoon (max. 12 tekens)</label><input type="text" id="org-short" maxlength="12" placeholder="Standaard: de eerste 12 tekens van de naam"><div class="set-hint">Een al geïnstalleerde app neemt een nieuwe naam pas over na een tijdje (of na opnieuw installeren).</div></div>
+      </div>
+
+      <div class="set-card">
+        <header class="set-card-head"><h4>Weergave</h4><p>Wat bezoekers zien en hoe de statussen heten.</p></header>
+        <div class="set-row">
+          <div class="set-text"><div class="set-title">Eenvoudige weergave</div><div class="set-hint">Verbergt <em>Huisnummers</em>, <em>Bewerken</em> en <em>Straten</em>. <em>Huis wijzigen</em> en <em>PDF opslaan</em> blijven in de menubalk.</div></div>
+          <label class="switch"><input type="checkbox" id="org-simple" role="switch" aria-label="Eenvoudige weergave voor bezoekers"><span class="track" aria-hidden="true"><span class="thumb"></span></span></label>
+        </div>
+        <div class="field"><label>Namen van de statussen</label>
+          <div class="grid-3">
+            <div><label for="lbl-green" class="sub">Groen heet</label><input type="text" id="lbl-green" maxlength="24" placeholder="Groen"></div>
+            <div><label for="lbl-red" class="sub">Rood heet</label><input type="text" id="lbl-red" maxlength="24" placeholder="Rood"></div>
+            <div><label for="lbl-none" class="sub">Zonder status heet</label><input type="text" id="lbl-none" maxlength="24" placeholder="Niet gemarkeerd"></div>
+          </div>
+          <div class="set-hint">Bijvoorbeeld "Akkoord" en "Nog niet bezocht". De kleuren blijven groen en rood; leeg = standaardnaam.</div>
+        </div>
+      </div>
+
+      <div class="set-card">
+        <header class="set-card-head"><h4>Teksten</h4><p>Het infovlak en de uitleg die bezoekers zien (de uitleg staat ook in de PDF).</p></header>
+        <div class="field"><label for="org-info">Infovlak voor bewoners</label><textarea id="org-info" rows="4" maxlength="1000" placeholder="Bijvoorbeeld: woon je in de wijk? Pas in de app zelf de status van jouw huis aan."></textarea><div class="set-hint">Valt op bovenin de uitleg; verdwijnt als wijzigen uit staat.</div></div>
+        <div class="field"><label for="org-intro">Uitleg</label><textarea id="org-intro" rows="10" maxlength="5000" placeholder="Plak hier de toelichting. Lege regels worden alinea's."></textarea><div class="set-hint"><span id="org-count">0</span> / 5000 tekens</div></div>
+        <p class="error" id="org-err"></p>
+        <div class="set-actions"><button id="org-save" class="primary">Opslaan</button></div>
+      </div>
+    </section>
+
+    <!-- ===== Beveiliging ===== -->
+    <section data-panel="security">
+      <div class="set-card">
+        <header class="set-card-head"><h4>Passkeys</h4><p>Hiermee log je in op het beheer. Voeg ook een tweede apparaat toe, zodat je nooit buitengesloten raakt.</p></header>
+        <div id="pk-list"></div>
+        <div class="field"><label for="pk-name">Nieuwe passkey toevoegen</label>
+          <div class="row row-tight"><input type="text" id="pk-name" value="Extra apparaat" maxlength="60"><button id="pk-add" class="primary">Toevoegen</button></div>
+        </div>
+        <p class="error" id="pk-err"></p>
+      </div>
+
+      <div class="set-card">
+        <header class="set-card-head"><h4>Wachtwoord</h4><p id="pw-status"></p></header>
+        <div id="pw-edit">
+          <p class="set-hint">Het instellen, wijzigen en verwijderen van het wachtwoord moet je bevestigen met een passkey.</p>
+          <p class="error" id="pw-err"></p>
+          <div class="row row-tight"><button id="pw-start" class="primary">Wachtwoord instellen…</button><button id="pw-remove" class="danger">Wachtwoord verwijderen</button></div>
+          <!-- De wachtwoordvelden worden pas ingevoegd na een klik op de knop, zodat wachtwoordmanagers niet onnodig reageren. -->
+          <form id="pw-form-set" class="hidden" autocomplete="off"></form>
+        </div>
+        <p class="set-hint hidden" id="pw-locked">Je bent met een wachtwoord ingelogd. Log in met een passkey om passkeys of het wachtwoord te wijzigen.</p>
+      </div>
+    </section>
+
+    <!-- ===== Backups ===== -->
+    <section data-panel="backups" class="hidden">
+      <div class="set-card">
+        <header class="set-card-head"><h4>Backups</h4><p>Na elke opslagpoging wordt automatisch een backup gemaakt van de layout (huizen en kaartweergave) én de teksten (uitleg, namen, statusnamen). Het logo valt erbuiten; de nieuwste 200 blijven bewaard.</p></header>
+        <div class="field"><label for="bk-title">Nieuwe backup met titel</label>
+          <div class="row row-tight"><input type="text" id="bk-title" maxlength="40" placeholder="Bijvoorbeeld: Alles, voor de actie" aria-label="Titel voor een nieuwe backup"><button id="bk-make">Backup maken</button></div>
+          <div class="set-hint">Met een korte titel (ook later via ✎) herken je een backup makkelijk.</div>
+        </div>
+        <div id="bk-list" class="bk-list"></div>
+        <p class="error" id="bk-err"></p>
+        <div class="set-actions"><button id="bk-delete" class="danger" disabled>Geselecteerde verwijderen (bevestig met passkey)</button></div>
+      </div>
     </section>
 
   </div>

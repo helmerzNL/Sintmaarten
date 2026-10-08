@@ -235,7 +235,8 @@
     document.querySelectorAll('#settings [data-panel]').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== name));
     if (name === 'security') { $('pk-err').textContent = ''; renderPasskeys().catch((e) => ($('pk-err').textContent = e.message)); }
     if (name === 'backups') renderBackups();
-    if (name === 'changes') { renderChanges(); renderPush(); }
+    if (name === 'changes') renderChanges();
+    if (name === 'residents') { renderChanges(); renderPush(); }
     if (name === 'org') fillOrg();
   }
   let versionShown = false;
@@ -351,7 +352,7 @@
   // ---------- wijzigingen van bewoners en meldingen ----------
   let pendingCount = 0;
   const STATUS_NL = new Proxy({}, { get: (_, k) => (Wijk.STATUS[k] ? Wijk.STATUS[k].name.toLowerCase() : k) }); // volgt de instelbare namen
-  const renderChangesIfOpen = () => { if (drawerOpen() && activeTab() === 'changes') renderChanges(); };
+  const renderChangesIfOpen = () => { if (drawerOpen() && ['changes', 'residents'].includes(activeTab())) renderChanges(); };
   const ago = (iso) => {
     const m = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000));
     return m < 1 ? 'zojuist' : m < 60 ? `${m} min geleden` : m < 1440 ? `${Math.round(m / 60)} uur geleden` : `${Math.round(m / 1440)} dagen geleden`;
@@ -370,7 +371,7 @@
       const changed = pending !== pendingCount;
       pendingCount = pending;
       setBadge(pending);
-      if (changed && drawerOpen() && activeTab() === 'changes') renderChanges();
+      if (changed && drawerOpen() && ['changes', 'residents'].includes(activeTab())) renderChanges();
     } catch { /* offline of uitgelogd: volgende poging */ }
   }
 
@@ -390,6 +391,9 @@
     $('res-sched').checked = !!sched.on;
     if (sched.until && document.activeElement !== $('res-until')) $('res-until').value = toLocalInput(sched.until);
     $('res-until').disabled = false;
+    const cd = data.code || {};
+    $('res-code-on').checked = !!cd.on;
+    if (document.activeElement !== $('res-code')) $('res-code').value = cd.code || '';
     const gf = data.geofence || {};
     $('res-geo').checked = !!gf.on;
     if (document.activeElement !== $('res-geo-radius')) $('res-geo-radius').value = gf.radius || 500;
@@ -474,19 +478,42 @@
       if (on && !v) throw new Error('Kies eerst een datum en tijd');
       await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ residentsOff: on, residentsUntil: v ? new Date(v).toISOString() : null }), expectAuth: true });
       toast(on ? 'Wijzigen wordt automatisch uitgeschakeld' : 'Planning uitgezet');
-    } catch (e) { $('chg-err').textContent = e.message; $('res-sched').checked = !on; }
+    } catch (e) { msg = e.message; $('res-sched').checked = !on; }
     await renderChanges();
+    if (msg) $('chg-err').textContent = msg;
   }
   async function saveGeo(body, undo) {
     $('chg-err').textContent = '';
+    let msg = '';
     try {
       await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify(body), expectAuth: true });
       if ('residentsGeofence' in body) toast(body.residentsGeofence ? 'Wijzigen kan alleen nog in de wijk' : 'Locatiecontrole staat uit');
-    } catch (e) { $('chg-err').textContent = e.message; undo?.(); }
+    } catch (e) { msg = e.message; undo?.(); }
     await renderChanges();
+    if (msg) $('chg-err').textContent = msg;
   }
   $('res-geo').onchange = () => saveGeo({ residentsGeofence: $('res-geo').checked, residentsGeofenceRadius: Number($('res-geo-radius').value) || 500 }, () => { $('res-geo').checked = !$('res-geo').checked; });
   $('res-geo-radius').onchange = () => saveGeo({ residentsGeofenceRadius: Number($('res-geo-radius').value) });
+  async function saveCode(body, undo) {
+    $('chg-err').textContent = '';
+    let msg = '';
+    try {
+      await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify(body), expectAuth: true });
+      toast('residentsCodeOn' in body ? (body.residentsCodeOn ? 'Code voor apparaten zonder GPS staat aan' : 'Code staat uit') : 'Code opgeslagen ✔');
+    } catch (e) { msg = e.message; undo?.(); }
+    await renderChanges();
+    if (msg) $('chg-err').textContent = msg;
+  }
+  $('res-code-on').onchange = () => saveCode({ residentsCode: $('res-code').value.trim(), residentsCodeOn: $('res-code-on').checked }, () => { $('res-code-on').checked = !$('res-code-on').checked; });
+  $('res-code-save').onclick = () => saveCode({ residentsCode: $('res-code').value.trim() });
+  $('res-code-copy').onclick = async () => {
+    const v = $('res-code').value.trim();
+    if (!v) { toast('Er is nog geen code om te kopiëren'); return; }
+    try { await navigator.clipboard.writeText(v); }
+    catch { $('res-code').select(); document.execCommand('copy'); } // reserve zonder clipboard-API (bijv. http)
+    toast('Code gekopieerd ✔');
+  };
+  $('res-code-gen').onclick = () => { $('res-code').value = String(Math.floor(1000 + Math.random() * 9000)); $('res-code').focus(); };
   $('res-swap').onchange = async () => {
     try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ residentsSwapAfter: $('res-swap').checked }), expectAuth: true }); toast($('res-swap').checked ? 'Na de einddatum kan nog groen ↔ rood worden gewisseld' : 'Na de einddatum is wijzigen helemaal dicht'); }
     catch (e) { $('chg-err').textContent = e.message; $('res-swap').checked = !$('res-swap').checked; }

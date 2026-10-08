@@ -74,6 +74,19 @@
   <p><button id="install-go" class="primary" hidden>Installeren</button> <button id="install-later" type="button">Niet nu</button></p>
 </dialog>
 
+<dialog id="code-dialog">
+  <form id="code-form" method="dialog" autocomplete="off">
+    <div class="intro-head">
+      <h3>Toegangscode</h3>
+      <button id="code-x" class="icon-btn" type="button" aria-label="Sluiten">✕</button>
+    </div>
+    <p>Op dit apparaat is een code nodig om je huis te wijzigen. Je vindt de code in de buurtapp (WhatsApp). Je hoeft hem maar één keer in te vullen.</p>
+    <input id="code-input" type="text" inputmode="numeric" pattern="[0-9]{4,6}" minlength="4" maxlength="6" autocomplete="one-time-code" placeholder="Code (4 tot 6 cijfers)" aria-label="Toegangscode" required>
+    <p class="error" id="code-error" role="alert"></p>
+    <p><button class="primary" type="submit">Bevestigen</button> <button id="code-cancel" type="button">Annuleren</button></p>
+  </form>
+</dialog>
+
 <div id="house-sheet" class="house-sheet" hidden role="region" aria-label="Huis wijzigen"></div>
 
 <dialog id="claim-dialog" aria-labelledby="claim-q">

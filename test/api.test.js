@@ -598,6 +598,61 @@ test('eenvoudige weergave: instelling in het beheer, zichtbaar op de kaart', asy
   assert.equal((await (await j('/api/map')).json()).simpleUi, false);
 });
 
+test('toegangscode voor apparaten zonder GPS (schakelaar en code in het beheer)', async () => {
+  await adminReq('/settings', 'PUT', { residentsEnabled: true, residentsAppOnly: false, residentsOff: false, residentsSwapAfter: false, residentsGeofence: false, residentsCodeOn: false });
+  await adminReq('/houses', 'PUT', { houses: [{ id: 'h1', street: 'Dorpsstraat', number: '1', status: 'none', points: ptsR }] });
+  for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
+  const WIN = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0';
+  const AND = 'Mozilla/5.0 (Linux; Android 14) Mobile Safari/537.36';
+  const rq = (path, body, { cookie: ck, ua = WIN, dev = 'desktop' } = {}) => j(`/api/resident${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'User-Agent': ua, ...(dev ? { 'X-Geo-Device': dev } : {}), ...(ck ? { cookie: ck } : {}) }, body: JSON.stringify(body || {}) });
+
+  // standaard: geen code nodig, de kaart meldt dat ook
+  assert.equal((await (await j('/api/map')).json()).deviceCode, false);
+  const ck1 = (await rq('/claim', { houseId: 'h1' })).headers.get('set-cookie').split(';')[0];
+
+  // validatie in het beheer: eerst een geldige code, dan pas aan
+  assert.equal((await adminReq('/settings', 'PUT', { residentsCodeOn: true })).status, 400);
+  assert.equal((await adminReq('/settings', 'PUT', { residentsCode: '12' })).status, 400);
+  assert.equal((await adminReq('/settings', 'PUT', { residentsCode: '12a456' })).status, 400);
+  assert.equal((await adminReq('/settings', 'PUT', { residentsCode: '4821', residentsCodeOn: true })).status, 200);
+  const st = await (await adminReq('/settings')).json();
+  assert.deepEqual([st.residentsCodeOn, st.residentsCode], [true, '4821']);
+  const m = await (await j('/api/map')).json();
+  assert.equal(m.deviceCode, true);
+  assert.ok(!JSON.stringify(m).includes('4821')); // de code staat nooit in de publieke kaartgegevens
+
+  // desktop zonder code: geweigerd; /me meldt dat de code ontbreekt
+  let r = await rq('/set', { status: 'green' }, { cookie: ck1 });
+  assert.equal(r.status, 403);
+  assert.equal((await r.json()).code, 'required');
+  assert.equal((await (await res('/me', { headers: { cookie: ck1 } })).json()).codeOk, false);
+  // een telefoon (GPS) hoeft geen code in te vullen
+  assert.equal((await rq('/set', { status: 'green' }, { cookie: ck1, ua: AND, dev: 'gps' })).status, 200);
+
+  // verkeerde en juiste code
+  r = await rq('/code', { code: '0000' });
+  assert.equal(r.status, 403);
+  r = await rq('/code', { code: '4821' }, { cookie: ck1 });
+  assert.equal(r.status, 200);
+  const codeCookie = r.headers.get('set-cookie').split(';')[0];
+  assert.match(r.headers.get('set-cookie'), /sm_code=.+HttpOnly/);
+  const both = `${ck1}; ${codeCookie}`;
+  assert.equal((await rq('/set', { status: 'red' }, { cookie: both })).status, 200);
+  assert.equal((await (await res('/me', { headers: { cookie: both } })).json()).codeOk, true);
+
+  // code wijzigen maakt de oude cookie ongeldig; code uitzetten laat iedereen toe
+  await adminReq('/settings', 'PUT', { residentsCode: '555555' });
+  assert.equal((await rq('/set', { status: 'green' }, { cookie: both })).status, 403);
+  await adminReq('/settings', 'PUT', { residentsCodeOn: false });
+  assert.equal((await rq('/set', { status: 'green' }, { cookie: ck1 })).status, 200);
+  assert.equal((await rq('/code', { code: 'x' })).status, 200); // uit: niets te doen
+
+  // alleen met beheersessie
+  assert.equal((await j('/api/admin/settings', { method: 'PUT', headers: jsonH(), body: '{"residentsCode":"1234"}' })).status, 401);
+  await adminReq('/settings', 'PUT', { residentsCode: '' });
+  for (const rr of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${rr.rid}`, 'DELETE');
+});
+
 test('bewoners: uitschakelen, beheerrechten en push-registratie', async () => {
   for (const [m, p] of [['GET', '/changes'], ['POST', '/changes/approve-all'], ['DELETE', '/residents/x'], ['GET', '/push/key'], ['POST', '/push/test']]) {
     assert.equal((await j(`/api/admin${p}`, { method: m, headers: jsonH() })).status, 401, p);

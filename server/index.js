@@ -73,6 +73,7 @@ app.get('/api/map', (req, res) => {
     residentsEnabled: residents.mode() !== 'closed', // ook 'swap': dan blijft de knop zichtbaar voor wie al een huis heeft
     residentsMode: residents.mode(),
     simpleUi: settings?.simpleUi === true,
+    deviceCode: residents.codeOn(), // alleen of er een code nodig is, nooit de code zelf
     geofence: residents.geofence().on ? { center: residents.geofence().center, radius: residents.geofence().radius } : null,
     residentsAppOnly: residents.appOnly(),
     residentInfo: residents.enabled() ? residents.info() : '', // het infovlak verdwijnt zodra wijzigen uit staat
@@ -374,7 +375,7 @@ admin.delete('/logo', (req, res) => {
 // Instellingen zoals bewaard (voor het beheerscherm); /api/map geeft de actuele, effectieve waarden.
 admin.get('/settings', (req, res) => {
   const s = store.db().settings;
-  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null, residentsSwapAfter: s.residentsSwapAfter === true, residentsGeofence: s.residentsGeofence === true, simpleUi: s.simpleUi === true, residentsGeofenceRadius: residents.geofence().radius });
+  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null, residentsSwapAfter: s.residentsSwapAfter === true, residentsGeofence: s.residentsGeofence === true, simpleUi: s.simpleUi === true, residentsCodeOn: s.residentsCodeOn === true, residentsCode: s.residentsCode || '', residentsGeofenceRadius: residents.geofence().radius });
 });
 
 admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (req, res) => {
@@ -407,6 +408,17 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     const on = body.residentsGeofence === true;
     if (on && !residents.geofence().center && !db.houses.length) return res.status(400).json({ error: 'Stel eerst de kaartweergave in of teken huizen: daaruit volgt het midden van de wijk' });
     db.settings.residentsGeofence = on;
+  }
+  if ('residentsCode' in body) {
+    const code = String(body.residentsCode ?? '').trim();
+    if (code && !/^\d{4,6}$/.test(code)) return res.status(400).json({ error: 'De code moet uit 4 tot 6 cijfers bestaan' });
+    db.settings.residentsCode = code;
+    if (!code) db.settings.residentsCodeOn = false;
+  }
+  if ('residentsCodeOn' in body) {
+    const on = body.residentsCodeOn === true;
+    if (on && !/^\d{4,6}$/.test(String(db.settings.residentsCode || ''))) return res.status(400).json({ error: 'Stel eerst een code van 4 tot 6 cijfers in' });
+    db.settings.residentsCodeOn = on;
   }
   if ('simpleUi' in body) db.settings.simpleUi = body.simpleUi === true;
   if ('residentsSwapAfter' in body) db.settings.residentsSwapAfter = body.residentsSwapAfter === true;

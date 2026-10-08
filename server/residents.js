@@ -120,6 +120,20 @@ function geoCheck(req) {
   return null;
 }
 
+// ---- toegangscode voor apparaten zonder GPS (de code wordt in de buurtapp gedeeld) ----
+const CODE_COOKIE = 'sm_code';
+const codeSetting = () => String(db().settings?.residentsCode || '');
+const codeOn = () => db().settings?.residentsCodeOn === true && /^\d{4,6}$/.test(codeSetting());
+// Zonder GPS = desktop/laptop: meldt zich als 'desktop' en heeft geen mobiele user-agent (zelfde regel als bij de geofence).
+const isNonGps = (req) => req.get('X-Geo-Device') === 'desktop' && !/android|iphone|ipad|ipod|mobile/i.test(req.get('User-Agent') || '');
+// De cookie bevat een hash van de code: een gewijzigde code maakt alle oude cookies ongeldig.
+const codeToken = () => crypto.createHmac('sha256', config.sessionSecret).update(`devcode:${codeSetting()}`).digest('base64url');
+const codeOk = (req) => {
+  if (!codeOn()) return true;
+  const c = auth.parseCookies(req.headers.cookie)[CODE_COOKIE];
+  return !!c && auth.safeEqual(c, codeToken());
+};
+
 // Geblokkeerde apparaten (cookie/token) en IP-adressen mogen niet meer wijzigen of een huis kiezen.
 function isBlocked(req) {
   const list = db().blocked || [];
@@ -134,12 +148,13 @@ function isBlocked(req) {
 
 const proposalOf = (rec) => db().proposals.find((p) => p.residentId === rec.rid);
 
-function view(rec) {
+function view(rec, req) {
   const house = houseOf(rec.houseId);
   const prop = proposalOf(rec);
   return {
     enabled: enabled(),
     mode: mode(),
+    codeOk: req ? codeOk(req) : true,
     claim: { houseId: house.id, title: titleOf(house) },
     approved: house.status,
     effective: prop ? prop.to : house.status,
@@ -179,7 +194,7 @@ resident.use((req, res, next) => {
   const m = mode();
   if (m === 'closed') return res.status(403).json({ error: 'Wijzigen door bewoners staat uit', enabled: false });
   // na de einddatum: alleen bestaande koppelingen en alleen wisselen tussen groen en rood
-  if (m === 'swap' && !(req.path === '/me' || ['/set', '/restore', '/ack'].includes(req.path))) {
+  if (m === 'swap' && !(req.path === '/me' || ['/set', '/restore', '/ack', '/code'].includes(req.path))) {
     return res.status(403).json({ error: 'Wijzigen is gesloten; je kunt alleen nog je eigen huis wisselen tussen groen en rood', mode: m });
   }
   if (isBlocked(req)) {
@@ -187,6 +202,9 @@ resident.use((req, res, next) => {
     return res.status(403).json({ error: 'Dit apparaat is geblokkeerd door de beheerder', blocked: true });
   }
   if (req.method !== 'GET' && (req.path === '/claim' || req.path === '/set')) {
+    if (codeOn() && isNonGps(req) && !codeOk(req)) {
+      return res.status(403).json({ code: 'required', error: 'Voer eerst de toegangscode in (die is gedeeld in de buurtapp).' });
+    }
     const bad = geoCheck(req);
     if (bad) return res.status(403).json(bad);
   }
@@ -205,7 +223,21 @@ resident.use((req, res, next) => {
 
 resident.get('/me', (req, res) => {
   const rec = currentResident(req);
-  res.json(rec ? view(rec) : { enabled: enabled(), mode: mode(), claim: null });
+  res.json(rec ? view(rec, req) : { enabled: enabled(), mode: mode(), claim: null, codeOk: codeOk(req) });
+});
+
+// Toegangscode voor apparaten zonder GPS: eenmalig invullen, daarna onthoudt dit apparaat het (cookie, 1 jaar).
+resident.post('/code', (req, res) => {
+  if (!codeOn()) return res.json({ ok: true });
+  const key = `code:${req.ip}`;
+  if (auth.limiter.blocked(key, 10)) return res.status(429).json({ error: 'Te veel pogingen, probeer het later opnieuw' });
+  const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
+  if (!auth.safeEqual(code, codeSetting())) { auth.limiter.fail(key); return res.status(403).json({ error: 'Onjuiste code' }); }
+  auth.limiter.reset(key);
+  const flags = ['Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${365 * 24 * 3600}`];
+  if (config.secureCookie) flags.push('Secure');
+  res.append('Set-Cookie', `${CODE_COOKIE}=${codeToken()}; ${flags.join('; ')}`);
+  res.json({ ok: true });
 });
 
 // Dit apparaat koppelen aan één huis.
@@ -219,7 +251,7 @@ resident.post('/claim', (req, res) => {
   db().residents.push(rec);
   store.save();
   setCookie(res, token);
-  res.json({ ...view(rec), deviceToken: token }); // de app bewaart dit ook lokaal, zodat de koppeling een gewiste cookie overleeft
+  res.json({ ...view(rec, req), deviceToken: token }); // de app bewaart dit ook lokaal, zodat de koppeling een gewiste cookie overleeft
 });
 
 // Koppeling herstellen met het lokaal bewaarde token (als de cookie van de app is verdwenen).
@@ -230,7 +262,7 @@ resident.post('/restore', (req, res) => {
   const rec = db().residents.find((r) => auth.safeEqual(r.tokenHash, hash));
   if (!rec || !houseOf(rec.houseId)) return res.status(404).json({ error: 'Koppeling niet gevonden' });
   setCookie(res, token);
-  res.json(view(rec));
+  res.json(view(rec, req));
 });
 
 // Gewenste status voor het eigen huis voorstellen (de beheerder moet dit nog goedkeuren).
@@ -261,7 +293,7 @@ resident.post('/set', (req, res) => {
   rec.notice = null;
   store.save();
   if (changed && status !== house.status) notifyAdmin();
-  res.json(view(rec));
+  res.json(view(rec, req));
 });
 
 resident.post('/ack', (req, res) => {
@@ -284,7 +316,7 @@ const list = () => {
   }).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const residents = d.residents.map((r) => ({ rid: r.rid, houseId: r.houseId, title: titleOf(houseOf(r.houseId)), createdAt: r.createdAt, lastActivity: r.lastActivity, ip: r.ip || null }));
   const blocked = (d.blocked || []).map((b) => ({ id: b.id, title: b.title, ip: b.ip || null, at: b.at }));
-  return { enabled: storedEnabled(), appOnly: storedAppOnly(), geofence: { on: db().settings?.residentsGeofence === true, radius: geofence().radius, hasCenter: !!geoCenter() }, schedule: { swap: swapAfter(), on: db().settings?.residentsOff === true, until: db().settings?.residentsUntil || null, active: scheduled() }, pending: rows, residents, blocked };
+  return { enabled: storedEnabled(), appOnly: storedAppOnly(), code: { on: db().settings?.residentsCodeOn === true, code: codeSetting() }, geofence: { on: db().settings?.residentsGeofence === true, radius: geofence().radius, hasCenter: !!geoCenter() }, schedule: { swap: swapAfter(), on: db().settings?.residentsOff === true, until: db().settings?.residentsUntil || null, active: scheduled() }, pending: rows, residents, blocked };
 };
 
 admin.get('/changes', (req, res) => res.json(list()));
@@ -362,4 +394,4 @@ admin.post('/push/test', async (req, res) => {
   res.json(r);
 });
 
-module.exports = { resident, admin, prune, reconcile, enabled, mode, geofence, GEO_MAX_ACC, GEO_MIN, GEO_MAX, GEO_DEFAULT_RADIUS, appOnly, info, untilMs, DEFAULT_INFO };
+module.exports = { resident, admin, prune, reconcile, enabled, mode, geofence, codeOn, GEO_MAX_ACC, GEO_MIN, GEO_MAX, GEO_DEFAULT_RADIUS, appOnly, info, untilMs, DEFAULT_INFO };
