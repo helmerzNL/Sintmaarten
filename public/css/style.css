@@ -258,3 +258,6 @@ path.pending { animation: dash 1.2s linear infinite; }
 .intro-head h3 { margin: 8px 0; }
 .leaflet-container { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .switch:has(input:disabled) { opacity: .45; cursor: not-allowed; }
+
+/* eenvoudige weergave (beheer): geen huisnummer-schakelaar, Bewerken en straten-knop */
+body.simple-ui #num-switch-wrap, body.simple-ui #edit-switch-wrap, body.simple-ui #streets-btn { display: none !important; }
