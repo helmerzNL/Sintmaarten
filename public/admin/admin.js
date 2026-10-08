@@ -362,7 +362,7 @@
   // Badges: teller op tab en tandwiel, in de paginatitel en (in de geïnstalleerde app) op het app-icoon.
   let messageCount = 0;
   function setBadge(n) {
-    for (const id of ['tab-badge', 'cog-badge']) { $(id).hidden = n === 0; $(id).textContent = n; }
+    for (const id of ['tab-badge', 'cog-badge', 'nav-badge']) { $(id).hidden = n === 0; $(id).textContent = n; }
     $('pend-badge').hidden = pendingCount === 0; $('pend-badge').textContent = pendingCount;
     $('msg-badge').hidden = messageCount === 0; $('msg-badge').textContent = messageCount;
     document.title = n ? `(${n}) Beheer` : 'Beheer';
@@ -567,38 +567,83 @@
     try { await post('/api/admin/qr/rotate-all', {}, { expectAuth: true }); toast('Alle QR-codes zijn vernieuwd'); }
     catch (e) { $('qr-err').textContent = e.message; }
   };
-  let qrItem = null;
-  function showQr(item) {
+  // ---------- huis-popup: status, QR-kaartje, link en delen ----------
+  let qrItem = null, qrFile = null;
+  async function showQr(item, { withStatus = false } = {}) {
     qrItem = item;
-    $('qr-title').textContent = `QR-code ${item.title}`;
-    $('qr-img').src = Wijk.qrDataUrl(item.url, 480);
+    $('qr-title').textContent = item.title;
     $('qr-link').value = item.url;
+    $('qr-status-wrap').classList.toggle('hidden', !withStatus);
     $('qr-state').textContent = item.taken ? 'Dit huis is al aan een apparaat gekoppeld. Verwijder de koppeling (Instellingen → Bewoners → Apparaten) om opnieuw te kunnen scannen.' : 'Nog aan geen enkel apparaat gekoppeld.';
-    if (!$('qr-dialog').open) $('qr-dialog').showModal();
+    syncQrStatus();
+    if (!$('qr-dialog').open) $('qr-dialog').showModal(); // meteen tonen; het kaartje volgt zodra het getekend is
+    const url = await Wijk.qrCardDataUrl({ title: item.title, url: item.url, siteTitle: await siteName(), logo: org.logo });
+    $('qr-img').src = url;
+    // data-URL naar bestand (fetch op data: staat de CSP niet toe)
+    const bin = atob(url.split(',')[1]), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    qrFile = new File([bytes], `qr-${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`, { type: 'image/png' });
+    $('qr-share').classList.toggle('hidden', !(navigator.canShare && navigator.canShare({ files: [qrFile] })));
   }
-  $('p-qr').onclick = async () => {
-    const h = selected();
-    if (!h) return;
-    try {
-      const item = (await api('/api/admin/qr')).find((i) => i.houseId === h.id);
-      if (!item) { toast('Sla het huis eerst op; daarna is de QR-code beschikbaar.'); return; }
-      showQr(item);
-    } catch (e) { toast(e.message); }
+  const syncQrStatus = () => {
+    const h = qrItem && houses.find((x) => x.id === qrItem.houseId);
+    document.querySelectorAll('#qr-status button').forEach((b) => b.classList.toggle('active', !!h && b.dataset.st === h.status));
   };
+  async function openHouseDialog(id, opts) {
+    try {
+      const item = (await api('/api/admin/qr')).find((i) => i.houseId === id);
+      if (!item) { toast('Sla het huis eerst op; daarna is de QR-code beschikbaar.'); return; }
+      await showQr(item, opts);
+    } catch (e) { toast(e.message); }
+  }
+  $('p-qr').onclick = () => { const h = selected(); if (h) openHouseDialog(h.id, { withStatus: false }); };
   $('qr-x').onclick = () => $('qr-dialog').close();
+  document.querySelectorAll('#qr-status button').forEach((b) => (b.onclick = async () => {
+    const h = qrItem && houses.find((x) => x.id === qrItem.houseId);
+    if (!h || h.status === b.dataset.st) return;
+    h.status = b.dataset.st;
+    syncQrStatus();
+    document.querySelectorAll('#qr-status button').forEach((x) => (x.disabled = true));
+    await save(); // slaat direct op (en maakt een backup)
+    document.querySelectorAll('#qr-status button').forEach((x) => (x.disabled = false));
+  }));
   $('qr-copy').onclick = async () => {
     try { await navigator.clipboard.writeText($('qr-link').value); } catch { $('qr-link').select(); document.execCommand('copy'); }
     toast('Link gekopieerd ✔');
   };
+  const waText = () => `Hallo! Dit is de persoonlijke link om jouw huis (${qrItem.title}) te koppelen in de wijkapp. Open de link op je telefoon: ${qrItem.url}`;
+  $('qr-wa').onclick = () => window.open(`https://wa.me/?text=${encodeURIComponent(waText())}`, '_blank', 'noopener');
+  $('qr-share').onclick = async () => { try { await navigator.share({ files: [qrFile], text: waText() }); } catch { /* geannuleerd */ } };
   $('qr-png').onclick = () => {
     const a = document.createElement('a');
-    a.href = Wijk.qrDataUrl(qrItem.url, 1024); a.download = `qr-${qrItem.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`;
+    a.href = $('qr-img').src; a.download = qrFile ? qrFile.name : 'qr.png';
     document.body.append(a); a.click(); a.remove();
   };
   $('qr-rotate').onclick = async () => {
     if (!qrItem || !confirm(`De QR-code van ${qrItem.title} vernieuwen? De oude code werkt dan niet meer.`)) return;
-    try { showQr(await post(`/api/admin/qr/${encodeURIComponent(qrItem.houseId)}/rotate`, {}, { expectAuth: true })); toast('QR-code vernieuwd'); }
+    try { await showQr(await post(`/api/admin/qr/${encodeURIComponent(qrItem.houseId)}/rotate`, {}, { expectAuth: true }), { withStatus: !$('qr-status-wrap').classList.contains('hidden') }); toast('QR-code vernieuwd'); }
     catch (e) { toast(e.message); }
+  };
+
+  // ---------- weergave (standaard) en bewerken ----------
+  let editing = false;
+  function setEditing(on) {
+    editing = on;
+    $('v-edit').classList.toggle('view-mode', !on);
+    $('edit-toggle').textContent = on ? '✓ Weergave' : '✏️ Bewerken';
+    $('edit-toggle').setAttribute('aria-pressed', String(on));
+    $('nav-edit').setAttribute('aria-pressed', String(on));
+    $('nav-edit').querySelector('.lbl').textContent = on ? 'Weergave' : 'Bewerken';
+    $('nav-edit').querySelector('.ico').textContent = on ? '✓' : '✏️';
+    if (!on && typeof setMode === 'function') { setMode('select'); selectedId = null; render(); }
+    setTimeout(() => map && map.invalidateSize(), 0);
+  }
+  $('nav-edit').onclick = () => $('edit-toggle').click();
+  $('nav-cog').onclick = () => $('settings-open').click();
+  $('edit-toggle').onclick = async () => {
+    if (editing && dirty && !confirm('Er zijn niet-opgeslagen wijzigingen. Toch naar de weergave? Die wijzigingen gaan verloren.')) return;
+    if (editing && dirty) await reloadFromServer();
+    setEditing(!editing);
   };
 
   $('res-swap').onchange = async () => {
@@ -760,7 +805,7 @@
       if (!l) {
         l = L.polygon(h.points, {}).addTo(map);
         l.on('click', (e) => {
-          if (mode !== 'select') return;
+          if (!editing || mode !== 'select') return;
           L.DomEvent.stopPropagation(e);
           select(h.id);
         });
@@ -768,7 +813,7 @@
         l.on('dblclick', (e) => {
           if (mode === 'draw' && draft.length >= 3) return;
           L.DomEvent.stopPropagation(e);
-          editHouse(h.id);
+          houseAction(h.id);
         });
         layers.set(h.id, l);
       }
@@ -870,6 +915,12 @@
     render();
   }
 
+  // Dubbelklik/lang indrukken: in de weergave de popup (status, QR, delen), in bewerken het huis selecteren.
+  function houseAction(id) {
+    if (editing) editHouse(id);
+    else openHouseDialog(id, { withStatus: true });
+  }
+
   function editHouse(id) {
     setMode('select');
     select(id);
@@ -899,7 +950,7 @@
         const r = el.getBoundingClientRect();
         const ll = map.containerPointToLatLng([start.x - r.left, start.y - r.top]);
         const h = houses.find((x) => insidePoly(ll, x.points));
-        if (h) { swallow = true; setTimeout(() => { swallow = false; }, 800); navigator.vibrate?.(30); editHouse(h.id); }
+        if (h) { swallow = true; setTimeout(() => { swallow = false; }, 800); navigator.vibrate?.(30); houseAction(h.id); }
       }, 600);
     });
     el.addEventListener('pointermove', (e) => { if (timer && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) cancel(); });
@@ -1070,6 +1121,7 @@
         const k = e.key.toLowerCase();
         if ((e.ctrlKey || e.metaKey) && k === 's') { e.preventDefault(); save(); }
         else if (e.ctrlKey || e.metaKey || e.altKey) return;
+        else if (!editing) return; // sneltoetsen voor bewerken alleen in het bewerkscherm
         else if (k === 'g' && selected()) setStatus('green');
         else if (k === 'r' && selected()) setStatus('red');
         else if (k === 'd') setMode(mode === 'draw' ? 'select' : 'draw');
@@ -1110,6 +1162,7 @@
     initEditor(data);
     setDirty(false);
     setMode('select');
+    setEditing(false); // standaard de weergave; "Bewerken" opent het bewerkscherm
     setTimeout(() => map.invalidateSize(), 0);
     pollChanges(true);
     if (!window.__pollTimer) window.__pollTimer = setInterval(() => pollChanges(), 30000);

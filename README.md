@@ -123,9 +123,17 @@ Wil je dat bewoners alleen hun **eigen huis** kunnen koppelen, dan zet je onder 
 
 **Inloggen** – met passkey (vingerafdruk, gezicht, pincode of beveiligingssleutel), eventueel met wachtwoord dat je met een passkey bevestigt.
 
+**Weergave en bewerken** – het beheer opent in de **weergave**: alleen de kaart, zonder zijbalk. Dubbelklik (of druk lang op een touchscreen) op een huis voor een **popup** waarmee je het huis direct **groen, rood of niet gemarkeerd** maakt (het wordt meteen opgeslagen) en waarin het **QR-kaartje** voor de bewoners staat: met logo, adres, QR en uitleg. Daaronder staat de **directe link** met een kopieerknop, een knop **Delen via WhatsApp** (opent WhatsApp met een kant-en-klaar bericht en de link), op telefoons ook **Kaartje delen…** (het plaatje via het deelmenu), een **PNG** om te downloaden en *Vernieuwen*. Met **✏️ Bewerken** open je het bewerkscherm (huizen tekenen, selecteren, zoeken, kaartweergave); **✓ Weergave** brengt je terug (bij niet-opgeslagen wijzigingen vraagt het eerst).
+
+**Onderbalk** – op een telefoon en in de geïnstalleerde beheer-app staat onderaan een balk met **Bewerken** en **Instellingen** (met een badge voor wachtende meldingen); op een laptop staan die knoppen in de kopbalk.
+
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/beheer-huis-popup.png"><img src="docs/screenshots/beheer-huis-popup.png" width="420" alt="Popup op een laptop"></a><br><sub>Popup op een laptop</sub></td><td align="center" valign="top"><a href="docs/screenshots/beheer-weergave-mobiel.png"><img src="docs/screenshots/beheer-weergave-mobiel.png" width="170" alt="Weergave met onderbalk"></a><br><sub>Weergave met onderbalk</sub></td><td align="center" valign="top"><a href="docs/screenshots/beheer-huis-popup-mobiel.png"><img src="docs/screenshots/beheer-huis-popup-mobiel.png" width="170" alt="Popup op een telefoon"></a><br><sub>Popup op een telefoon</sub></td></tr>
+</table>
+
 **Huis tekenen** – kies een kleur en klik de hoekpunten van het huis; sluit af met het gele beginpunt, dubbelklik of Enter. Nieuwe huizen krijgen standaard *geen status* en de actieve straat.
 
-**Huis bewerken** – selecteer een huis (klik, dubbelklik of lang indrukken) om de kleur, straat, huisnummer en notitie aan te passen, of sleep de hoekpunten. Sneltoetsen: **G** groen, **R** rood, **Delete** verwijderen, **Ctrl+S** opslaan. De lijst links heeft een filter per straat; de rest wordt op de kaart gedimd.
+**Huis bewerken** (in het bewerkscherm) – selecteer een huis (klik, dubbelklik of lang indrukken) om de kleur, straat, huisnummer en notitie aan te passen, of sleep de hoekpunten. Sneltoetsen: **G** groen, **R** rood, **Delete** verwijderen, **Ctrl+S** opslaan. De lijst links heeft een filter per straat; de rest wordt op de kaart gedimd.
 
 ## Instellingen
 Het tandwiel (⚙) in de balk schuift het instellingen-menu in beeld. Het is ingedeeld in vijf tabs; elke tab bestaat uit kaarten met duidelijke schakelaars en een korte uitleg (ook op een telefoon).
