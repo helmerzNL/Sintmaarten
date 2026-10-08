@@ -11,6 +11,8 @@
 
   // ---- geofence: de beheerder kan wijzigen beperken tot mensen die (volgens GPS/wifi-locatie) in de wijk zijn ----
   let geo = null; // { center: [lat, lng], radius } of null
+  let codeRequired = false; // de beheerder vraagt een toegangscode voor apparaten zonder GPS
+  let codeOk = false; // dit apparaat heeft de code al ingevuld (cookie)
   let fix = null; // laatste bepaalde positie
   const distanceM = (a, b) => {
     const rad = (x) => (x * Math.PI) / 180, dLat = rad(b[0] - a[0]), dLng = rad(b[1] - a[1]);
@@ -46,13 +48,35 @@
       return true;
     } catch (e) { toast(e.message); return false; }
   }
+  // Apparaten zonder GPS vullen eenmalig de toegangscode in (gedeeld in de buurtapp).
+  async function ensureCode() {
+    if (!codeRequired || hasGps() || codeOk) return true;
+    const dlg = document.getElementById('code-dialog'), input = document.getElementById('code-input'), err = document.getElementById('code-error');
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (ok) => { if (done) return; done = true; dlg.close(); resolve(ok); };
+      input.value = ''; err.textContent = '';
+      dlg.onclose = () => finish(false);
+      document.getElementById('code-cancel').onclick = () => finish(false);
+      document.getElementById('code-x').onclick = () => finish(false);
+      document.getElementById('code-form').onsubmit = async (e) => {
+        e.preventDefault();
+        err.textContent = '';
+        try { await api('/code', { code: input.value.trim() }); codeOk = true; finish(true); }
+        catch (e2) { err.textContent = e2.message; input.select(); }
+      };
+      dlg.showModal();
+      input.focus();
+    });
+  }
   Wijk.setResidentGeofence = (g) => { geo = g && g.center ? g : null; };
+  Wijk.setResidentCode = (flag) => { codeRequired = flag === true; };
 
   async function api(path, body) {
     const geoHeader = {};
-    if (geo && body !== undefined && (path === '/set' || path === '/claim')) {
+    if ((geo || codeRequired) && body !== undefined && (path === '/set' || path === '/claim')) {
       if (!hasGps()) geoHeader['X-Geo-Device'] = 'desktop';
-      else {
+      else if (geo) {
         const f = await getFix();
         geoHeader['X-Geo-Device'] = 'gps';
         geoHeader['X-Geo'] = `${f.lat.toFixed(6)},${f.lng.toFixed(6)},${f.acc}`;
@@ -64,7 +88,11 @@
       body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw Object.assign(new Error(data.error || `Fout ${res.status}`), { status: res.status });
+    if (path === '/me' || path === '/restore') codeOk = data.codeOk === true;
+    if (!res.ok) {
+      if (data.code === 'required') codeOk = false; // de code is gewijzigd of de cookie is weg
+      throw Object.assign(new Error(data.error || `Fout ${res.status}`), { status: res.status, code: data.code });
+    }
     return data;
   }
 
@@ -75,9 +103,10 @@
     setTimeout(() => t.remove(), 3500);
   }
 
-  Wijk.initResident = async function ({ map, houses, enabled, mode: startMode, geofence }) {
+  Wijk.initResident = async function ({ map, houses, enabled, mode: startMode, geofence, deviceCode }) {
     if (!enabled) return;
     Wijk.setResidentGeofence(geofence);
+    Wijk.setResidentCode(deviceCode);
     let mode = startMode || 'open'; // 'swap': na de einddatum alleen het eigen huis wisselen tussen groen en rood
     const btn = $('house-edit');
     if (!btn) return;
@@ -168,6 +197,7 @@
       if (Wijk.residentNoAccess()) { toast('Wijzigen is gesloten'); return; }
       if (geo && hasGps()) toast('Locatie controleren…');
       if (!(await checkGeo())) return;
+      if (!(await ensureCode())) return;
       if (on) return;
       on = true;
       clearMine();

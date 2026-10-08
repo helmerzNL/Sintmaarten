@@ -390,6 +390,9 @@
     $('res-sched').checked = !!sched.on;
     if (sched.until && document.activeElement !== $('res-until')) $('res-until').value = toLocalInput(sched.until);
     $('res-until').disabled = false;
+    const cd = data.code || {};
+    $('res-code-on').checked = !!cd.on;
+    if (document.activeElement !== $('res-code')) $('res-code').value = cd.code || '';
     const gf = data.geofence || {};
     $('res-geo').checked = !!gf.on;
     if (document.activeElement !== $('res-geo-radius')) $('res-geo-radius').value = gf.radius || 500;
@@ -487,6 +490,17 @@
   }
   $('res-geo').onchange = () => saveGeo({ residentsGeofence: $('res-geo').checked, residentsGeofenceRadius: Number($('res-geo-radius').value) || 500 }, () => { $('res-geo').checked = !$('res-geo').checked; });
   $('res-geo-radius').onchange = () => saveGeo({ residentsGeofenceRadius: Number($('res-geo-radius').value) });
+  async function saveCode(body, undo) {
+    $('chg-err').textContent = '';
+    try {
+      await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify(body), expectAuth: true });
+      toast('residentsCodeOn' in body ? (body.residentsCodeOn ? 'Code voor apparaten zonder GPS staat aan' : 'Code staat uit') : 'Code opgeslagen ✔');
+    } catch (e) { $('chg-err').textContent = e.message; undo?.(); }
+    await renderChanges();
+  }
+  $('res-code-on').onchange = () => saveCode({ residentsCode: $('res-code').value.trim(), residentsCodeOn: $('res-code-on').checked }, () => { $('res-code-on').checked = !$('res-code-on').checked; });
+  $('res-code-save').onclick = () => saveCode({ residentsCode: $('res-code').value.trim() });
+  $('res-code-gen').onclick = () => { $('res-code').value = String(Math.floor(1000 + Math.random() * 9000)); $('res-code').focus(); };
   $('res-swap').onchange = async () => {
     try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ residentsSwapAfter: $('res-swap').checked }), expectAuth: true }); toast($('res-swap').checked ? 'Na de einddatum kan nog groen ↔ rood worden gewisseld' : 'Na de einddatum is wijzigen helemaal dicht'); }
     catch (e) { $('chg-err').textContent = e.message; $('res-swap').checked = !$('res-swap').checked; }
