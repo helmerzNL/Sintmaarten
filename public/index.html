@@ -22,7 +22,7 @@
   <span id="offline" class="badge" hidden>Offline – laatst bekende stand</span>
   <div class="legend"><span><i class="dot green"></i><span data-label="green">Groen</span></span><span><i class="dot red"></i><span data-label="red">Rood</span></span></div>
   <div class="bar-switches">
-  <label class="switch" title="Huisnummers op de kaart tonen">
+  <label class="switch" id="num-switch-wrap" title="Huisnummers op de kaart tonen">
     <input type="checkbox" id="num-switch" role="switch" aria-label="Huisnummers op de kaart tonen">
     <span class="track" aria-hidden="true"><span class="thumb"></span></span>
     <span class="switch-text">Huisnummers</span>
@@ -46,7 +46,6 @@
     <button id="streets-btn" aria-label="Straten tonen of verbergen" aria-haspopup="dialog" hidden><span class="ico">🛣️</span><span class="lbl">Straten</span></button>
     <button id="pdf-view" aria-label="PDF bekijken"><span class="ico">📄</span><span class="lbl">PDF bekijken</span></button>
     <button id="pdf-dl" class="primary" aria-label="PDF opslaan"><span class="ico">⬇</span><span class="lbl">PDF opslaan</span></button>
-    <button id="install" hidden aria-label="Installeer app"><span class="ico">📲</span><span class="lbl">Installeer app</span></button>
     <button id="more-btn" hidden aria-haspopup="menu" aria-expanded="false" aria-controls="more-pop" aria-label="Meer"><span class="ico">⋯</span><span class="lbl">Meer</span></button>
   </nav>
   <div id="more-pop" class="more-pop" role="menu" aria-label="Meer" hidden></div>
@@ -64,6 +63,15 @@
   </div>
   <div id="intro-text" class="intro-text"></div>
   <p><button id="intro-close" class="primary">Sluiten</button></p>
+</dialog>
+
+<dialog id="install-dialog">
+  <div class="intro-head">
+    <h3>Installeer de app</h3>
+    <button id="install-x" class="icon-btn" type="button" aria-label="Sluiten">✕</button>
+  </div>
+  <p id="install-text"></p>
+  <p><button id="install-go" class="primary" hidden>Installeren</button> <button id="install-later" type="button">Niet nu</button></p>
 </dialog>
 
 <div id="house-sheet" class="house-sheet" hidden role="region" aria-label="Huis wijzigen"></div>

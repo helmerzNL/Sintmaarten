@@ -19,6 +19,7 @@
       $('logo').hidden = true;
     }
 
+    document.body.classList.toggle('simple-ui', data.simpleUi === true); // eenvoudige weergave: geen huisnummers/Bewerken/straten
     const info = data.residentInfo || ''; // leeg zodra wijzigen door bewoners uit staat
     $('intro-btn').hidden = !(data.intro || info);
     $('intro-info').hidden = !info;
@@ -155,7 +156,7 @@
 
   const bar = document.querySelector('.actions');
   const moreBtn = $('more-btn'), pop = $('more-pop');
-  const moved = ['pdf-view', 'pdf-dl', 'install'].map($);
+  const moved = ['pdf-view', 'pdf-dl'].map($);
   const closeMore = () => { pop.hidden = true; moreBtn.setAttribute('aria-expanded', 'false'); };
   const toggleMore = () => {
     pop.hidden = !pop.hidden;
@@ -166,9 +167,13 @@
   document.addEventListener('click', (e) => { if (!pop.hidden && !pop.contains(e.target)) closeMore(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) { closeMore(); moreBtn.focus(); } });
 
-  // PDF opslaan/bekijken en Installeer app staan altijd onder "Meer".
-  moved.forEach((b) => pop.append(b));
-  moreBtn.hidden = false;
+  // PDF opslaan/bekijken staan altijd onder "Meer".
+  // In de eenvoudige weergave staan ze juist in de menubalk (naast Uitleg en Huis wijzigen) en vervalt "Meer".
+  function layoutMenu() {
+    if (data.simpleUi) { closeMore(); moved.forEach((b) => bar.insertBefore(b, moreBtn)); moreBtn.hidden = true; }
+    else { moved.forEach((b) => pop.append(b)); moreBtn.hidden = false; }
+  }
+  layoutMenu();
 
   function setEditing(on) {
     document.body.classList.toggle('edit-mode', on);
@@ -179,16 +184,17 @@
   $('edit-switch').onchange = () => setEditing($('edit-switch').checked);
   // Bewerken staat standaard aan (de keuze van de bezoeker om het uit te zetten wordt onthouden).
   const EDIT_KEY = 'sm-edit-off';
-  const editPref = () => { try { return localStorage.getItem(EDIT_KEY) !== '1'; } catch { return true; } };
+  const editPref = () => { if (data.simpleUi) return true; try { return localStorage.getItem(EDIT_KEY) !== '1'; } catch { return true; } };
   let editDefaulted = false;
   $('edit-switch').addEventListener('change', () => { try { localStorage.setItem(EDIT_KEY, $('edit-switch').checked ? '0' : '1'); } catch {} });
   function applyEditUi() {
+    layoutMenu();
     const allowed = data.residentsEnabled !== false && !inApp && !data.residentsAppOnly && !Wijk.residentNoAccess?.();
     $('edit-switch-wrap').hidden = !allowed;
     if (!allowed) {
       editDefaulted = false;
       if ($('edit-switch').checked) { $('edit-switch').checked = false; setEditing(false); }
-    } else if (!editDefaulted) {
+    } else if (!editDefaulted || (data.simpleUi && !$('edit-switch').checked)) {
       editDefaulted = true;
       if (editPref()) { $('edit-switch').checked = true; setEditing(true); }
     }
@@ -244,7 +250,7 @@
   }
 
   // ---------- automatisch verversen (o.a. nadat de beheerder een wijziging goedkeurt) ----------
-  const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.logo, d.appName, d.appShortName, d.residentsEnabled, d.residentsMode, d.geofence, d.residentsAppOnly, d.residentInfo]);
+  const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.logo, d.appName, d.appShortName, d.residentsEnabled, d.residentsMode, d.geofence, d.residentsAppOnly, d.residentInfo, d.simpleUi]);
   let lastSig = signature(data);
   let busy = false;
   let lastSync = new Date();

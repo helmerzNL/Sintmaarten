@@ -72,6 +72,7 @@ app.get('/api/map', (req, res) => {
     appName: settings?.appName || '', appShortName: settings?.appShortName || '',
     residentsEnabled: residents.mode() !== 'closed', // ook 'swap': dan blijft de knop zichtbaar voor wie al een huis heeft
     residentsMode: residents.mode(),
+    simpleUi: settings?.simpleUi === true,
     geofence: residents.geofence().on ? { center: residents.geofence().center, radius: residents.geofence().radius } : null,
     residentsAppOnly: residents.appOnly(),
     residentInfo: residents.enabled() ? residents.info() : '', // het infovlak verdwijnt zodra wijzigen uit staat
@@ -373,7 +374,7 @@ admin.delete('/logo', (req, res) => {
 // Instellingen zoals bewaard (voor het beheerscherm); /api/map geeft de actuele, effectieve waarden.
 admin.get('/settings', (req, res) => {
   const s = store.db().settings;
-  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null, residentsSwapAfter: s.residentsSwapAfter === true, residentsGeofence: s.residentsGeofence === true, residentsGeofenceRadius: residents.geofence().radius });
+  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null, residentsSwapAfter: s.residentsSwapAfter === true, residentsGeofence: s.residentsGeofence === true, simpleUi: s.simpleUi === true, residentsGeofenceRadius: residents.geofence().radius });
 });
 
 admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (req, res) => {
@@ -407,6 +408,7 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     if (on && !residents.geofence().center && !db.houses.length) return res.status(400).json({ error: 'Stel eerst de kaartweergave in of teken huizen: daaruit volgt het midden van de wijk' });
     db.settings.residentsGeofence = on;
   }
+  if ('simpleUi' in body) db.settings.simpleUi = body.simpleUi === true;
   if ('residentsSwapAfter' in body) db.settings.residentsSwapAfter = body.residentsSwapAfter === true;
   if ('residentsEnabled' in body) db.settings.residentsEnabled = body.residentsEnabled === true;
   if ('residentsAppOnly' in body) db.settings.residentsAppOnly = body.residentsAppOnly === true;

@@ -253,6 +253,12 @@
       <label for="org-short">Korte naam onder het icoon (max. 12 tekens)</label>
       <input type="text" id="org-short" maxlength="12" placeholder="Standaard: de eerste 12 tekens van de naam">
       <p class="muted">Een al geïnstalleerde app neemt een nieuwe naam pas over na een tijdje (of na opnieuw installeren).</p>
+      <label class="switch" style="margin:4px 0 8px">
+        <input type="checkbox" id="org-simple" role="switch">
+        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+        <span class="switch-text">Eenvoudige weergave voor bezoekers</span>
+      </label>
+      <p class="muted">Verbergt op de website de schakelaars <em>Huisnummers</em> en <em>Bewerken</em> en de knop <em>Straten</em>. <em>Huis wijzigen</em> blijft beschikbaar (Bewerken staat dan vast aan).</p>
       <label for="org-info">Infovlak: bewoners kunnen hun eigen huis wijzigen (valt op bovenin de uitleg, verdwijnt als wijzigen uit staat)</label>
       <textarea id="org-info" rows="4" maxlength="1000" placeholder="Bijvoorbeeld: woon je in de wijk? Pas in de app zelf de status van jouw huis aan."></textarea>
       <label for="org-intro">Uitleg (zichtbaar op de website en in de PDF)</label>

@@ -579,6 +579,16 @@ test('geofence: wijzigen alleen in de wijk (schakelaar in het beheer)', async ()
   for (const rr of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${rr.rid}`, 'DELETE');
 });
 
+test('eenvoudige weergave: instelling in het beheer, zichtbaar op de kaart', async () => {
+  assert.equal((await (await j('/api/map')).json()).simpleUi, false);
+  assert.equal((await adminReq('/settings', 'PUT', { simpleUi: true })).status, 200);
+  assert.equal((await (await j('/api/map')).json()).simpleUi, true);
+  assert.equal((await (await adminReq('/settings')).json()).simpleUi, true);
+  assert.equal((await j('/api/admin/settings', { method: 'PUT', headers: jsonH(), body: '{"simpleUi":false}' })).status, 401);
+  await adminReq('/settings', 'PUT', { simpleUi: false });
+  assert.equal((await (await j('/api/map')).json()).simpleUi, false);
+});
+
 test('bewoners: uitschakelen, beheerrechten en push-registratie', async () => {
   for (const [m, p] of [['GET', '/changes'], ['POST', '/changes/approve-all'], ['DELETE', '/residents/x'], ['GET', '/push/key'], ['POST', '/push/test']]) {
     assert.equal((await j(`/api/admin${p}`, { method: m, headers: jsonH() })).status, 401, p);

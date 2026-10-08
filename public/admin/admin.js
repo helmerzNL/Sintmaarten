@@ -180,7 +180,7 @@
   function fillOrg() {
     $('org-err').textContent = '';
     $('org-intro').value = org.intro;
-    api('/api/admin/settings').then((st) => { $('org-info').value = st.residentInfo; }).catch((e) => { $('org-err').textContent = e.message; });
+    api('/api/admin/settings').then((st) => { $('org-info').value = st.residentInfo; $('org-simple').checked = st.simpleUi; }).catch((e) => { $('org-err').textContent = e.message; });
     $('org-title').value = org.siteTitle;
     $('org-appname').value = org.appName;
     $('org-short').value = org.appShortName;
@@ -188,6 +188,10 @@
     renderOrg();
   }
   $('org-intro').oninput = renderOrg;
+  $('org-simple').onchange = async () => {
+    try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ simpleUi: $('org-simple').checked }), expectAuth: true }); toast($('org-simple').checked ? 'Eenvoudige weergave staat aan' : 'Eenvoudige weergave staat uit'); }
+    catch (e) { $('org-err').textContent = e.message; $('org-simple').checked = !$('org-simple').checked; }
+  };
   $('org-upload').onclick = () => $('org-file').click();
   $('org-file').onchange = async () => {
     const f = $('org-file').files[0];
