@@ -57,7 +57,7 @@ Example with random houses (map data © OpenStreetMap contributors).
 
 **Public map** – with the association's logo; click a house for its note. At the top are the buttons for the explanation, the streets and the *More* menu (⋯) with the PDF buttons.
 
-**Mobile** – at the top only the logo, the title and the switch for house numbers; the actions (info, streets, More) are at the bottom, with the status bar (green/red) always just above them.
+**Mobile** – at the top only the logo, the title, the switches for house numbers and edit and (on the right) the language choice and the dark/light button; the actions (info, streets, More) are at the bottom, with the status bar (green/red) always just above them.
 
 **Streets** – with the street icon (🛣️) in the menu bar you switch the houses of each street on or off on the map (and in the PDF). Per street it shows how many houses are **green** and **red**, and at the top the total of the visible streets.
 
@@ -126,6 +126,10 @@ If you want residents to only be able to link **their own house**, switch on *Ch
 - **Dark/light** – next to the flag is a button (moon/sun) with which every visitor switches between the light and the dark display. By default the site follows the device's setting; the choice is remembered. In the dark display the **logo inverts automatically** (black becomes white) and the map is dimmed a little. The button is always visible, even when multilingual is off.
 - **Adding translations** – the source of all texts is Dutch; a dictionary per language (`public/js/lang-en.js`, key = Dutch text, value = translation; `{name}` is a variable) translates the page in the browser and the push notifications on the server. The tests (`npm test`) check that every translation has the same variables.
 
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/instellingen-config-talen.png"><img src="docs/screenshots/instellingen-config-talen.png" width="400" alt="Config: language bar with flags"></a><br><sub>Config: language bar with flags</sub></td><td align="center" valign="top"><a href="docs/screenshots/publiek-engels-taalmenu.png"><img src="docs/screenshots/publiek-engels-taalmenu.png" width="400" alt="English site with language menu"></a><br><sub>English site with language menu</sub></td><td align="center" valign="top"><a href="docs/screenshots/mobiel-engels-donker.png"><img src="docs/screenshots/mobiel-engels-donker.png" width="150" alt="Mobile: English and dark"></a><br><sub>Mobile: English and dark</sub></td></tr>
+</table>
+
 ## The admin area (`/beheer`)
 
 <table>
@@ -154,7 +158,7 @@ The cog (⚙) in the bar slides the settings menu into view. It is divided into 
 
 <table>
 <tr><td align="center" valign="top"><a href="docs/screenshots/instellingen-goedkeuren.png"><img src="docs/screenshots/instellingen-goedkeuren.png" width="270" alt="Approve"></a><br><sub>Approve</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-bewoners.png"><img src="docs/screenshots/instellingen-bewoners.png" width="270" alt="Residents"></a><br><sub>Residents</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-bewoners-apparaten.png"><img src="docs/screenshots/instellingen-bewoners-apparaten.png" width="270" alt="Residents: devices and notifications"></a><br><sub>Residents: devices and notifications</sub></td></tr>
-<tr><td align="center" valign="top"><a href="docs/screenshots/instellingen-site.png"><img src="docs/screenshots/instellingen-site.png" width="270" alt="Config"></a><br><sub>Config</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-beveiliging.png"><img src="docs/screenshots/instellingen-beveiliging.png" width="270" alt="Security"></a><br><sub>Security</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-backups.png"><img src="docs/screenshots/instellingen-backups.png" width="270" alt="Backups"></a><br><sub>Backups</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/instellingen-config.png"><img src="docs/screenshots/instellingen-config.png" width="270" alt="Config"></a><br><sub>Config</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-beveiliging.png"><img src="docs/screenshots/instellingen-beveiliging.png" width="270" alt="Security"></a><br><sub>Security</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-backups.png"><img src="docs/screenshots/instellingen-backups.png" width="270" alt="Backups"></a><br><sub>Backups</sub></td></tr>
 </table>
 
 <p align="center"><a href="docs/screenshots/instellingen-mobiel.png"><img src="docs/screenshots/instellingen-mobiel.png" width="220" alt="Settings on a phone"></a><br><sub>Settings on a phone</sub></p>
@@ -293,6 +297,7 @@ npm install
 ORIGIN=http://localhost:9888 SETUP_TOKEN=local-test-token-1 npm start
 npm test
 ```
+You regenerate the screenshots in this README with `node tools/screenshots.js` (Playwright + Chromium and internet for the map tiles; the example data is in `tools/screenshots/`, the buildings come from OpenStreetMap © OpenStreetMap contributors). With one or more words after it you only make the screenshots with that name, for example `node tools/screenshots.js qr`.
 
 ## Security
 Passkeys via WebAuthn (SimpleWebAuthn), session cookie `HttpOnly`/`SameSite=Strict`/`Secure`, origin check on changes,
