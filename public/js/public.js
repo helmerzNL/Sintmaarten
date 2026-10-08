@@ -150,7 +150,7 @@
   // bewoners: huis wijzigen. In de geïnstalleerde app staat de knop er altijd; in de browser
   // verschijnt hij na de schakelaar "Bewerken" (dan gaan PDF opslaan en Installeer app naar "Meer").
   const residentsOn = data.residentsEnabled !== false;
-  Wijk.initResident?.({ map, houses: data.houses, enabled: residentsOn });
+  Wijk.initResident?.({ map, houses: data.houses, enabled: residentsOn, mode: data.residentsMode });
   const inApp = window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches || window.navigator.standalone === true;
 
   const bar = document.querySelector('.actions');
@@ -172,17 +172,18 @@
 
   function setEditing(on) {
     document.body.classList.toggle('edit-mode', on);
-    $('house-edit').hidden = !on;
+    $('house-edit').hidden = !on || !!Wijk.residentNoAccess?.();
     if (!on) Wijk.leaveResident?.(); // wijzigmodus en venster sluiten
   }
   // De beheerder kan Bewerken in de browser uitzetten (alleen de geïnstalleerde app mag dan wijzigen).
   $('edit-switch').onchange = () => setEditing($('edit-switch').checked);
   function applyEditUi() {
-    const allowed = data.residentsEnabled !== false && !inApp && !data.residentsAppOnly;
+    const allowed = data.residentsEnabled !== false && !inApp && !data.residentsAppOnly && !Wijk.residentNoAccess?.();
     $('edit-switch-wrap').hidden = !allowed;
     if (!allowed && $('edit-switch').checked) { $('edit-switch').checked = false; setEditing(false); }
   }
   applyEditUi();
+  window.addEventListener('sm-resident', () => { applyEditUi(); if (inApp) $('house-edit').hidden = !!Wijk.residentNoAccess?.(); });
 
   // Dubbelklik (muis) op een huis: Bewerken aan en dit huis selecteren. Elders zoomt een dubbelklik gewoon in.
   const insidePoly = (pt, poly) => {
@@ -232,7 +233,7 @@
   }
 
   // ---------- automatisch verversen (o.a. nadat de beheerder een wijziging goedkeurt) ----------
-  const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.logo, d.appName, d.appShortName, d.residentsEnabled, d.residentsAppOnly, d.residentInfo]);
+  const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.logo, d.appName, d.appShortName, d.residentsEnabled, d.residentsMode, d.residentsAppOnly, d.residentInfo]);
   let lastSig = signature(data);
   let busy = false;
   let lastSync = new Date();
@@ -250,6 +251,7 @@
         data = next;
         applyMeta(false);
         buildHouses();
+        Wijk.setResidentMode?.(data.residentsMode);
         applyEditUi();
         changed = true;
       }

@@ -496,6 +496,46 @@ test('wijzigen plannen op datum/tijd en infovlak', async () => {
   assert.equal((await j('/api/admin/settings', { headers: jsonH() })).status, 401);
 });
 
+test('na de einddatum: alleen eigen huis groen <-> rood (met schakelaar)', async () => {
+  const mkh = (id, st) => ({ id, street: 'Dorpsstraat', number: id.slice(1), status: st, points: ptsR });
+  await adminReq('/settings', 'PUT', { residentsEnabled: true, residentsAppOnly: false, residentsOff: false, residentsSwapAfter: false });
+  await adminReq('/houses', 'PUT', { houses: [mkh('h1', 'green'), mkh('h2', 'none'), mkh('h3', 'red')] });
+  for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
+  const c1 = (await post('/claim', { houseId: 'h1' })).headers.get('set-cookie').split(';')[0];
+  const c2 = (await post('/claim', { houseId: 'h2' })).headers.get('set-cookie').split(';')[0];
+  const map = async () => (await j('/api/map')).json();
+
+  // einddatum verstreken, schakelaar uit: alles dicht
+  await adminReq('/settings', 'PUT', { residentsOff: true, residentsUntil: new Date(Date.now() - 1000).toISOString() });
+  let m = await map();
+  assert.deepEqual([m.residentsEnabled, m.residentsMode], [false, 'closed']);
+  assert.equal((await post('/set', { status: 'red' }, c1)).status, 403);
+
+  // schakelaar aan: wisselen mag voor een bestaand huis dat groen/rood is
+  assert.equal((await adminReq('/settings', 'PUT', { residentsSwapAfter: true })).status, 200);
+  m = await map();
+  assert.deepEqual([m.residentsEnabled, m.residentsMode, m.residentInfo], [true, 'swap', '']);
+  assert.equal((await (await res('/me', { headers: { cookie: c1 } })).json()).mode, 'swap');
+  const ok = await post('/set', { status: 'red' }, c1);
+  assert.equal(ok.status, 200);
+  assert.deepEqual([(await ok.json()).pending], [true]); // nog steeds ter goedkeuring
+  assert.equal((await post('/set', { status: 'none' }, c1)).status, 403); // niet naar "niet gemarkeerd"
+  assert.equal((await post('/set', { status: 'green' }, c1)).status, 200); // terug = voorstel vervalt
+  assert.equal((await post('/set', { status: 'green' }, c2)).status, 403); // huis zonder status blijft dicht
+  // geen nieuw huis kiezen, niet herkoppelen
+  assert.equal((await post('/claim', { houseId: 'h3' })).status, 403);
+  assert.equal((await post('/claim', { houseId: 'h3' }, c1)).status, 403);
+
+  // schakelaar uit: weer helemaal dicht; planning uit: weer open
+  await adminReq('/settings', 'PUT', { residentsSwapAfter: false });
+  assert.equal((await post('/set', { status: 'red' }, c1)).status, 403);
+  await adminReq('/settings', 'PUT', { residentsOff: false });
+  assert.equal((await map()).residentsMode, 'open');
+  assert.equal((await post('/set', { status: 'red' }, c1)).status, 200);
+  assert.equal((await (await adminReq('/settings')).json()).residentsSwapAfter, false);
+  for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
+});
+
 test('bewoners: uitschakelen, beheerrechten en push-registratie', async () => {
   for (const [m, p] of [['GET', '/changes'], ['POST', '/changes/approve-all'], ['DELETE', '/residents/x'], ['GET', '/push/key'], ['POST', '/push/test']]) {
     assert.equal((await j(`/api/admin${p}`, { method: m, headers: jsonH() })).status, 401, p);

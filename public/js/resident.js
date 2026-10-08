@@ -27,8 +27,9 @@
     setTimeout(() => t.remove(), 3500);
   }
 
-  Wijk.initResident = async function ({ map, houses, enabled }) {
+  Wijk.initResident = async function ({ map, houses, enabled, mode: startMode }) {
     if (!enabled) return;
+    let mode = startMode || 'open'; // 'swap': na de einddatum alleen het eigen huis wisselen tussen groen en rood
     const btn = $('house-edit');
     if (!btn) return;
     btn.hidden = !isInstalledApp(); // in de browser tonen we de knop pas na de schakelaar "Bewerken"
@@ -58,6 +59,19 @@
     let on = false, group = null;
     const layers = new Map();
     const sheet = $('house-sheet');
+
+    const swap = () => mode === 'swap';
+    // na de einddatum: groen <-> rood, nooit via "niet gemarkeerd"
+    const nextStatus = (st) => (swap() ? (st === 'green' ? 'red' : st === 'red' ? 'green' : st) : cycle(st));
+    const changed = () => window.dispatchEvent(new Event('sm-resident'));
+    Wijk.residentNoAccess = () => swap() && !me.claim; // geen huis gekozen en wijzigen is gesloten
+    Wijk.setResidentMode = (m) => {
+      if (!m || m === mode) return;
+      mode = m;
+      if (on && Wijk.residentNoAccess()) leave();
+      else if (on) render();
+      changed();
+    };
 
     const statusOf = (h) => (me.claim && h.id === me.claim.houseId ? me.effective : h.status);
 
@@ -102,6 +116,7 @@
     }
 
     function enter() {
+      if (Wijk.residentNoAccess()) { toast('Wijzigen is gesloten'); return; }
       on = true;
       clearMine();
       document.body.classList.add('editing');
@@ -137,6 +152,7 @@
     }
 
     function confirmClaim(h) {
+      if (swap()) { toast('Wijzigen is gesloten: je kunt geen huis meer kiezen'); return; }
       const dlg = $('claim-dialog');
       $('claim-title').textContent = Wijk.houseTitle(h);
       dlg.returnValue = '';
@@ -147,7 +163,7 @@
           if (me.deviceToken) store.set(TOKEN, me.deviceToken);
           store.set(CACHE, JSON.stringify(me));
           restyle();
-          await setStatus(cycle(h.status)); // de eerste tik wisselt meteen de kleur
+          await setStatus(nextStatus(h.status)); // de eerste tik wisselt meteen de kleur
         } catch (e) { toast(e.message); }
       };
       dlg.showModal();
@@ -155,7 +171,10 @@
 
     function tap(h) {
       if (!me.claim) return confirmClaim(h);
-      if (h.id === me.claim.houseId) return setStatus(cycle(me.effective));
+      if (h.id === me.claim.houseId) {
+        if (swap() && me.approved === 'none') return toast('Jouw huis is niet gemarkeerd; dat kan nu niet meer worden gewijzigd.');
+        return setStatus(nextStatus(me.effective));
+      }
       toast(`Je kunt alleen jouw eigen huis wijzigen (${me.claim.title}).`);
     }
 
@@ -194,8 +213,12 @@
         parts.push(sel);
       } else {
         parts.push(el('p', {}, 'Jouw huis: ', el('strong', { textContent: me.claim.title })));
-        parts.push(el('p', { className: 'muted', textContent: 'Kies de kleur, of tik op je huis op de kaart om te wisselen.' }));
-        parts.push(el('div', { className: 'status-choice' }, ...ORDER.map((s) => {
+        parts.push(el('p', { className: 'muted', textContent: swap()
+          ? 'Wijzigen is gesloten. Je kunt nog wel jouw huis wisselen tussen groen en rood.'
+          : 'Kies de kleur, of tik op je huis op de kaart om te wisselen.' }));
+        const choices = swap() ? ORDER.filter((s) => s !== 'none') : ORDER;
+        if (swap() && me.approved === 'none') parts.push(el('p', { className: 'muted', textContent: 'Jouw huis is niet gemarkeerd; dat kan nu niet meer worden gewijzigd.' }));
+        else parts.push(el('div', { className: 'status-choice' }, ...choices.map((s) => {
           const b = el('button', { type: 'button', className: me.effective === s ? 'active' : '', onclick: () => setStatus(s) },
             el('i', { className: `dot ${s === 'none' ? '' : s}` }), NAME[s]);
           b.setAttribute('aria-pressed', me.effective === s);
@@ -219,6 +242,7 @@
       try {
         const next = await api('/me');
         me = next.claim ? next : { claim: null };
+        if (next.mode && next.mode !== mode) { mode = next.mode; changed(); }
         store.set(CACHE, me.claim ? JSON.stringify(me) : null);
       } catch (e) { if (e.status === 403) { btn.hidden = true; leave(); } return; }
       if (me.notice && me.notice.at !== lastNotice) {
@@ -240,6 +264,7 @@
       }
     };
     drawMine();
+    changed();
 
     Wijk.leaveResident = () => { if (on) leave(); };
     // Dubbelklik op een huis: wijzigmodus aan en dit huis selecteren (inzoomen; nog geen huis? dan vragen of het van jou is).
