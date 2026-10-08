@@ -145,7 +145,15 @@
   <div class="drawer-body">
 
     <section data-panel="changes" class="hidden">
-      <h4>Wijzigingen van bewoners</h4>
+      <h4>Wijzigen van bewoners</h4>
+      <label class="switch" style="margin:4px 0 8px">
+        <input type="checkbox" id="res-sched" role="switch">
+        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+        <span class="switch-text">Wijzigen automatisch uitschakelen op een datum en tijd</span>
+      </label>
+      <label for="res-until">Wijzigen kan tot</label>
+      <input type="datetime-local" id="res-until">
+      <p class="muted" id="res-sched-note">Staat dit aan, dan kunnen bewoners (in de browser en in de app) tot dit moment wijzigen en daarna niet meer. De twee schakelaars hieronder worden dan genegeerd.</p>
       <label class="switch" style="margin:4px 0 8px">
         <input type="checkbox" id="res-enabled" role="switch">
         <span class="track" aria-hidden="true"><span class="thumb"></span></span>
@@ -225,6 +233,8 @@
       <label for="org-short">Korte naam onder het icoon (max. 12 tekens)</label>
       <input type="text" id="org-short" maxlength="12" placeholder="Standaard: de eerste 12 tekens van de naam">
       <p class="muted">Een al geïnstalleerde app neemt een nieuwe naam pas over na een tijdje (of na opnieuw installeren).</p>
+      <label for="org-info">Infovlak: bewoners kunnen hun eigen huis wijzigen (valt op bovenin de uitleg, verdwijnt als wijzigen uit staat)</label>
+      <textarea id="org-info" rows="4" maxlength="1000" placeholder="Bijvoorbeeld: woon je in de wijk? Pas in de app zelf de status van jouw huis aan."></textarea>
       <label for="org-intro">Uitleg (zichtbaar op de website en in de PDF)</label>
       <textarea id="org-intro" rows="10" maxlength="5000" placeholder="Plak hier de toelichting. Lege regels worden alinea's."></textarea>
       <p class="muted"><span id="org-count">0</span> / 5000 tekens</p>

@@ -434,6 +434,46 @@ test('beheer kan de status altijd aanpassen, ook als een bewoner iets voorstelde
   for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
 });
 
+test('wijzigen plannen op datum/tijd en infovlak', async () => {
+  await adminReq('/settings', 'PUT', { residentsEnabled: true, residentsAppOnly: true, residentsOff: false });
+  const map = async () => (await j('/api/map')).json();
+  // standaardtekst in het infovlak zolang wijzigen aan staat
+  let m = await map();
+  assert.equal(m.residentsEnabled, true);
+  assert.match(m.residentInfo, /eigen huis|jouw huis/);
+  assert.equal((await adminReq('/settings')).status, 200);
+
+  // aanzetten zonder (geldige) datum mag niet
+  assert.equal((await adminReq('/settings', 'PUT', { residentsOff: true, residentsUntil: 'nee' })).status, 400);
+
+  // gepland in de toekomst: aan (ook zonder app), schakelaars worden genegeerd
+  const future = new Date(Date.now() + 3600e3).toISOString();
+  assert.equal((await adminReq('/settings', 'PUT', { residentsOff: true, residentsUntil: future })).status, 200);
+  m = await map();
+  assert.deepEqual([m.residentsEnabled, m.residentsAppOnly], [true, false]);
+  const ch = await (await adminReq('/changes')).json();
+  assert.deepEqual([ch.schedule.on, ch.schedule.until, ch.appOnly], [true, future, true]);
+
+  // eigen tekst in het infovlak
+  await adminReq('/settings', 'PUT', { residentInfo: 'Pas zelf je huis aan!' });
+  assert.equal((await map()).residentInfo, 'Pas zelf je huis aan!');
+  assert.equal((await adminReq('/settings', 'PUT', { residentInfo: 'x'.repeat(1001) })).status, 400);
+
+  // verlopen: wijzigen uit, infovlak weg, server weigert
+  await adminReq('/settings', 'PUT', { residentsUntil: new Date(Date.now() - 1000).toISOString() });
+  m = await map();
+  assert.deepEqual([m.residentsEnabled, m.residentInfo], [false, '']);
+  assert.equal((await post('/claim', { houseId: 'h1' })).status, 403);
+
+  // planning uit: de eigen schakelaars gelden weer
+  await adminReq('/settings', 'PUT', { residentsOff: false });
+  m = await map();
+  assert.deepEqual([m.residentsEnabled, m.residentsAppOnly, m.residentInfo], [true, true, 'Pas zelf je huis aan!']);
+  await adminReq('/settings', 'PUT', { residentsAppOnly: false, residentInfo: '' });
+  assert.equal((await map()).residentInfo, '');
+  assert.equal((await j('/api/admin/settings', { headers: jsonH() })).status, 401);
+});
+
 test('bewoners: uitschakelen, beheerrechten en push-registratie', async () => {
   for (const [m, p] of [['GET', '/changes'], ['POST', '/changes/approve-all'], ['DELETE', '/residents/x'], ['GET', '/push/key'], ['POST', '/push/test']]) {
     assert.equal((await j(`/api/admin${p}`, { method: m, headers: jsonH() })).status, 401, p);

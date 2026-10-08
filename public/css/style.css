@@ -237,3 +237,10 @@ path.pending { animation: dash 1.2s linear infinite; }
 .sync-spin .ico { display: inline-block; animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .sync-spin .ico { animation: none; } }
+
+/* infovlak bovenin de uitleg: valt op */
+.intro-info { display: flex; gap: 12px; align-items: flex-start; margin: 4px 0 14px; padding: 12px 14px; border-radius: 12px;
+  background: #1f6f4a; color: #fff; box-shadow: var(--shadow); }
+.intro-info strong { display: block; font-size: 1.05rem; margin-bottom: 2px; }
+.intro-info p { margin: 0; white-space: pre-wrap; line-height: 1.45; }
+.intro-info-ico { font-size: 1.8rem; line-height: 1; }

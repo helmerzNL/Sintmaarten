@@ -19,8 +19,25 @@ const db = () => store.db();
 const sha = (t) => crypto.createHash('sha256').update(t).digest('hex');
 const houseOf = (id) => db().houses.find((h) => h.id === id);
 const titleOf = (h) => [h.street, h.number].filter(Boolean).join(' ') || 'Huis';
-const enabled = () => db().settings?.residentsEnabled !== false;
-const appOnly = () => db().settings?.residentsAppOnly === true;
+// Instellingen zoals de beheerder ze bewaarde (de twee schakelaars onder "Wijzigen van bewoners").
+const storedEnabled = () => db().settings?.residentsEnabled !== false;
+const storedAppOnly = () => db().settings?.residentsAppOnly === true;
+// Planning: staat die aan, dan beslist alleen de datum/tijd. Tot dan kan elke bewoner wijzigen (browser én app),
+// daarna staat wijzigen uit. De twee schakelaars worden in die tijd genegeerd (en in het beheer uitgeschakeld).
+const untilMs = () => {
+  const s = db().settings;
+  if (s?.residentsOff !== true) return null;
+  const t = Date.parse(s.residentsUntil || '');
+  return Number.isFinite(t) ? t : null;
+};
+const scheduled = () => untilMs() !== null;
+const enabled = () => (scheduled() ? Date.now() < untilMs() : storedEnabled());
+const appOnly = () => (scheduled() ? false : storedAppOnly());
+const DEFAULT_INFO = 'Woon je in de wijk? Dan kun je in deze app zelf de status van jouw huis aanpassen. Tik op "Huis wijzigen", kies jouw huis en geef aan of het wel of niet is bezocht. Een wijziging wordt pas zichtbaar nadat de beheerder die heeft goedgekeurd.';
+const info = () => {
+  const t = db().settings?.residentInfo;
+  return typeof t === 'string' ? t : DEFAULT_INFO;
+};
 
 // Verwijdert aanmeldingen en wijzigingen van huizen die niet meer bestaan.
 function prune() {
@@ -207,7 +224,7 @@ const list = () => {
   }).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const residents = d.residents.map((r) => ({ rid: r.rid, houseId: r.houseId, title: titleOf(houseOf(r.houseId)), createdAt: r.createdAt, lastActivity: r.lastActivity, ip: r.ip || null }));
   const blocked = (d.blocked || []).map((b) => ({ id: b.id, title: b.title, ip: b.ip || null, at: b.at }));
-  return { enabled: enabled(), appOnly: appOnly(), pending: rows, residents, blocked };
+  return { enabled: storedEnabled(), appOnly: storedAppOnly(), schedule: { on: db().settings?.residentsOff === true, until: db().settings?.residentsUntil || null, active: scheduled() }, pending: rows, residents, blocked };
 };
 
 admin.get('/changes', (req, res) => res.json(list()));
@@ -285,4 +302,4 @@ admin.post('/push/test', async (req, res) => {
   res.json(r);
 });
 
-module.exports = { resident, admin, prune, reconcile, enabled };
+module.exports = { resident, admin, prune, reconcile, enabled, appOnly, info, untilMs, DEFAULT_INFO };

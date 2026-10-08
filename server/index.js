@@ -70,8 +70,9 @@ app.get('/api/map', (req, res) => {
     title: siteTitle(), siteTitle: settings?.siteTitle || '', view, houses,
     intro: settings?.intro || '', logo: settings?.logo || null,
     appName: settings?.appName || '', appShortName: settings?.appShortName || '',
-    residentsEnabled: settings?.residentsEnabled !== false,
-    residentsAppOnly: settings?.residentsAppOnly === true,
+    residentsEnabled: residents.enabled(),
+    residentsAppOnly: residents.appOnly(),
+    residentInfo: residents.enabled() ? residents.info() : '', // het infovlak verdwijnt zodra wijzigen uit staat
     labels: statusLabels(settings),
   });
 });
@@ -354,6 +355,12 @@ admin.delete('/logo', (req, res) => {
   res.json({ ok: true });
 });
 
+// Instellingen zoals bewaard (voor het beheerscherm); /api/map geeft de actuele, effectieve waarden.
+admin.get('/settings', (req, res) => {
+  const s = store.db().settings;
+  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null });
+});
+
 admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (req, res) => {
   const body = req.body || {};
   const db = store.db();
@@ -361,6 +368,19 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     const intro = String(body.intro ?? '').replace(/\r\n?/g, '\n').trim();
     if (intro.length > 5000) return res.status(400).json({ error: 'De uitleg mag maximaal 5000 tekens zijn' });
     db.settings.intro = intro;
+  }
+  if ('residentInfo' in body) {
+    const text = String(body.residentInfo ?? '').replace(/\r\n?/g, '\n').trim();
+    if (text.length > 1000) return res.status(400).json({ error: 'Het infovlak mag maximaal 1000 tekens zijn' });
+    db.settings.residentInfo = text;
+  }
+  if ('residentsOff' in body || 'residentsUntil' in body) {
+    const off = 'residentsOff' in body ? body.residentsOff === true : db.settings.residentsOff === true;
+    const rawUntil = 'residentsUntil' in body ? body.residentsUntil : db.settings.residentsUntil;
+    const t = Date.parse(rawUntil || '');
+    if (off && !Number.isFinite(t)) return res.status(400).json({ error: 'Kies eerst een geldige datum en tijd' });
+    db.settings.residentsOff = off;
+    db.settings.residentsUntil = Number.isFinite(t) ? new Date(t).toISOString() : null;
   }
   if ('residentsEnabled' in body) db.settings.residentsEnabled = body.residentsEnabled === true;
   if ('residentsAppOnly' in body) db.settings.residentsAppOnly = body.residentsAppOnly === true;
