@@ -76,3 +76,13 @@ jobs:
         run: |
           git tag "v${{ steps.ver.outputs.version }}" "$GITHUB_SHA"
           git push origin "v${{ steps.ver.outputs.version }}"
+
+      # Officiële release notes (nieuwe functies en opgeloste problemen uit de gemergde PR's). Een fout hier mag
+      # de gepubliceerde image nooit blokkeren, daarom continue-on-error.
+      - name: GitHub Release
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: sh tools/publish-release.sh "v${{ steps.ver.outputs.version }}"
