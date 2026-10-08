@@ -6,10 +6,12 @@ Een interactieve kaart van de wijk waarop elk huis **groen**, **rood** of **niet
 - [Functies in het kort](#functies-in-het-kort)
 - [De website voor bezoekers](#de-website-voor-bezoekers)
 - [Bewoners: huis wijzigen](#bewoners-huis-wijzigen)
+- [Toegang via QR-code](#toegang-via-qr-code-optioneel)
 - [Het beheer](#het-beheer-beheer)
 - [Instellingen](#instellingen)
 - [Installeren als app en offline gebruik](#installeren-als-app-en-offline-gebruik)
 - [Zelf deployen met Docker](#zelf-deployen-met-docker)
+- [Releases en release notes](#releases-en-release-notes)
 
 ## Functies in het kort
 
@@ -23,11 +25,14 @@ Een interactieve kaart van de wijk waarop elk huis **groen**, **rood** of **niet
 **Voor bewoners**
 - Bewoners wijzigen de status van **hun eigen huis** (één huis per apparaat); de beheerder keurt dat goed. Zie [Bewoners: huis wijzigen](#bewoners-huis-wijzigen).
 - Snel naar je huis met dubbelklikken of lang indrukken.
+- Optioneel: huis kiezen **alleen met de QR-code** uit de brief (één apparaat per huis), met locatiecontrole (geofence) en/of een toegangscode voor apparaten zonder GPS. Zie [Toegang via QR-code](#toegang-via-qr-code-optioneel).
 
 **Voor de beheerder**
 - Huizen tekenen en bewerken (kleur, straat, huisnummer, notitie, hoekpunten), kaartweergave instellen (midden, zoom, min/max).
 - Inloggen met **passkey** (optioneel ook met wachtwoord, bevestigd met een passkey).
 - Wijzigingen van bewoners **goedkeuren of afwijzen**, met **pushmeldingen**; apparaten **blokkeren** (ook op IP); wijzigen **plannen** tot een datum en tijd.
+- **QR-codes** per huis: tonen, link kopiëren, vernieuwen en een **afdrukbare PDF** met een kaartje per huis om bij de bewoners te bezorgen.
+- Instellingen in vijf overzichtelijke tabs; het beheer is ook als eigen **app** te installeren.
 - Eigen **logo, uitleg, infovlak, site- en appnaam** en eigen namen voor de statussen.
 - Automatische **backups** na elke opslagpoging, met korte titels en handmatige backups.
 - Versienummer en commit zichtbaar in het instellingenmenu.
@@ -184,6 +189,12 @@ Mislukte pogingen worden per IP-adres en globaal beperkt.
 ## Na een update: oude pagina's of scripts
 Scripts en stijlen worden per build met `?v=<versie>-<commit>` opgevraagd en de HTML wordt nooit gecachet; zo krijg je nooit een oude `admin.js` bij nieuwe HTML (dat geeft fouten als
 *Cannot set properties of null*). Zie je zo'n fout toch na een update, ververs dan hard (Ctrl+Shift+R) of wis de sitegegevens; eventueel staat een proxy/CDN (bijv. Cloudflare) te agressief te cachen.
+
+## Releases en release notes
+Bij elke geslaagde build op `main` zet de GitHub Action een tag `vMAJOR.MINOR.PATCH` (zie [Versienummer](#versienummer)) en publiceert hij ook een **GitHub Release** met officiële release notes: [alle releases](../../releases). De notes worden automatisch samengesteld uit de gemergde pull requests sinds de vorige release, ingedeeld in **✨ Nieuwe functies en verbeteringen**, **🐞 Opgeloste problemen** en **📚 Documentatie**, elk met een link naar de PR, plus het `docker pull`-commando voor die versie.
+- **Indeling:** een PR uit een branch `fix/…` (of met fix/herstel/crash in de titel) telt als opgelost probleem, een branch `docs/…` als documentatie, de rest als nieuwe functie. Een duidelijke PR-titel en een korte lijst onder *Wijzigingen* in de beschrijving komen dus rechtstreeks in de release notes.
+- **Handgeschreven notes:** zet je een bestand `docs/releases/vX.Y.Z.md` neer, dan gebruikt de release dat in plaats van de automatische notes (zo is [v1.0.0](docs/releases/v1.0.0.md) gemaakt).
+- **Achteraf (opnieuw) maken:** Actions → *Release* → *Run workflow* en vul de tag in (bijvoorbeeld `v1.0.5`). Lokaal proberen kan met `node tools/release-notes.js vX.Y.Z` (met `GITHUB_TOKEN` en `GITHUB_REPOSITORY` gezet).
 
 ## Versienummer
 Onderin het instellingenmenu (⚙) staat de versie en de commit van de draaiende build, bijvoorbeeld **v1.0.3 (9f2c4e1)**.

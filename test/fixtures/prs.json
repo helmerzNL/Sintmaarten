@@ -1,0 +1,5 @@
+{ "prs": [
+  { "number": 32, "title": "Toegang via QR-code: huis alleen koppelen met de QR uit de brief (optioneel)", "head": "feature/qr-claim", "body": "## Wijzigingen\n- **Geheim per huis** (`houseSecrets`), nooit in `/api/map`.\n- **Schakelaar** *Huis kiezen alleen via QR-code*.\n- Bewoners scannen en bevestigen.\n- Vierde punt dat niet meer mee hoeft.\n\n## Test\n- npm test" },
+  { "number": 33, "title": "Docker: npm niet meer onder QEMU draaien (arm64-build crashte)", "head": "fix/docker-arm64-build", "body": "## Probleem\nDe build faalde.\n\n## Oplossing\n- Dependencies op het build-platform installeren.\n- Verder niets gewijzigd." },
+  { "number": 31, "title": "README: zelf deployen met docker-compose.yml en .env", "head": "docs/deploy-docker", "body": "## Wijziging\n- Nieuwe paragraaf [Zelf deployen](#zelf-deployen)." }
+] }

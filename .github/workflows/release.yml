@@ -1,0 +1,33 @@
+name: Release
+
+# Maakt (opnieuw) de GitHub Release met release notes voor een bestaande tag, bijvoorbeeld voor oudere versies.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag, bijvoorbeeld v1.0.5'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git fetch --tags --force
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Release maken of bijwerken
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          case "$TAG" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "Ongeldige tag: $TAG" >&2; exit 1 ;; esac
+          git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || { echo "Tag $TAG bestaat niet" >&2; exit 1; }
+          sh tools/publish-release.sh "$TAG"
