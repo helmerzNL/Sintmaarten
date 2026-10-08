@@ -32,7 +32,7 @@
       <text x="12" y="17.2" text-anchor="middle" font-size="9.5" font-weight="800" fill="currentColor" font-family="system-ui,sans-serif">12</text>
     </svg>
   </label>
-  <!-- Alleen in de browser (niet in de geïnstalleerde app): schakelt "Huis wijzigen" in de menubalk in -->
+  <!-- Alleen in de browser (niet in de geïnstalleerde app): schakelt "Mijn huis" in de menubalk in -->
   <label class="switch" id="edit-switch-wrap" hidden title="Bewerken: jouw huis wijzigen">
     <input type="checkbox" id="edit-switch" role="switch" aria-label="Bewerken: jouw huis wijzigen">
     <span class="track" aria-hidden="true"><span class="thumb"></span></span>
@@ -43,7 +43,7 @@
   <div class="prefs" id="prefs"></div>
   <nav class="actions" aria-label="Acties">
     <button id="intro-btn" hidden aria-label="Uitleg"><span class="ico">ℹ</span><span class="lbl">Uitleg</span></button>
-    <button id="house-edit" hidden aria-label="Huis wijzigen"><span class="ico" data-mdi="home-edit-outline"></span><span class="lbl">Huis wijzigen</span></button>
+    <button id="house-edit" hidden aria-label="Mijn huis"><span class="ico" data-mdi="home-edit-outline"></span><span class="lbl">Mijn huis</span></button>
     <button id="sync-btn" hidden aria-label="Synchroniseren: huizen bijwerken" title="Huizen bijwerken"><span class="ico" data-mdi="sync"></span><span class="lbl">Sync</span></button>
     <button id="streets-btn" aria-label="Straten tonen of verbergen" aria-haspopup="dialog" hidden><span class="ico" data-mdi="road-variant"></span><span class="lbl">Straten</span></button>
     <button id="pdf-view" aria-label="PDF bekijken"><span class="ico" data-mdi="file-eye-outline"></span><span class="lbl">PDF bekijken</span></button>
@@ -89,7 +89,7 @@
   </form>
 </dialog>
 
-<div id="house-sheet" class="house-sheet" hidden role="region" aria-label="Huis wijzigen"></div>
+<div id="house-sheet" class="house-sheet" hidden role="region" aria-label="Mijn huis"></div>
 
 <dialog id="msg-dialog" aria-labelledby="msg-title">
   <form id="msg-form" method="dialog">

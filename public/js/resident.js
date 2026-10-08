@@ -1,4 +1,4 @@
-// "Huis wijzigen": in de geïnstalleerde app (of in de browser na de schakelaar "Bewerken") kiest een bewoner één huis (per apparaat) en stelt een
+// "Mijn huis": in de geïnstalleerde app (of in de browser na de schakelaar "Bewerken") kiest een bewoner één huis (per apparaat) en stelt een
 // nieuwe status voor (niet gemarkeerd → groen → rood; de namen zijn instelbaar). De beheerder moet dat goedkeuren.
 (function () {
   const ORDER = ['none', 'green', 'red'];
@@ -275,7 +275,7 @@
       if (!on) return;
       sheet.hidden = false;
       const parts = [];
-      const head = el('div', { className: 'sheet-head' }, el('strong', { textContent: 'Huis wijzigen' }),
+      const head = el('div', { className: 'sheet-head' }, el('strong', { textContent: 'Mijn huis' }),
         el('button', { type: 'button', className: 'icon-btn', ariaLabel: 'Sluiten', onclick: leave }, MDI.svg('close')));
       parts.push(head);
 
