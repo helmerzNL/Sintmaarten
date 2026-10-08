@@ -536,6 +536,49 @@ test('na de einddatum: alleen eigen huis groen <-> rood (met schakelaar)', async
   for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
 });
 
+test('geofence: wijzigen alleen in de wijk (schakelaar in het beheer)', async () => {
+  await adminReq('/settings', 'PUT', { residentsEnabled: true, residentsAppOnly: false, residentsOff: false, residentsSwapAfter: false, residentsGeofence: false });
+  await adminReq('/houses', 'PUT', { houses: [{ id: 'h1', street: 'Dorpsstraat', number: '1', status: 'none', points: ptsR }] });
+  await adminReq('/view', 'DELETE'); // geen vaste weergave: midden = midden van de huizen
+  for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
+  const geo = (lat, lng, acc) => ({ 'X-Geo': `${lat},${lng},${acc}` });
+  const postG = (path, body, h = {}, c) => j(`/api/resident${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(c ? { cookie: c } : {}), ...h }, body: JSON.stringify(body || {}) });
+  const center = [52.000333, 5.000333];
+
+  // uit: gewoon mogelijk zonder locatie, en de kaart meldt geen geofence
+  assert.equal((await (await j('/api/map')).json()).geofence, null);
+  const c = (await post('/claim', { houseId: 'h1' })).headers.get('set-cookie').split(';')[0];
+
+  // aan: de kaart kent midden en straal; zonder locatie geweigerd
+  assert.equal((await adminReq('/settings', 'PUT', { residentsGeofence: true, residentsGeofenceRadius: 500 })).status, 200);
+  const m = await (await j('/api/map')).json();
+  assert.equal(m.geofence.radius, 500);
+  assert.ok(Math.abs(m.geofence.center[0] - center[0]) < 0.001);
+  let r = await postG('/set', { status: 'green' }, {}, c);
+  assert.equal(r.status, 403);
+  assert.equal((await r.json()).geofence, 'missing');
+  assert.equal((await postG('/set', { status: 'green' }, { 'X-Geo': 'onzin' }, c)).status, 403);
+
+  // in de wijk mag, ver weg niet (een vage fix telt maximaal 500 m mee)
+  assert.equal((await postG('/set', { status: 'green' }, geo(52.0005, 5.0005, 20), c)).status, 200);
+  r = await postG('/set', { status: 'red' }, geo(52.05, 5.05, 20), c); // ~6 km
+  assert.equal(r.status, 403);
+  assert.equal((await r.json()).geofence, 'outside');
+  assert.equal((await postG('/set', { status: 'red' }, geo(52.05, 5.05, 100000), c)).status, 403);
+  assert.equal((await postG('/set', { status: 'red' }, geo(52.0045, 5.0045, 400), c)).status, 200); // net buiten, maar vaag genoeg
+  assert.equal((await postG('/claim', { houseId: 'h1' }, geo(52.05, 5.05, 10))).status, 403); // ook huis kiezen
+
+  // lezen blijft altijd kunnen; straal valideren; weer uit
+  assert.equal((await res('/me', { headers: { cookie: c } })).status, 200);
+  assert.equal((await adminReq('/settings', 'PUT', { residentsGeofenceRadius: 5 })).status, 400);
+  assert.equal((await adminReq('/settings', 'PUT', { residentsGeofenceRadius: 99999 })).status, 400);
+  assert.equal((await (await adminReq('/settings')).json()).residentsGeofence, true);
+  await adminReq('/settings', 'PUT', { residentsGeofence: false });
+  assert.equal((await post('/set', { status: 'none' }, c)).status, 200);
+  assert.equal((await j('/api/admin/settings', { method: 'PUT', headers: jsonH(), body: '{"residentsGeofence":true}' })).status, 401);
+  for (const rr of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${rr.rid}`, 'DELETE');
+});
+
 test('bewoners: uitschakelen, beheerrechten en push-registratie', async () => {
   for (const [m, p] of [['GET', '/changes'], ['POST', '/changes/approve-all'], ['DELETE', '/residents/x'], ['GET', '/push/key'], ['POST', '/push/test']]) {
     assert.equal((await j(`/api/admin${p}`, { method: m, headers: jsonH() })).status, 401, p);
