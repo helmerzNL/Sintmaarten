@@ -1,5 +1,9 @@
 (() => {
   const $ = (id) => document.getElementById(id);
+  // eigen dialogen: de tekst (ook met variabelen) wordt in de gekozen taal getoond
+  const confirmT = (m) => confirm(I18n.tr(m));
+  const promptT = (m, v) => prompt(I18n.tr(m), v);
+  I18n.mountPrefs($('prefs'));
   const NS = 'http://www.w3.org/2000/svg';
   const show = (id) => {
     for (const v of ['v-setup', 'v-login', 'v-edit']) $(v).classList.toggle('hidden', v !== id);
@@ -69,7 +73,7 @@
     };
   }
   $('logout').onclick = async () => {
-    if (dirty && !confirm('Er zijn niet-opgeslagen wijzigingen. Toch uitloggen?')) return;
+    if (dirty && !confirmT('Er zijn niet-opgeslagen wijzigingen. Toch uitloggen?')) return;
     dirty = false;
     await post('/api/auth/logout');
     location.reload();
@@ -95,11 +99,11 @@
       const row = document.createElement('div');
       row.className = 'pk';
       const s = document.createElement('span');
-      s.textContent = `${p.name} · ${new Date(p.createdAt).toLocaleDateString('nl-NL')}`;
+      s.textContent = `${p.name} · ${new Date(p.createdAt).toLocaleDateString(I18n.locale)}`;
       const del = document.createElement('button');
       del.className = 'danger'; del.textContent = 'Verwijder'; del.disabled = list.length < 2 || locked();
       del.onclick = async () => {
-        if (!confirm(`Passkey "${p.name}" verwijderen?`)) return;
+        if (!confirmT(`Passkey "${p.name}" verwijderen?`)) return;
         try { await api(`/api/admin/passkeys/${encodeURIComponent(p.id)}`, { method: 'DELETE' }); renderPasskeys(); }
         catch (e) { $('pk-err').textContent = e.message; }
       };
@@ -153,7 +157,7 @@
   };
   $('pw-remove').onclick = async () => {
     $('pw-err').textContent = '';
-    if (!confirm('Het wachtwoord verwijderen? Inloggen kan dan alleen nog met een passkey.')) return;
+    if (!confirmT('Het wachtwoord verwijderen? Inloggen kan dan alleen nog met een passkey.')) return;
     try {
       const proof = await confirmWithPasskey();
       await post('/api/admin/password/remove', proof);
@@ -177,10 +181,18 @@
     $('org-count').textContent = $('org-intro').value.length;
   }
   const DEFAULT_LABELS = { green: 'Groen', red: 'Rood', none: 'Niet gemarkeerd' };
+  // Taalinstellingen: slaan direct op en laden daarna opnieuw, zodat het beheer meteen in de nieuwe taal staat.
+  const saveLang = async (patch) => {
+    try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify(patch), expectAuth: true }); location.reload(); }
+    catch (e) { $('org-err').textContent = e.message; }
+  };
+  const langPicker = I18n.picker({ value: I18n.defaultLang, label: 'Standaardtaal', onSelect: (code) => saveLang({ defaultLang: code }) });
+  $('org-lang-slot').append(langPicker);
+  $('org-multi').onchange = () => saveLang({ multilingual: $('org-multi').checked });
   function fillOrg() {
     $('org-err').textContent = '';
     $('org-intro').value = org.intro;
-    api('/api/admin/settings').then((st) => { $('org-info').value = st.residentInfo; $('org-simple').checked = st.simpleUi; }).catch((e) => { $('org-err').textContent = e.message; });
+    api('/api/admin/settings').then((st) => { $('org-info').value = st.residentInfo; $('org-simple').checked = st.simpleUi; $('org-info-en').value = st.residentInfoEn; $('org-intro-en').value = st.introEn; $('org-multi').checked = st.multilingual; langPicker.setValue(st.defaultLang); }).catch((e) => { $('org-err').textContent = e.message; });
     $('org-title').value = org.siteTitle;
     $('org-appname').value = org.appName;
     $('org-short').value = org.appShortName;
@@ -206,14 +218,14 @@
     } catch (e) { $('org-err').textContent = e.message; }
   };
   $('org-remove').onclick = async () => {
-    if (!confirm('Logo verwijderen?')) return;
+    if (!confirmT('Logo verwijderen?')) return;
     try { await api('/api/admin/logo', { method: 'DELETE', expectAuth: true }); org.logo = null; renderOrg(); }
     catch (e) { $('org-err').textContent = e.message; }
   };
   $('org-save').onclick = async () => {
     $('org-err').textContent = '';
     try {
-      const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ intro: $('org-intro').value, residentInfo: $('org-info').value, siteTitle: $('org-title').value, appName: $('org-appname').value, appShortName: $('org-short').value, labels: { green: $('lbl-green').value, red: $('lbl-red').value, none: $('lbl-none').value } }), expectAuth: true });
+      const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ intro: $('org-intro').value, residentInfo: $('org-info').value, introEn: $('org-intro-en').value, residentInfoEn: $('org-info-en').value, siteTitle: $('org-title').value, appName: $('org-appname').value, appShortName: $('org-short').value, labels: { green: $('lbl-green').value, red: $('lbl-red').value, none: $('lbl-none').value } }), expectAuth: true });
       Wijk.setLabels(res.labels); org.labels = res.labels;
       if (typeof render === 'function' && map) { render(); renderChangesIfOpen(); }
       org.intro = res.intro; org.siteTitle = res.siteTitle; org.appName = res.appName; org.appShortName = res.appShortName;
@@ -224,7 +236,7 @@
   // ---------- instellingen (uitschuifbaar menu) ----------
   const drawer = () => $('settings');
   const drawerOpen = () => drawer().classList.contains('open');
-  const fmtDate = (iso) => new Date(iso).toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'medium' });
+  const fmtDate = (iso) => new Date(iso).toLocaleString(I18n.locale, { dateStyle: 'medium', timeStyle: 'medium' });
 
   function openTab(name) {
     document.querySelectorAll('#settings [data-tab]').forEach((b) => {
@@ -308,7 +320,7 @@
       const ed = document.createElement('button');
       ed.textContent = '✎'; ed.title = 'Titel wijzigen'; ed.setAttribute('aria-label', 'Titel wijzigen');
       ed.onclick = async () => {
-        const v = prompt('Korte titel voor deze backup (leeg = geen titel):', b.title || '');
+        const v = promptT('Korte titel voor deze backup (leeg = geen titel):', b.title || '');
         if (v === null) return;
         try { await api(`/api/admin/backups/${b.id}/title`, { method: 'PUT', body: JSON.stringify({ title: v }), expectAuth: true }); renderBackups(); }
         catch (e) { $('bk-err').textContent = e.message; }
@@ -326,7 +338,7 @@
   };
 
   async function restoreBackup(b) {
-    if (!confirm(`Backup van ${fmtDate(b.createdAt)} terugzetten?\nDe huidige staat wordt eerst zelf als backup bewaard.${dirty ? '\n\nLet op: niet-opgeslagen wijzigingen gaan verloren.' : ''}`)) return;
+    if (!confirmT(`Backup van ${fmtDate(b.createdAt)} terugzetten?\nDe huidige staat wordt eerst zelf als backup bewaard.${dirty ? '\n\nLet op: niet-opgeslagen wijzigingen gaan verloren.' : ''}`)) return;
     try {
       await post(`/api/admin/backups/${b.id}/restore`, {}, { expectAuth: true });
       await reloadFromServer();
@@ -338,7 +350,7 @@
   $('bk-delete').onclick = async () => {
     const ids = selectedBackups();
     if (!ids.length) return;
-    if (!confirm(`${ids.length} backup(s) definitief verwijderen? Je moet dit bevestigen met je passkey.`)) return;
+    if (!confirmT(`${ids.length} backup(s) definitief verwijderen? Je moet dit bevestigen met je passkey.`)) return;
     $('bk-err').textContent = '';
     try {
       const { challengeId, options } = await post('/api/admin/confirm/options');
@@ -461,7 +473,7 @@
       info.append(t, d);
       const del = document.createElement('button'); del.className = 'danger'; del.textContent = 'Verwijderen';
       del.onclick = async () => {
-        if (!confirm(`De koppeling met ${r.title} verwijderen? Dat apparaat kan dan opnieuw een huis kiezen.`)) return;
+        if (!confirmT(`De koppeling met ${r.title} verwijderen? Dat apparaat kan dan opnieuw een huis kiezen.`)) return;
         try { await api(`/api/admin/residents/${r.rid}`, { method: 'DELETE', expectAuth: true }); renderChanges(); }
         catch (e) { $('chg-err').textContent = e.message; }
       };
@@ -540,7 +552,7 @@
   };
   $('res-code-gen').onclick = () => { $('res-code').value = String(Math.floor(1000 + Math.random() * 9000)); $('res-code').focus(); };
   // ---------- QR-codes ----------
-  const siteName = async () => (await api('/api/map')).title || 'Onze wijk';
+  const siteName = async () => I18n.tr((await api('/api/map')).title || 'Onze wijk');
   async function fillQrStreets() {
     try {
       const items = await api('/api/admin/qr');
@@ -566,7 +578,7 @@
     } catch (e) { $('qr-err').textContent = e.message; }
   };
   $('qr-rotate-all').onclick = async () => {
-    if (!confirm('Alle QR-codes vernieuwen? Alle uitgedeelde (en afgedrukte) QR-codes werken dan niet meer.')) return;
+    if (!confirmT('Alle QR-codes vernieuwen? Alle uitgedeelde (en afgedrukte) QR-codes werken dan niet meer.')) return;
     try { await post('/api/admin/qr/rotate-all', {}, { expectAuth: true }); toast('Alle QR-codes zijn vernieuwd'); }
     catch (e) { $('qr-err').textContent = e.message; }
   };
@@ -636,7 +648,7 @@
     document.body.append(a); a.click(); a.remove();
   };
   $('qr-rotate').onclick = async () => {
-    if (!qrItem || !confirm(`De QR-code van ${qrItem.title} vernieuwen? De oude code werkt dan niet meer.`)) return;
+    if (!qrItem || !confirmT(`De QR-code van ${qrItem.title} vernieuwen? De oude code werkt dan niet meer.`)) return;
     try { await showQr(await post(`/api/admin/qr/${encodeURIComponent(qrItem.houseId)}/rotate`, {}, { expectAuth: true }), { withStatus: !$('qr-status-wrap').classList.contains('hidden') }); toast('QR-code vernieuwd'); }
     catch (e) { toast(e.message); }
   };
@@ -657,7 +669,7 @@
   $('nav-edit').onclick = () => $('edit-toggle').click();
   $('nav-cog').onclick = () => $('settings-open').click();
   $('edit-toggle').onclick = async () => {
-    if (editing && dirty && !confirm('Er zijn niet-opgeslagen wijzigingen. Toch naar de weergave? Die wijzigingen gaan verloren.')) return;
+    if (editing && dirty && !confirmT('Er zijn niet-opgeslagen wijzigingen. Toch naar de weergave? Die wijzigingen gaan verloren.')) return;
     if (editing && dirty) await reloadFromServer();
     setEditing(!editing);
   };
@@ -670,9 +682,9 @@
   $('res-until').onchange = () => { if ($('res-sched').checked) saveSchedule(true); };
 
   async function blockDevice(rid, title, ip) {
-    if (!confirm(`Het apparaat van ${title} blokkeren? De koppeling en openstaande wijzigingen worden verwijderd en dit apparaat kan niet meer wijzigen.`)) return;
+    if (!confirmT(`Het apparaat van ${title} blokkeren? De koppeling en openstaande wijzigingen worden verwijderd en dit apparaat kan niet meer wijzigen.`)) return;
     let withIp = false;
-    if (ip) withIp = confirm(`Ook het IP-adres ${ip} blokkeren?\n\nLet op: bewoners achter hetzelfde netwerk (bijv. dezelfde router) delen vaak een IP-adres en worden dan ook geblokkeerd.\n\nOK = ook IP blokkeren, Annuleren = alleen dit apparaat.`);
+    if (ip) withIp = confirmT(`Ook het IP-adres ${ip} blokkeren?\n\nLet op: bewoners achter hetzelfde netwerk (bijv. dezelfde router) delen vaak een IP-adres en worden dan ook geblokkeerd.\n\nOK = ook IP blokkeren, Annuleren = alleen dit apparaat.`);
     try { await post(`/api/admin/residents/${rid}/block`, { withIp }, { expectAuth: true }); toast('Geblokkeerd'); await renderChanges(); }
     catch (e) { $('chg-err').textContent = e.message; }
   }
@@ -1063,7 +1075,7 @@
       } catch (e) { $('v-err').textContent = e.message; }
     };
     $('v-auto').onclick = async () => {
-      if (!confirm('De startweergave wissen? De site toont dan automatisch alle huizen.')) return;
+      if (!confirmT('De startweergave wissen? De site toont dan automatisch alle huizen.')) return;
       try {
         await api('/api/admin/view', { method: 'DELETE', expectAuth: true });
         savedView = null;
@@ -1152,7 +1164,7 @@
   function setStatus(s) { const h = selected(); if (!h) return; h.status = s; setDirty(); render(); }
   function deleteSelected() {
     const h = selected();
-    if (!h || !confirm(`"${nameOf(h, houses.indexOf(h))}" verwijderen?`)) return;
+    if (!h || !confirmT(`"${nameOf(h, houses.indexOf(h))}" verwijderen?`)) return;
     houses = houses.filter((x) => x !== h);
     selectedId = null; setDirty(); render();
   }

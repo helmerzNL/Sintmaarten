@@ -8,13 +8,14 @@ const store = require('./store');
 const auth = require('./auth');
 const backups = require('./backups');
 const push = require('./push');
+const { tr, t } = require('./lang');
 const { STATUSES, statusLabels } = require('./houses');
 
 const COOKIE = 'sm_resident';
 const MAX_RESIDENTS = 3000;
 const MAX_PENDING = 500;
 const MAX_MESSAGES = 200, MAX_MESSAGE_LEN = 300;
-const statusName = (k) => statusLabels(store.db().settings)[k].toLowerCase();
+const statusName = (k) => tr(statusLabels(store.db().settings)[k]).toLowerCase();
 
 const db = () => store.db();
 const sha = (t) => crypto.createHash('sha256').update(t).digest('hex');
@@ -45,7 +46,7 @@ const DEFAULT_INFO = 'Woon je in de wijk? Dan kun je in deze app zelf de status 
 const DEFAULT_SHARE_TEXT = 'Hallo! Dit is de persoonlijke link om jouw huis ({adres}) te koppelen in de wijkapp. Open de link op je telefoon: {link}';
 const shareText = () => {
   const t = db().settings?.qrShareText;
-  return typeof t === 'string' && t.trim() ? t : DEFAULT_SHARE_TEXT;
+  return typeof t === 'string' && t.trim() ? t : tr(DEFAULT_SHARE_TEXT);
 };
 const info = () => {
   const t = db().settings?.residentInfo;
@@ -206,16 +207,18 @@ function notifyAdmin() {
     timer = null;
     const { pending, messages } = waiting();
     if (!pending && !messages) return;
-    let title = 'Wijziging ter goedkeuring', body;
-    if (pending && messages) body = `${pending} wijziging${pending === 1 ? '' : 'en'} en ${messages} bericht${messages === 1 ? '' : 'en'} wachten op je`;
+    let title = t('Wijziging ter goedkeuring'), body;
+    const nChanges = pending === 1 ? t('1 wijziging') : t('{n} wijzigingen', { n: pending });
+    const nMessages = messages === 1 ? t('1 bericht') : t('{n} berichten', { n: messages });
+    if (pending && messages) body = t('{w} en {m} wachten op je', { w: nChanges, m: nMessages });
     else if (messages) {
-      title = 'Bericht van een bewoner';
+      title = t('Bericht van een bewoner');
       const last = db().messages[db().messages.length - 1];
-      body = messages === 1 ? `${last.ownTitle || last.scannedTitle || 'Bewoner'}: ${last.text}`.slice(0, 120) : `${messages} berichten van bewoners`;
+      body = messages === 1 ? `${last.ownTitle || last.scannedTitle || tr('Bewoner')}: ${last.text}`.slice(0, 120) : t('{n} berichten van bewoners', { n: messages });
     } else {
       const first = db().proposals[0];
       const h = houseOf(first.houseId);
-      body = pending === 1 && h ? `${titleOf(h)}: ${statusName(first.to)} aangevraagd` : `${pending} wijzigingen wachten op goedkeuring`;
+      body = pending === 1 && h ? t('{huis}: {status} aangevraagd', { huis: titleOf(h), status: statusName(first.to) }) : t('{n} wijzigingen wachten op goedkeuring', { n: pending });
     }
     try { await push.send({ title, body, url: '/beheer#changes', tag: 'wijzigingen', badge: pending + messages }); }
     catch (err) { console.error('Melding mislukt:', err.message); }
@@ -399,7 +402,7 @@ const list = () => {
   const blocked = (d.blocked || []).map((b) => ({ id: b.id, title: b.title, ip: b.ip || null, at: b.at }))
     .sort((a, b) => String(a.title).localeCompare(String(b.title), 'nl', { numeric: true, sensitivity: 'base' }));
   const messages = (d.messages || []).map((m) => ({ id: m.id, createdAt: m.createdAt, text: m.text, ownTitle: m.ownTitle, scannedTitle: m.scannedTitle })).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  return { messages, qrOnly: qrOnly(), shareText: shareText(), defaultShareText: DEFAULT_SHARE_TEXT, enabled: storedEnabled(), appOnly: storedAppOnly(), code: { on: db().settings?.residentsCodeOn === true, code: codeSetting() }, geofence: { on: db().settings?.residentsGeofence === true, radius: geofence().radius, hasCenter: !!geoCenter() }, schedule: { swap: swapAfter(), on: db().settings?.residentsOff === true, until: db().settings?.residentsUntil || null, active: scheduled() }, pending: rows, residents, blocked };
+  return { messages, qrOnly: qrOnly(), shareText: shareText(), defaultShareText: tr(DEFAULT_SHARE_TEXT), enabled: storedEnabled(), appOnly: storedAppOnly(), code: { on: db().settings?.residentsCodeOn === true, code: codeSetting() }, geofence: { on: db().settings?.residentsGeofence === true, radius: geofence().radius, hasCenter: !!geoCenter() }, schedule: { swap: swapAfter(), on: db().settings?.residentsOff === true, until: db().settings?.residentsUntil || null, active: scheduled() }, pending: rows, residents, blocked };
 };
 
 admin.get('/changes', (req, res) => res.json(list()));
@@ -494,7 +497,7 @@ admin.post('/push/subscribe', (req, res) => {
 });
 admin.delete('/push/devices/:id', (req, res) => res.json({ removed: push.removeDevice(req.params.id) }));
 admin.post('/push/test', async (req, res) => {
-  const r = await push.send({ title: 'Testmelding', body: 'Meldingen werken op dit apparaat.', url: '/beheer#changes', tag: 'test', badge: badgeTotal() });
+  const r = await push.send({ title: t('Testmelding'), body: t('Meldingen werken op dit apparaat.'), url: '/beheer#changes', tag: 'test', badge: badgeTotal() });
   res.json(r);
 });
 

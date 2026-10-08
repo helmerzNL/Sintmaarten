@@ -14,12 +14,12 @@
   }
   function setLabels(labels) {
     if (!labels) return;
-    for (const k of ['green', 'red', 'none']) if (labels[k]) STATUS[k].name = labels[k];
+    for (const k of ['green', 'red', 'none']) if (labels[k]) STATUS[k].name = I18n.tr(labels[k]);
     applyLabels();
   }
 
   const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-  const ATTRIBUTION = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-bijdragers';
+  const ATTRIBUTION = I18n.t('© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-bijdragers');
   const DEFAULT_VIEW = { center: [52.1, 5.3], zoom: 8 };
 
   function createMap(el, view, houses) {
@@ -48,7 +48,7 @@
   }
 
   // ---------- huizen: titel, sortering, nummerpositie ----------
-  const houseTitle = (h) => [h.street, h.number].filter(Boolean).join(' ') || h.label || 'Huis';
+  const houseTitle = (h) => [h.street, h.number].filter(Boolean).join(' ') || h.label || I18n.t('Huis');
   const natCompare = (a, b) => String(a).localeCompare(String(b), 'nl', { numeric: true, sensitivity: 'base' });
   const compareHouses = (a, b) => natCompare(a.street || '', b.street || '') || natCompare(a.number || a.label || '', b.number || b.label || '');
   const houseNumber = (h) => h.number || '';
@@ -264,7 +264,7 @@
     // verplichte bronvermelding
     g.font = `${Math.round(12 * scale)}px sans-serif`;
     g.textAlign = 'right'; g.textBaseline = 'bottom';
-    const txt = '© OpenStreetMap-bijdragers';
+    const txt = I18n.t('© OpenStreetMap-bijdragers');
     const tw = g.measureText(txt).width;
     g.fillStyle = 'rgba(255,255,255,.8)'; g.fillRect(W - tw - 16 * scale, H - 22 * scale, tw + 16 * scale, 22 * scale);
     g.fillStyle = '#333'; g.fillText(txt, W - 8 * scale, H - 5 * scale);
@@ -374,10 +374,10 @@
       ty = 50 + h + 30;
     }
     g.textAlign = 'left'; g.textBaseline = 'top'; g.fillStyle = '#444'; g.font = '30px system-ui, sans-serif';
-    ['Scan deze code met de', 'camera van je telefoon en', 'wijzig in de app de status', 'van jouw huis.'].forEach((t, i) => g.fillText(t, rx, ty + i * 44, rw));
+    ['Scan deze code met de', 'camera van je telefoon en', 'wijzig in de app de status', 'van jouw huis.'].map((x) => I18n.t(x)).forEach((x, i) => g.fillText(x, rx, ty + i * 44, rw));
     g.fillStyle = '#888'; g.font = '22px system-ui, sans-serif'; g.textBaseline = 'alphabetic';
-    g.fillText('Persoonlijke code voor dit huis:', rx, H - 70, rw);
-    g.fillText('niet delen.', rx, H - 42, rw);
+    g.fillText(I18n.t('Persoonlijke code voor dit huis:'), rx, H - 70, rw);
+    g.fillText(I18n.t('niet delen.'), rx, H - 42, rw);
     return c.toDataURL('image/png');
   }
 
@@ -406,9 +406,9 @@
         ty = y + 5 + logoImg.h * kk + 6;
       }
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60);
-      doc.text(doc.splitTextToSize('Scan deze code met de camera van je telefoon en wijzig in de app de status van jouw huis.', rw), rx, ty);
+      doc.text(doc.splitTextToSize(I18n.t('Scan deze code met de camera van je telefoon en wijzig in de app de status van jouw huis.'), rw), rx, ty);
       doc.setFontSize(7); doc.setTextColor(120);
-      doc.text(doc.splitTextToSize('Persoonlijke code voor dit huis: niet delen.', rw), rx, y + ch - 8);
+      doc.text(doc.splitTextToSize(I18n.t('Persoonlijke code voor dit huis: niet delen.'), rw), rx, y + ch - 8);
     }
     return doc;
   }
@@ -542,8 +542,8 @@
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
     doc.setTextColor(100);
     const now = new Date();
-    const stand = `${now.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })} ${now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
-    doc.text(`Stand van ${stand}`, pw - margin, 14, { align: 'right' });
+    const stand = `${now.toLocaleDateString(I18n.locale, { day: 'numeric', month: 'long', year: 'numeric' })} ${now.toLocaleTimeString(I18n.locale, { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+    doc.text(I18n.t('Stand van {stand}', { stand }), pw - margin, 14, { align: 'right' });
     doc.setTextColor(0);
 
     const mapW = pw - 2 * margin, mapH = (mapW * MAP_MM.h) / MAP_MM.w;
@@ -567,10 +567,10 @@
     const named = houses.filter((h) => (h.number || h.label) && h.status !== 'none').sort(compareHouses);
     let y = 0;
     const newPage = (text) => { doc.addPage(); header(text, 14); y = 26; };
-    const room = (need) => { if (y + need > ph - margin) { newPage(`${title} – vervolg`); } };
+    const room = (need) => { if (y + need > ph - margin) { newPage(I18n.t('{title} – vervolg', { title })); } };
 
     if (intro) {
-      newPage(`${title} – toelichting`);
+      newPage(I18n.t('{title} – toelichting', { title }));
       doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(0);
       for (const line of layoutRich(doc, intro, pw - 2 * margin, 11)) {
         room(6);
@@ -580,13 +580,13 @@
       y += 6;
     }
     if (named.length) {
-      if (!intro) newPage(`${title} – overzicht`);
-      else { room(20); doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.text('Overzicht', margin, y); y += 8; }
+      if (!intro) newPage(I18n.t('{title} – overzicht', { title }));
+      else { room(20); doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.text(I18n.t('Overzicht'), margin, y); y += 8; }
       doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
       const colW = 90, top = y;
       let col = 0;
       for (const h of named) {
-        if (y > ph - margin) { col++; y = top; if (col > 2) { newPage(`${title} – overzicht`); col = 0; } }
+        if (y > ph - margin) { col++; y = top; if (col > 2) { newPage(I18n.t('{title} – overzicht', { title })); col = 0; } }
         const cx = margin + col * colW;
         doc.setFillColor(STATUS[h.status].color); doc.circle(cx + 2, y - 1, 1.8, 'F');
         richText(doc, h.note ? `${houseTitle(h)} – ${h.note}` : houseTitle(h), cx + 6, y, 10, colW - 10);

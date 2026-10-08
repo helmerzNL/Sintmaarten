@@ -61,6 +61,7 @@ function userId() {
 
 // ---------- publiek ----------
 // Naam van de site: instelling in het beheer, anders SITE_TITLE uit de omgeving.
+const lang = require('./lang');
 const siteTitle = () => store.db().settings?.siteTitle || config.siteTitle;
 
 app.get('/api/map', (req, res) => {
@@ -69,6 +70,8 @@ app.get('/api/map', (req, res) => {
   res.json({
     title: siteTitle(), siteTitle: settings?.siteTitle || '', view, houses,
     intro: settings?.intro || '', logo: settings?.logo || null,
+    multilingual: lang.multilingual(), defaultLang: lang.defaultLang(),
+    introEn: settings?.introEn || '', residentInfoEn: settings?.residentInfoEn || '',
     appName: settings?.appName || '', appShortName: settings?.appShortName || '',
     residentsEnabled: residents.mode() !== 'closed', // ook 'swap': dan blijft de knop zichtbaar voor wie al een huis heeft
     residentsMode: residents.mode(),
@@ -93,7 +96,7 @@ app.get('/manifest.webmanifest', (req, res) => {
     name,
     short_name: shortName,
     description: `Kaart van ${name}`,
-    lang: 'nl',
+    lang: lang.defaultLang(),
     start_url: '/',
     scope: '/',
     display: 'standalone',
@@ -115,7 +118,7 @@ app.get('/beheer.webmanifest', (req, res) => {
     name: `${name} – Beheer`,
     short_name: 'Beheer',
     description: `Beheer van ${name}`,
-    lang: 'nl',
+    lang: lang.defaultLang(),
     id: '/beheer',
     start_url: '/beheer',
     scope: '/beheer',
@@ -399,7 +402,7 @@ admin.delete('/logo', (req, res) => {
 // Instellingen zoals bewaard (voor het beheerscherm); /api/map geeft de actuele, effectieve waarden.
 admin.get('/settings', (req, res) => {
   const s = store.db().settings;
-  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null, residentsSwapAfter: s.residentsSwapAfter === true, residentsGeofence: s.residentsGeofence === true, simpleUi: s.simpleUi === true, residentsQrOnly: s.residentsQrOnly === true, residentsCodeOn: s.residentsCodeOn === true, residentsCode: s.residentsCode || '', residentsGeofenceRadius: residents.geofence().radius });
+  res.json({ residentInfo: residents.info(), residentsOff: s.residentsOff === true, residentsUntil: s.residentsUntil || null, residentsSwapAfter: s.residentsSwapAfter === true, residentsGeofence: s.residentsGeofence === true, simpleUi: s.simpleUi === true, residentsQrOnly: s.residentsQrOnly === true, residentsCodeOn: s.residentsCodeOn === true, residentsCode: s.residentsCode || '', residentsGeofenceRadius: residents.geofence().radius, multilingual: lang.multilingual(), defaultLang: lang.defaultLang(), introEn: s.introEn || '', residentInfoEn: s.residentInfoEn || '' });
 });
 
 admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (req, res) => {
@@ -409,6 +412,21 @@ admin.put('/settings', backups.afterSave('Teksten/instellingen opgeslagen'), (re
     const intro = String(body.intro ?? '').replace(/\r\n?/g, '\n').trim();
     if (intro.length > 5000) return res.status(400).json({ error: 'De uitleg mag maximaal 5000 tekens zijn' });
     db.settings.intro = intro;
+  }
+  if ('introEn' in body) {
+    const t = String(body.introEn ?? '').replace(/\r\n?/g, '\n').trim();
+    if (t.length > 5000) return res.status(400).json({ error: 'De uitleg mag maximaal 5000 tekens zijn' });
+    db.settings.introEn = t;
+  }
+  if ('residentInfoEn' in body) {
+    const t = String(body.residentInfoEn ?? '').replace(/\r\n?/g, '\n').trim();
+    if (t.length > 1000) return res.status(400).json({ error: 'Het infovlak mag maximaal 1000 tekens zijn' });
+    db.settings.residentInfoEn = t;
+  }
+  if ('multilingual' in body) db.settings.multilingual = body.multilingual === true;
+  if ('defaultLang' in body) {
+    if (!lang.LANGS.includes(body.defaultLang)) return res.status(400).json({ error: 'Onbekende taal' });
+    db.settings.defaultLang = body.defaultLang;
   }
   if ('residentInfo' in body) {
     const text = String(body.residentInfo ?? '').replace(/\r\n?/g, '\n').trim();
@@ -565,7 +583,11 @@ app.use('/vendor/leaflet', express.static(nm('leaflet', 'dist'), {
 const buildTag = `${appVersion.version}-${appVersion.build}`.replace(/[^\w.-]/g, '');
 const noCache = { 'Cache-Control': 'no-cache' };
 const page = (file) => (req, res) => {
-  const html = fs.readFileSync(file, 'utf8').replaceAll('{{v}}', buildTag);
+  // De taalinstelling staat in de pagina zelf (meta), zodat de pagina meteen in de juiste taal verschijnt.
+  const l = lang.defaultLang();
+  const html = fs.readFileSync(file, 'utf8').replaceAll('{{v}}', buildTag)
+    .replace('<html lang="nl">', `<html lang="${l}">`)
+    .replace('</title>', `</title>\n<meta name="sm-lang" content="${l}"${lang.multilingual() ? ' data-multi="1"' : ''}>`);
   res.set({ ...noCache, 'Content-Type': 'text/html; charset=utf-8' }).send(html);
 };
 app.get(['/', '/index.html'], page(path.join(pub, 'index.html')));

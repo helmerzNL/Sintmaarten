@@ -2,16 +2,24 @@
   --bg: #f4f6f4; --panel: #fff; --text: #1d2a22; --muted: #66756c; --line: #d9e0db;
   --green: #1f9d55; --red: #d93a3a; --accent: #1f6f4a; --none: #8a948e;
   --shadow: 0 2px 10px rgba(0,0,0,.12);
+  --logo-filter: none; --tile-filter: none; --map-bg: #dfe5e1; color-scheme: light;
+}
+/* donker: de keuze van de bezoeker (data-theme) gaat voor de instelling van het apparaat */
+:root[data-theme="dark"] {
+  --bg: #151a17; --panel: #1f2723; --text: #e8efea; --muted: #9aa8a0; --line: #33403a; --accent: #4cc38a;
+  --logo-filter: invert(1) hue-rotate(180deg); --tile-filter: brightness(.72) contrast(1.05); --map-bg: #1b221e; color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #151a17; --panel: #1f2723; --text: #e8efea; --muted: #9aa8a0; --line: #33403a; --accent: #4cc38a; }
+  :root:not([data-theme]) {
+    --bg: #151a17; --panel: #1f2723; --text: #e8efea; --muted: #9aa8a0; --line: #33403a; --accent: #4cc38a;
+    --logo-filter: invert(1) hue-rotate(180deg); --tile-filter: brightness(.72) contrast(1.05); --map-bg: #1b221e; color-scheme: dark;
+  }
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; touch-action: manipulation; }
 body { height: 100dvh; }
 body { font: 16px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
-header.bar { /* altijd een lichte balk, ook in donkere modus, zodat het logo goed zichtbaar is */
-  --panel: #ffffff; --text: #1d2a22; --muted: #66756c; --line: #d9e0db; --accent: #1f6f4a; --bg: #f4f6f4;
+header.bar {
   color: var(--text); display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 header.bar h1 { font-size: 1.15rem; margin: 0; flex: 1; }
 .bar-switches { display: flex; align-items: center; gap: 12px; }
@@ -30,7 +38,7 @@ input[type=text], input[type=password], textarea { width: 100%; padding: 8px; bo
 label { display: block; font-size: .85rem; color: var(--muted); margin: 10px 0 4px; }
 
 /* kaart */
-.viewport { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #dfe5e1; touch-action: none; cursor: grab; user-select: none; }
+.viewport { position: relative; flex: 1; min-height: 0; overflow: hidden; background: var(--map-bg); touch-action: none; cursor: grab; user-select: none; }
 .viewport.dragging { cursor: grabbing; }
 .viewport.drawing { cursor: crosshair; }
 .stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
@@ -88,7 +96,7 @@ dialog::backdrop { background: rgba(0,0,0,.4); }
 a { color: var(--accent); }
 
 /* logo, uitleg, PWA */
-.logo { height: 36px; max-width: 120px; width: auto; object-fit: contain; }
+.logo { height: 36px; max-width: 120px; width: auto; object-fit: contain; filter: var(--logo-filter); } /* het logo keert om in de donkere weergave */
 .badge { background: #ffe9b0; color: #5c4300; border-radius: 999px; padding: 2px 10px; font-size: .8rem; }
 .intro-text { white-space: pre-wrap; max-height: 60vh; overflow-y: auto; line-height: 1.5; }
 header.bar { padding-top: max(10px, env(safe-area-inset-top)); }
@@ -371,3 +379,24 @@ body.simple-ui #num-switch-wrap, body.simple-ui #edit-switch-wrap, body.simple-u
   .toast { top: 62px; }
 }
 @media (min-width: 641px) and (max-width: 760px) { body { padding-bottom: calc(62px + env(safe-area-inset-bottom)); } }
+
+/* taalkeuze (vlaggen) en licht/donker */
+.prefs { order: 99; display: flex; align-items: center; gap: 8px; margin-left: auto; position: relative; }
+.prefs:empty { display: none; }
+.flag { display: inline-flex; width: 24px; height: 16px; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,.25); flex: none; }
+.flag svg { width: 100%; height: 100%; display: block; }
+.lang-picker { position: relative; display: inline-block; }
+.lang-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; }
+.lang-btn .caret { font-size: .7rem; color: var(--muted); }
+.prefs .lang-btn .lang-name { display: none; }
+.lang-pop { position: absolute; right: 0; top: calc(100% + 6px); min-width: 11rem; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); padding: 4px; z-index: 2500; display: flex; flex-direction: column; gap: 2px; }
+.lang-pop[hidden] { display: none; }
+.lang-pop button { display: flex; align-items: center; gap: 10px; border: 0; background: none; text-align: left; padding: 8px 10px; border-radius: 8px; width: 100%; }
+.lang-pop button:hover, .lang-pop button.active { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.theme-btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px 8px; line-height: 0; }
+.set-card .lang-picker .lang-pop { left: 0; right: auto; }
+.set-card .lang-btn { min-width: 12rem; justify-content: flex-start; }
+.set-card .lang-btn .caret { margin-left: auto; }
+@media (max-width: 640px) { .prefs { gap: 4px; } .lang-btn, .theme-btn { padding: 5px 7px; } }
+
+.leaflet-tile-pane { filter: var(--tile-filter); }
