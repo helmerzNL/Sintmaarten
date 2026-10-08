@@ -291,20 +291,34 @@
       cb.onchange = syncBackupButtons;
       const info = document.createElement('div');
       info.className = 'bk-info';
-      const t = document.createElement('strong'); t.textContent = fmtDate(b.createdAt);
+      const t = document.createElement('strong'); t.textContent = b.title || fmtDate(b.createdAt);
       const d = document.createElement('span');
-      d.textContent = `${b.reason}${b.ok ? '' : ' (mislukt)'} · ${b.houses} huizen${b.textLength ? ` · uitleg ${b.textLength} tekens` : ''}`;
+      d.textContent = `${b.title ? `${fmtDate(b.createdAt)} · ` : ''}${b.reason}${b.ok ? '' : ' (mislukt)'} · ${b.houses} huizen${b.textLength ? ` · uitleg ${b.textLength} tekens` : ''}`;
       info.append(t, d);
       const restore = document.createElement('button');
       restore.textContent = 'Terugzetten';
       restore.onclick = () => restoreBackup(b);
       const dl = document.createElement('a');
       dl.className = 'btn'; dl.textContent = '⬇'; dl.title = 'Downloaden'; dl.href = `/api/admin/backups/${b.id}`; dl.download = `backup-${b.id}.json`;
-      row.append(cb, info, restore, dl);
+      const ed = document.createElement('button');
+      ed.textContent = '✎'; ed.title = 'Titel wijzigen'; ed.setAttribute('aria-label', 'Titel wijzigen');
+      ed.onclick = async () => {
+        const v = prompt('Korte titel voor deze backup (leeg = geen titel):', b.title || '');
+        if (v === null) return;
+        try { await api(`/api/admin/backups/${b.id}/title`, { method: 'PUT', body: JSON.stringify({ title: v }), expectAuth: true }); renderBackups(); }
+        catch (e) { $('bk-err').textContent = e.message; }
+      };
+      row.append(cb, info, ed, restore, dl);
       box.append(row);
     }
     syncBackupButtons();
   }
+
+  $('bk-make').onclick = async () => {
+    $('bk-err').textContent = '';
+    try { await post('/api/admin/backups', { title: $('bk-title').value }, { expectAuth: true }); $('bk-title').value = ''; toast('Backup gemaakt ✔'); renderBackups(); }
+    catch (e) { $('bk-err').textContent = e.message; }
+  };
 
   async function restoreBackup(b) {
     if (!confirm(`Backup van ${fmtDate(b.createdAt)} terugzetten?\nDe huidige staat wordt eerst zelf als backup bewaard.${dirty ? '\n\nLet op: niet-opgeslagen wijzigingen gaan verloren.' : ''}`)) return;

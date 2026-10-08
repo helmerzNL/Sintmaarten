@@ -11,6 +11,9 @@ const dir = path.join(config.dataDir, 'backups');
 fs.mkdirSync(dir, { recursive: true });
 const MAX_BACKUPS = Number(process.env.MAX_BACKUPS) || 200;
 
+const MAX_TITLE = 40;
+const cleanTitle = (t) => String(t ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_TITLE);
+
 const ID = /^\d{13}-[0-9a-f]{6}$/;
 const file = (id) => path.join(dir, `${id}.json`);
 
@@ -35,16 +38,17 @@ function read(id) {
   return JSON.parse(fs.readFileSync(file(id), 'utf8'));
 }
 
-// Maakt een backup van de huidige staat. Slaat over als er niets veranderd is t.o.v. de nieuwste backup.
-function create(reason, ok = true) {
+// Maakt een backup van de huidige staat. Slaat over als er niets veranderd is t.o.v. de nieuwste backup
+// (tenzij force: een handmatige backup met eigen titel wordt altijd gemaakt).
+function create(reason, ok = true, { title = '', force = false } = {}) {
   const data = snapshotData();
   const hash = digest(data);
   const all = ids();
   const last = all.length ? read(all[all.length - 1]) : null;
-  if (last && last.hash === hash) return null;
+  if (!force && last && last.hash === hash) return null;
   const id = `${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
   const tmp = `${file(id)}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify({ id, createdAt: new Date().toISOString(), reason, ok, hash, ...data }, null, 2));
+  fs.writeFileSync(tmp, JSON.stringify({ id, createdAt: new Date().toISOString(), reason, title: cleanTitle(title), ok, hash, ...data }, null, 2));
   fs.renameSync(tmp, file(id));
   for (const old of all.slice(0, Math.max(0, all.length + 1 - MAX_BACKUPS))) fs.rmSync(file(old), { force: true });
   return id;
@@ -53,8 +57,19 @@ function create(reason, ok = true) {
 function list() {
   return ids().reverse().map((id) => {
     const b = read(id);
-    return { id, createdAt: b.createdAt, reason: b.reason, ok: b.ok !== false, houses: b.houses.length, hasView: !!b.view, textLength: b.texts.intro.length };
+    return { id, createdAt: b.createdAt, reason: b.reason, title: b.title || '', ok: b.ok !== false, houses: b.houses.length, hasView: !!b.view, textLength: b.texts.intro.length };
   });
+}
+
+// Korte titel van een backup instellen of wissen (de inhoud blijft ongewijzigd).
+function setTitle(id, title) {
+  const b = read(id);
+  if (!b) return null;
+  b.title = cleanTitle(title);
+  const tmp = `${file(id)}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(b, null, 2));
+  fs.renameSync(tmp, file(id));
+  return b.title;
 }
 
 function remove(list) {
@@ -89,4 +104,4 @@ const afterSave = (reason) => (req, res, next) => {
   next();
 };
 
-module.exports = { create, list, read, remove, restore, afterSave, ID };
+module.exports = { create, list, read, remove, setTitle, MAX_TITLE, restore, afterSave, ID };
