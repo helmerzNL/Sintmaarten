@@ -248,3 +248,4 @@ path.pending { animation: dash 1.2s linear infinite; }
 .intro-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; position: sticky; top: 0; background: var(--panel); z-index: 1; }
 .intro-head h3 { margin: 8px 0; }
 .leaflet-container { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.switch:has(input:disabled) { opacity: .45; cursor: not-allowed; }

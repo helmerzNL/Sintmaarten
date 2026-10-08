@@ -1,17 +1,45 @@
 # Sint Maarten – interactieve wijkkaart
 
-Publieke kaart van de wijk waarop huizen groen of rood zijn gemarkeerd, met een beheerscherm
-(`/beheer`) dat beveiligd is met een **passkey**.
+Een interactieve kaart van de wijk waarop elk huis **groen**, **rood** of **niet gemarkeerd** is (bijvoorbeeld voor een Sint Maarten-actie: welke huizen willen wel of niet dat er wordt aangebeld). Bezoekers bekijken de kaart in de browser of als app op hun telefoon; de beheerder tekent de huizen en beheert alles in `/beheer`, beveiligd met een **passkey**. Draait als één Docker-container op bijvoorbeeld een NAS.
 
-## Screenshots
+## Inhoud
+- [Functies in het kort](#functies-in-het-kort)
+- [De website voor bezoekers](#de-website-voor-bezoekers)
+- [Bewoners: huis wijzigen](#bewoners-huis-wijzigen)
+- [Het beheer](#het-beheer-beheer)
+- [Instellingen](#instellingen)
+- [Installeren en draaien](#installeren-als-app-en-offline-gebruik)
+
+## Functies in het kort
+
+**Voor bezoekers**
+- Kaart op basis van OpenStreetMap (geen API-sleutel) met gekleurde vlakken over de huizen; klik op een huis voor de notitie.
+- Huisnummers op de kaart (schakelaar), straten-filter met tellingen groen/rood, en een uitleg- en infovenster.
+- **PDF** (A4 liggend) met kaart, legenda, aantallen, logo, uitleg en een overzicht van de gemarkeerde huizen, inclusief datum en tijd.
+- **Installeerbaar als app (PWA)** met eigen Sint Maarten-icoon en **offline** gebruik.
+- Werkt op telefoon (menubalk onderin, zwevend statusbalkje) en desktop.
+
+**Voor bewoners**
+- Bewoners wijzigen de status van **hun eigen huis** (één huis per apparaat); de beheerder keurt dat goed. Zie [Bewoners: huis wijzigen](#bewoners-huis-wijzigen).
+- Snel naar je huis met dubbelklikken of lang indrukken.
+
+**Voor de beheerder**
+- Huizen tekenen en bewerken (kleur, straat, huisnummer, notitie, hoekpunten), kaartweergave instellen (midden, zoom, min/max).
+- Inloggen met **passkey** (optioneel ook met wachtwoord, bevestigd met een passkey).
+- Wijzigingen van bewoners **goedkeuren of afwijzen**, met **pushmeldingen**; apparaten **blokkeren** (ook op IP); wijzigen **plannen** tot een datum en tijd.
+- Eigen **logo, uitleg, infovlak, site- en appnaam** en eigen namen voor de statussen.
+- Automatische **backups** na elke opslagpoging, met korte titels en handmatige backups.
+- Versienummer en commit zichtbaar in het instellingenmenu.
+
+## De website voor bezoekers
 
 Voorbeeld met willekeurige huizen (kaartgegevens © OpenStreetMap-bijdragers).
 
-**Publieke kaart** – met het logo van de vereniging; klik op een huis voor de notitie. Bovenaan staan de knoppen voor de uitleg, de PDF en (op een telefoon) het installeren als app.
+**Publieke kaart** – met het logo van de vereniging; klik op een huis voor de notitie. Bovenaan staan de knoppen voor de uitleg, de straten en het menu *Meer* (⋯) met de PDF-knoppen en *Installeer app*.
 
 ![Publieke kaart](docs/screenshots/publiek.png)
 
-**Mobiel** – bovenaan alleen het logo, de titel en de schakelaar voor huisnummers; de acties (uitleg, straten, PDF opslaan) staan onderaan.
+**Mobiel** – bovenaan alleen het logo, de titel en de schakelaar voor huisnummers; de acties (uitleg, straten, Meer) staan onderaan, met het statusbalkje (groen/rood) er altijd net boven.
 
 ![Mobiel](docs/screenshots/mobiel.png)
 
@@ -19,91 +47,89 @@ Voorbeeld met willekeurige huizen (kaartgegevens © OpenStreetMap-bijdragers).
 
 ![Straten](docs/screenshots/straten-popup.png)
 
-**Uitleg** – de tekst van de vereniging; wordt de eerste keer automatisch getoond.
+**Uitleg en infovlak** – de tekst van de vereniging; wordt de eerste keer automatisch getoond en sluit met het kruisje rechtsboven. Bovenaan staat het opvallende groene **infovlak** dat uitlegt dat bewoners hun eigen huis kunnen wijzigen; dat verdwijnt zodra wijzigen is uitgeschakeld.
 
 ![Uitleg](docs/screenshots/uitleg.png)
+![Infovlak](docs/screenshots/info-vlak-mobiel.png)
 
-### Beheer (`/beheer`)
-
-**Onboarding** – de eerste keer maak je een passkey aan met de installatiecode.
-
-![Onboarding](docs/screenshots/onboarding.png)
-
-**Inloggen** – alleen met passkey (vingerafdruk, gezicht, pincode of beveiligingssleutel).
-
-![Inloggen](docs/screenshots/beheer-login.png)
-
-**Huis tekenen** – kies een kleur en klik de hoekpunten van het huis; sluit af met het gele beginpunt, dubbelklik of Enter.
-
-![Huis tekenen](docs/screenshots/beheer-tekenen.png)
-
-**Huis bewerken** – selecteer een huis om de kleur, het huisnummer en de notitie aan te passen, of sleep de hoekpunten.
-
-![Beheerscherm](docs/screenshots/beheer.png)
-
-**Instellingen** – het tandwiel (⚙) in de balk schuift het instellingen-menu in beeld, met drie onderdelen:
-
-- *Beveiliging*: passkeys toevoegen/verwijderen en een optioneel wachtwoord (bevestigen met passkey).
-
-  ![Instellingen: beveiliging](docs/screenshots/instellingen-beveiliging.png)
-
-- *Backups*: na elke opslagpoging wordt automatisch een backup gemaakt van de layout en teksten. Je kunt een backup terugzetten of downloaden;
-  verwijderen (één of meer tegelijk) moet je bevestigen met je passkey.
-
-  ![Instellingen: backups](docs/screenshots/instellingen-backups.png)
-
-- *Logo & uitleg*: logo uploaden, naam van de app en de uitlegtekst voor de site en de PDF.
-
-  ![Instellingen: logo en uitleg](docs/screenshots/instellingen-logo.png)
-
-**PDF-export** – A4 liggend met legenda en aantallen (pagina 2 bevat een overzicht van de huizen).
+**PDF-export** – A4 liggend met legenda, aantallen en de datum en het tijdstip (HH:MM) van de stand. Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen. De PDF volgt de gekozen straten en de huisnummers.
 
 ![PDF-export](docs/screenshots/pdf.png)
-
-Pagina 2 bevat het logo, de uitleg en het overzicht van de gemarkeerde huizen.
-
 ![PDF-toelichting](docs/screenshots/pdf-toelichting.png)
 
 ## Bewoners: huis wijzigen
 - In de **geïnstalleerde app** (PWA) staat in de menubalk altijd een knop **Huis wijzigen**, plus een knop **Sync** (🔄) waarmee je de huizen direct bijwerkt (de app ververst ook zelf elke 30 seconden).
-- In een **gewone browser** staat bovenin een schakelaar **Bewerken** (✏️). Zet je die aan, dan verschijnt de knop *Huis wijzigen* in de menubalk. *PDF opslaan*, *PDF bekijken* en *Installeer app* staan altijd onder het menu **Meer** (⋯), ook in de app. Het balkje met de statuskleuren zweeft op een klein scherm altijd net boven de menubalk. In de app is deze schakelaar verborgen.
+- In een **gewone browser** staat bovenin een schakelaar **Bewerken** (✏️). Zet je die aan, dan verschijnt de knop *Huis wijzigen* in de menubalk. *PDF opslaan*, *PDF bekijken* en *Installeer app* staan altijd onder het menu **Meer** (⋯), ook in de app. In de app is de schakelaar verborgen.
 
 ![Bewerken en Meer-menu](docs/screenshots/bewerken-meer-mobiel.png)
 
-**Snel naar jouw huis** – met een muis dubbelklik je op een huis, op een touchscreen druk je er lang op (ruim een halve seconde). Dan gaat *Bewerken* aan (in de browser), springt de kaart naar het huis en start de wijzigmodus; heb je nog geen huis gekozen, dan vraagt de app of het jouw huis is. Een dubbelklik buiten de huizen zoomt gewoon in.
+**Snel naar jouw huis** – met een muis dubbelklik je op een huis, op een touchscreen druk je er lang op (ruim een halve seconde). Dan gaat *Bewerken* aan (in de browser), springt de kaart naar het huis en start de wijzigmodus; heb je nog geen huis gekozen, dan vraagt de app of het jouw huis is. Een dubbelklik buiten de huizen zoomt gewoon in. In het beheer selecteert hetzelfde gebaar het huis in de selecteermodus.
 
-**In het beheer** werkt dit ook: dubbelklik (of druk lang) op een huis en de selecteermodus gaat aan met dat huis geselecteerd, ook als je net aan het tekenen was (zolang er nog geen vlak loopt).
-
-**Wijzigen plannen** – zet onder *Instellingen → Wijzigingen* de schakelaar *Wijzigen automatisch uitschakelen* aan en kies met de datum-/tijdkiezer wanneer. Tot dat moment kunnen bewoners wijzigen (browser én app); daarna staat het uit. De twee schakelaars eronder worden in die tijd uitgeschakeld en genegeerd; zet je de planning uit, dan gelden ze weer.
-
-**Infovlak** – onder *Instellingen → Logo & uitleg* staat een apart tekstveld voor het infovlak. Dat staat als opvallend groen blok bovenaan de uitleg op de website en legt uit dat bewoners hun eigen huis kunnen wijzigen. Het verdwijnt vanzelf zodra wijzigen door bewoners uit staat (of de geplande datum is verstreken).
-
-![Infovlak in de uitleg](docs/screenshots/info-vlak-mobiel.png)
-
-**Misbruik tegengaan** – onder *Instellingen → Wijzigingen* staat bij elke openstaande wijziging en bij elk aangemeld apparaat een knop **Blokkeren**. Het apparaat verliest zijn koppeling en openstaande wijzigingen, en kan niet meer wijzigen of een huis kiezen. Je kunt er ook het **IP-adres** bij blokkeren (let op: huisgenoten of buren achter dezelfde router delen vaak een IP). Onder *Geblokkeerd* haal je een blokkade weer weg.
-
-**Alleen in de app toestaan** – onder *Instellingen → Wijzigingen* zet je **Alleen in de geïnstalleerde app (niet in de browser)** aan. De schakelaar *Bewerken* verdwijnt dan voor browserbezoekers (ook bij een open pagina, na het verversen), en de server weigert wijzigingen die niet vanuit de app komen. De app meldt zich daarvoor met een kop (`X-App-Mode: standalone`). Dat is een gebruiksbeperking: wie de verzoeken zelf nabootst kan de kop meesturen, maar elke wijziging moet nog steeds door de beheerder worden goedgekeurd.
-
-![Alleen in de app](docs/screenshots/instellingen-alleen-app.png)
 - Een bewoner tikt op zijn huis (of kiest zijn adres) en bevestigt dat. Dat apparaat is dan aan **één huis** gekoppeld (cookie, 1 jaar). Daarna wisselt elke tik op dat huis (of een keuze in het venster) de kleur: niet gemarkeerd → groen → rood → niet gemarkeerd. Andere huizen kunnen niet worden gewijzigd.
-- De wijziging is **pas zichtbaar voor anderen nadat de beheerder die goedkeurt**. De bewoner ziet het huis in de tussentijd met een gestippelde rand en de melding *Wacht op goedkeuring*; na de beslissing volgt een bericht (goedgekeurd of niet doorgevoerd).
-- Er worden alleen een willekeurig apparaat-token (als hash) en het gekozen huis bewaard, geen namen of andere persoonsgegevens.
+- De wijziging is **pas zichtbaar voor anderen nadat de beheerder die goedkeurt**. De bewoner ziet het huis in de tussentijd met een gestippelde rand en de melding *Wacht op goedkeuring*; na de beslissing volgt een bericht (goedgekeurd of niet doorgevoerd). De beheerder kan de status van een huis altijd zelf aanpassen; een openstaand voorstel volgt dan de nieuwe status of vervalt als het precies overeenkomt.
+- Er worden alleen een willekeurig apparaat-token (als hash), het IP-adres van het laatste verzoek (voor het blokkeren) en het gekozen huis bewaard, geen namen of andere persoonsgegevens.
 - De koppeling en het voorstel blijven **bewaard na het afsluiten van de app**: ze staan op de server, met een lokale kopie van het token als reserve (voor als de cookie wordt gewist) en van de laatste status (voor als er geen verbinding is). Het eigen huis blijft ook buiten de wijzigmodus zichtbaar (⏳ zolang de wijziging op goedkeuring wacht, daarna 🏠).
-- De app **ververst zichzelf** (elke 30 seconden, en zodra je terugkeert naar de app of weer online bent). Keurt de beheerder een wijziging goed, dan verschijnt die vanzelf op het apparaat, inclusief een melding "Je wijziging is goedgekeurd". Ook de kaart, aantallen en straten van andere bezoekers verversen zo vanzelf.
+- De app **ververst zichzelf** (elke 30 seconden, en zodra je terugkeert naar de app of weer online bent). Keurt de beheerder een wijziging goed, dan verschijnt die vanzelf op het apparaat, inclusief een melding "Je wijziging is goedgekeurd".
 
 ![Huis kiezen](docs/screenshots/bewoner-kies-huis.png)
 ![Wacht op goedkeuring](docs/screenshots/bewoner-wacht.png)
 
-**Beheer** – *Instellingen (⚙) → Wijzigingen*: een rode teller bij het tandwiel en in de paginatitel toont het aantal openstaande wijzigingen; hier keur je wijzigingen goed of af (of alles tegelijk),
-zet je het wijzigen door bewoners aan/uit, beheer je de gekoppelde apparaten (een verkeerde koppeling verwijderen) en zet je meldingen aan.
+## Het beheer (`/beheer`)
 
-![Wijzigingen goedkeuren](docs/screenshots/instellingen-wijzigingen.png)
+**Onboarding** – de eerste keer maak je een passkey aan met de installatiecode (`SETUP_TOKEN`).
+
+![Onboarding](docs/screenshots/onboarding.png)
+
+**Inloggen** – met passkey (vingerafdruk, gezicht, pincode of beveiligingssleutel), eventueel met wachtwoord dat je met een passkey bevestigt.
+
+![Inloggen](docs/screenshots/beheer-login.png)
+
+**Huis tekenen** – kies een kleur en klik de hoekpunten van het huis; sluit af met het gele beginpunt, dubbelklik of Enter. Nieuwe huizen krijgen standaard *geen status* en de actieve straat.
+
+![Huis tekenen](docs/screenshots/beheer-tekenen.png)
+
+**Huis bewerken** – selecteer een huis (klik, dubbelklik of lang indrukken) om de kleur, straat, huisnummer en notitie aan te passen, of sleep de hoekpunten. Sneltoetsen: **G** groen, **R** rood, **Delete** verwijderen, **Ctrl+S** opslaan. De lijst links heeft een filter per straat; de rest wordt op de kaart gedimd.
+
+![Beheerscherm](docs/screenshots/beheer.png)
+
+## Instellingen
+Het tandwiel (⚙) in de balk schuift het instellingen-menu in beeld, met vier onderdelen.
+
+**Wijzigingen** – goedkeuren van wijzigingen van bewoners, plannen, blokkeren en meldingen:
+- Een rode teller bij het tandwiel en in de paginatitel toont het aantal openstaande wijzigingen; hier keur je ze goed of af (of alles tegelijk).
+- **Wijzigen plannen**: zet *Wijzigen automatisch uitschakelen* aan en kies met de datum-/tijdkiezer wanneer. Tot dat moment kunnen bewoners wijzigen (browser én app); daarna staat het uit. De twee schakelaars eronder ("Bewoners mogen wijzigen" en "Alleen in de geïnstalleerde app") worden in die tijd uitgeschakeld en genegeerd; zet je de planning uit, dan gelden ze weer. Het infovlak verdwijnt als wijzigen uit staat.
+- **Alleen in de geïnstalleerde app**: de schakelaar *Bewerken* verdwijnt dan voor browserbezoekers en de server weigert wijzigingen die niet vanuit de app komen (kop `X-App-Mode: standalone`). Dat is een gebruiksbeperking, geen harde beveiliging; elke wijziging moet toch door de beheerder worden goedgekeurd.
+- **Aangemelde apparaten** beheren (een verkeerde koppeling verwijderen) en **meldingen** aanzetten.
+
+![Wijzigingen goedkeuren en plannen](docs/screenshots/instellingen-wijzigingen.png)
+
+**Misbruik tegengaan** – bij elke openstaande wijziging en bij elk aangemeld apparaat staat een knop **Blokkeren**. Het apparaat verliest zijn koppeling en openstaande wijzigingen en kan niet meer wijzigen of een huis kiezen. Je kunt er ook het **IP-adres** bij blokkeren (let op: huisgenoten of buren achter dezelfde router delen vaak een IP). Onder *Geblokkeerd* haal je een blokkade weer weg.
+
+![Geblokkeerde apparaten](docs/screenshots/instellingen-geblokkeerd.png)
+
+**Beveiliging** – passkeys toevoegen/verwijderen en een optioneel wachtwoord (bevestigen met passkey).
+
+![Instellingen: beveiliging](docs/screenshots/instellingen-beveiliging.png)
+
+**Backups** – na elke opslagpoging wordt automatisch een backup gemaakt van de layout en teksten. Geef een backup een **korte titel** (✎, max. 40 tekens, bijvoorbeeld "Alles" of "Alleen layout") of maak er zelf een met *Backup maken*. Terugzetten of downloaden kan altijd; verwijderen (één of meer tegelijk) moet je bevestigen met je passkey.
+
+![Instellingen: backups](docs/screenshots/instellingen-backups.png)
+
+**Logo & uitleg** – logo uploaden, naam van de site en de app, namen van de statussen, het **infovlak** voor bewoners en de uitlegtekst voor de site en de PDF.
+
+![Instellingen: logo, infovlak en uitleg](docs/screenshots/instellingen-logo-info.png)
+
+![Instellingen: logo en uitleg](docs/screenshots/instellingen-logo.png)
+
+**Versie** – onderin het menu staat de versie en commit van de draaiende build (zie [Versienummer](#versienummer)).
+
+![Versie](docs/screenshots/instellingen-versie.png)
 
 ### Pushmeldingen voor de beheerder
 - Zet in *Instellingen → Wijzigingen → Meldingen op dit apparaat* meldingen aan op je eigen telefoon of computer. De server maakt daarvoor zelf de (VAPID-)sleutels en bewaart ze in `data/db.json`.
 - Bij een nieuwe wijziging ontvang je een pushmelding (meerdere wijzigingen kort na elkaar worden samengevoegd). Tik je erop, dan opent het beheer bij *Wijzigingen* en kun je goedkeuren of afwijzen; pas dan wordt de wijziging doorgevoerd.
 - Vereist **HTTPS**. Op een iPhone/iPad werkt Web Push alleen als je het beheer eerst aan het beginscherm toevoegt (iOS 16.4 of nieuwer) en het daar opent. Een knop *Testmelding* controleert of het werkt.
-- Verlopen apparaten worden automatisch opgeruimd. Bewoners kun je tijdelijk uitschakelen met de schakelaar in het beheer.
+- Verlopen apparaten worden automatisch opgeruimd.
 
 ## Namen van de statussen
 Onder *Instellingen (⚙) → Logo & uitleg* kun je de namen **Groen**, **Rood** en **Niet gemarkeerd** aanpassen, bijvoorbeeld naar *Akkoord* en *Nog niet bezocht*. De kleuren blijven groen en rood. De namen gelden overal: legenda, popups, straten-filter, de PDF, het beheer en de pushmelding. Leeg laten = standaardnaam.
@@ -120,18 +146,8 @@ Een nieuw getekend huis heeft standaard **geen status** (niet gemarkeerd; kies i
 
 ## Hoe werkt het
 - **Kaart**: OpenStreetMap (via Leaflet), geen API-sleutel nodig. Google Maps is bewust niet gebruikt: dat vereist een betaalde sleutel en de voorwaarden staan het overtekenen en exporteren naar PDF niet toe.
-- **Publiek (`/`)**: de kaart met gekleurde vlakken over de huizen; klik op een huis voor naam/notitie.
-  Knoppen **PDF bekijken** en **PDF downloaden** maken in de browser een A4-liggend PDF van het hele wijkgebied
-  (kaart, legenda met aantallen, bronvermelding, en een tweede pagina met overzicht van de gemarkeerde huizen).
-- **Logo & uitleg**: in het beheer (*Instellingen* ⚙ → *Logo & uitleg*) upload je het logo (PNG/JPEG/WebP, max 5 MB) en plak je een tekst. Het logo staat in de kop van de site en de PDF;
-  de tekst is op de site te lezen (knop *Uitleg*) en staat op pagina 2 van de PDF.
-- **App (PWA)**: de site is te installeren op een telefoon of computer en werkt offline (zie hieronder).
-- **Beheer (`/beheer`)**:
-  1. Zoek je straat (zoekveld) en zoom ver in; stel via *Kaartweergave instellen* het midden, de startzoom en de minimale/maximale zoom in (of neem de huidige weergave over). Bezoekers openen de kaart (ook in de app) met precies die weergave; met *Automatisch* toont de site alle huizen.
-  2. Kies *Huis tekenen*, kies groen of rood, klik de hoeken van een huis en sluit af (klik op het gele beginpunt, dubbelklik of Enter).
-  3. Pas later de kleur aan (knoppen of **G**/**R**), versleep hoekpunten, geef een huisnummer/notitie, en klik *Opslaan* (Ctrl+S).
-- **Onboarding**: de allereerste keer vraagt `/beheer` om de `SETUP_TOKEN` en maakt dan een passkey aan. Daarna kun je
-  via *Instellingen* (⚙) → *Beveiliging* extra apparaten toevoegen (doe dat zodat je niet buitengesloten raakt).
+- **Beheer instellen**: zoek je straat en zoom ver in; stel via *Kaartweergave instellen* het midden, de startzoom en de minimale/maximale zoom in (of neem de huidige weergave over). Bezoekers openen de kaart (ook in de app) met precies die weergave; met *Automatisch* toont de site alle huizen. In dezelfde dialoog bepaal je of de huisnummers voor bezoekers standaard aan staan.
+- **Onboarding**: de allereerste keer vraagt `/beheer` om de `SETUP_TOKEN` en maakt dan een passkey aan. Daarna kun je via *Instellingen* (⚙) → *Beveiliging* extra apparaten toevoegen (doe dat zodat je niet buitengesloten raakt).
 
 > De PDF haalt kaarttegels rechtstreeks bij OpenStreetMap op; houd het gebruik bescheiden
 > ([tile usage policy](https://operations.osmfoundation.org/policies/tiles/)).
