@@ -541,7 +541,7 @@ test('geofence: wijzigen alleen in de wijk (schakelaar in het beheer)', async ()
   await adminReq('/houses', 'PUT', { houses: [{ id: 'h1', street: 'Dorpsstraat', number: '1', status: 'none', points: ptsR }] });
   await adminReq('/view', 'DELETE'); // geen vaste weergave: midden = midden van de huizen
   for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
-  const geo = (lat, lng, acc) => ({ 'X-Geo': `${lat},${lng},${acc}` });
+  const geo = (lat, lng, acc) => ({ 'X-Geo': `${lat},${lng},${acc}`, 'X-Geo-Device': 'gps' });
   const postG = (path, body, h = {}, c) => j(`/api/resident${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(c ? { cookie: c } : {}), ...h }, body: JSON.stringify(body || {}) });
   const center = [52.000333, 5.000333];
 
@@ -564,8 +564,14 @@ test('geofence: wijzigen alleen in de wijk (schakelaar in het beheer)', async ()
   r = await postG('/set', { status: 'red' }, geo(52.05, 5.05, 20), c); // ~6 km
   assert.equal(r.status, 403);
   assert.equal((await r.json()).geofence, 'outside');
-  assert.equal((await postG('/set', { status: 'red' }, geo(52.05, 5.05, 100000), c)).status, 403);
-  assert.equal((await postG('/set', { status: 'red' }, geo(52.0045, 5.0045, 400), c)).status, 200); // net buiten, maar vaag genoeg
+  // alleen GPS-nauwkeurigheid (<= 200 m) en alleen GPS-apparaten (geen desktop)
+  r = await postG('/set', { status: 'red' }, geo(52.0005, 5.0005, 800), c);
+  assert.equal(r.status, 403);
+  assert.equal((await r.json()).geofence, 'inaccurate');
+  r = await postG('/set', { status: 'red' }, { 'X-Geo': '52.0005,5.0005,20', 'X-Geo-Device': 'desktop' }, c);
+  assert.equal((await r.json()).geofence, 'device');
+  assert.equal((await postG('/set', { status: 'red' }, { 'X-Geo': '52.0005,5.0005,20' }, c)).status, 403);
+  assert.equal((await postG('/set', { status: 'red' }, geo(52.0045, 5.0045, 150), c)).status, 200); // net buiten, maar binnen de nauwkeurigheid
   assert.equal((await postG('/claim', { houseId: 'h1' }, geo(52.05, 5.05, 10))).status, 403); // ook huis kiezen
 
   // lezen blijft altijd kunnen; straal valideren; weer uit

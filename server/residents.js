@@ -82,6 +82,7 @@ function currentResident(req) {
 
 // ---- geofence: wijzigen alleen als het apparaat (volgens GPS/wifi-locatie) in de wijk is ----
 const GEO_DEFAULT_RADIUS = 500, GEO_MIN = 50, GEO_MAX = 5000;
+const GEO_MAX_ACC = 200; // alleen een GPS-achtige fix (m); wifi/IP-locaties van desktops zijn te grof
 function geoCenter() {
   const d = db();
   const c = d.view?.center;
@@ -109,8 +110,11 @@ function geoCheck(req) {
   if (!g.on) return null;
   const m = /^(-?\d{1,3}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?),(\d{1,6}(?:\.\d+)?)$/.exec(String(req.get('X-Geo') || ''));
   if (!m) return { geofence: 'missing', error: 'Wijzigen kan alleen in de wijk. Sta toegang tot je locatie toe en probeer het opnieuw.' };
-  const pos = [Number(m[1]), Number(m[2])], acc = Math.min(Number(m[3]), 500); // een vage fix telt maximaal 500 m mee
+  // Locatiecontrole werkt alleen op een apparaat met GPS (telefoon/tablet); desktops melden zich als 'desktop'.
+  if (req.get('X-Geo-Device') !== 'gps') return { geofence: 'device', error: 'Met locatiecontrole kan alleen worden gewijzigd op een telefoon of tablet met GPS.' };
+  const pos = [Number(m[1]), Number(m[2])], acc = Number(m[3]);
   if (Math.abs(pos[0]) > 90 || Math.abs(pos[1]) > 180) return { geofence: 'missing', error: 'Ongeldige locatie' };
+  if (acc > GEO_MAX_ACC) return { geofence: 'inaccurate', error: `Je GPS-locatie is niet nauwkeurig genoeg (ongeveer ${Math.round(acc)} m). Zet GPS aan, ga naar buiten en probeer het opnieuw.` };
   const dist = distanceM(pos, g.center);
   if (dist - acc > g.radius) return { geofence: 'outside', error: `Je lijkt niet in de wijk te zijn (ongeveer ${Math.round(dist / 10) * 10} m van het midden). Wijzigen kan alleen in de wijk.` };
   return null;
@@ -358,4 +362,4 @@ admin.post('/push/test', async (req, res) => {
   res.json(r);
 });
 
-module.exports = { resident, admin, prune, reconcile, enabled, mode, geofence, GEO_MIN, GEO_MAX, GEO_DEFAULT_RADIUS, appOnly, info, untilMs, DEFAULT_INFO };
+module.exports = { resident, admin, prune, reconcile, enabled, mode, geofence, GEO_MAX_ACC, GEO_MIN, GEO_MAX, GEO_DEFAULT_RADIUS, appOnly, info, untilMs, DEFAULT_INFO };
