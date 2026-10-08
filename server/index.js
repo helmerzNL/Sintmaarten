@@ -294,6 +294,19 @@ admin.get('/backups/:id', (req, res) => {
   res.json(b);
 });
 
+// Handmatig een backup maken, met een korte titel (bijv. "Alles" of "Alleen layout").
+admin.post('/backups', (req, res) => {
+  const id = backups.create('Handmatig', true, { title: req.body?.title, force: true });
+  res.json({ id });
+});
+
+admin.put('/backups/:id/title', (req, res) => {
+  if (typeof req.body?.title !== 'string') return res.status(400).json({ error: 'Titel ontbreekt' });
+  const title = backups.setTitle(req.params.id, req.body.title);
+  if (title === null) return res.status(404).json({ error: 'Backup niet gevonden' });
+  res.json({ title });
+});
+
 admin.post('/backups/:id/restore', (req, res) => {
   if (!backups.restore(req.params.id)) return res.status(404).json({ error: 'Backup niet gevonden' });
   res.json({ ok: true });
