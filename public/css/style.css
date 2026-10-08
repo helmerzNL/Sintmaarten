@@ -244,3 +244,6 @@ path.pending { animation: dash 1.2s linear infinite; }
 .intro-info strong { display: block; font-size: 1.05rem; margin-bottom: 2px; }
 .intro-info p { margin: 0; white-space: pre-wrap; line-height: 1.45; }
 .intro-info-ico { font-size: 1.8rem; line-height: 1; }
+
+.intro-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; position: sticky; top: 0; background: var(--panel); z-index: 1; }
+.intro-head h3 { margin: 8px 0; }

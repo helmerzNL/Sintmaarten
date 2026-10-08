@@ -28,7 +28,7 @@
       $('intro-title').textContent = data.title;
       $('intro-text').textContent = data.intro; // platte tekst; alinea's via CSS
       $('intro-btn').onclick = () => $('intro-dialog').showModal();
-      $('intro-close').onclick = () => $('intro-dialog').close();
+      $('intro-close').onclick = $('intro-x').onclick = () => $('intro-dialog').close();
       // de eerste keer (of na een wijziging van de tekst) automatisch tonen
       if (first) {
         let seen = '';
