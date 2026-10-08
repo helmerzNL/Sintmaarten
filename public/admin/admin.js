@@ -1,5 +1,9 @@
 (() => {
   const $ = (id) => document.getElementById(id);
+  // Material Design Icons (Pictogrammers, Apache License 2.0) als inline SVG
+  const MDI_PEN = 'M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z';
+  const MDI_EYE = 'M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z';
+  const mdiIcon = (d) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('class', 'mdi'); s.setAttribute('aria-hidden', 'true'); const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', d); s.append(p); return s; };
   // eigen dialogen: de tekst (ook met variabelen) wordt in de gekozen taal getoond
   const confirmT = (m) => confirm(I18n.tr(m));
   const promptT = (m, v) => prompt(I18n.tr(m), v);
@@ -725,11 +729,11 @@
   function setEditing(on) {
     editing = on;
     $('v-edit').classList.toggle('view-mode', !on);
-    $('edit-toggle').textContent = on ? '✓ Weergave' : '✏️ Bewerken';
+    $('edit-toggle').replaceChildren(mdiIcon(on ? MDI_EYE : MDI_PEN), Object.assign(document.createElement('span'), { textContent: on ? 'Weergave' : 'Bewerken' }));
     $('edit-toggle').setAttribute('aria-pressed', String(on));
     $('nav-edit').setAttribute('aria-pressed', String(on));
     $('nav-edit').querySelector('.lbl').textContent = on ? 'Weergave' : 'Bewerken';
-    $('nav-edit').querySelector('.ico').textContent = on ? '✓' : '✏️';
+    $('nav-edit').querySelector('.ico').replaceChildren(mdiIcon(on ? MDI_EYE : MDI_PEN));
     if (!on && typeof setMode === 'function') { setMode('select'); selectedId = null; render(); }
     setTimeout(() => map && map.invalidateSize(), 0);
   }
