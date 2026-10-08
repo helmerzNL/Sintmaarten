@@ -191,7 +191,7 @@
       const el = poly.getElement && poly.getElement();
       if (el) el.classList.toggle('pending', !!me.pending);
       const badge = L.marker(Wijk.labelPoint(h.points), {
-        icon: L.divIcon({ className: 'mine-badge', html: me.pending ? '⏳' : '🏠', iconSize: [26, 26] }),
+        icon: L.divIcon({ className: 'mine-badge', html: MDI.html(me.pending ? 'timer-sand' : 'home'), iconSize: [26, 26] }),
         interactive: false, keyboard: false,
       }).addTo(mine);
       badge.getElement()?.setAttribute('title', me.pending ? 'Jouw huis: wacht op goedkeuring' : 'Jouw huis');
@@ -276,7 +276,7 @@
       sheet.hidden = false;
       const parts = [];
       const head = el('div', { className: 'sheet-head' }, el('strong', { textContent: 'Huis wijzigen' }),
-        el('button', { type: 'button', className: 'icon-btn', ariaLabel: 'Sluiten', textContent: '✕', onclick: leave }));
+        el('button', { type: 'button', className: 'icon-btn', ariaLabel: 'Sluiten', onclick: leave }, MDI.svg('close')));
       parts.push(head);
 
       if (me.notice) {
@@ -287,7 +287,7 @@
       }
 
       if (!me.claim && qrOnly) {
-        parts.push(el('p', { textContent: '📷 ' + QR_HINT }));
+        parts.push(el('p', { className: 'qr-hint' }, MDI.svg('qrcode'), ' ' + QR_HINT));
         parts.push(el('p', { className: 'muted', textContent: 'Open de camera van je telefoon, richt hem op de QR-code en tik op de link. Geen brief ontvangen of kwijt? Vraag het de beheerder.' }));
       } else if (!me.claim) {
         parts.push(el('p', { textContent: 'Tik op jouw huis op de kaart of kies je adres. Je kunt per apparaat één huis kiezen.' }));

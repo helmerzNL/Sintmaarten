@@ -322,7 +322,7 @@
   async function run(btn, fn) {
     const html = btn.innerHTML;
     pdfButtons.forEach((b) => (b.disabled = true));
-    btn.innerHTML = '<span class="ico">⏳</span><span class="lbl">Bezig…</span>';
+    btn.innerHTML = `<span class="ico">${MDI.html('timer-sand')}</span><span class="lbl">Bezig…</span>`;
     try { await fn(); }
     catch (e) { alert(I18n.tr('PDF maken mislukt: ' + e.message)); }
     finally { btn.innerHTML = html; pdfButtons.forEach((b) => (b.disabled = false)); }
