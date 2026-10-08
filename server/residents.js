@@ -53,6 +53,7 @@ function prune() {
   d.residents = d.residents.filter((r) => ids.has(r.houseId));
   const rids = new Set(d.residents.map((r) => r.rid));
   d.proposals = d.proposals.filter((p) => rids.has(p.residentId) && ids.has(p.houseId));
+  for (const id of Object.keys(d.houseSecrets || {})) if (!ids.has(id)) delete d.houseSecrets[id]; // geheimen van verwijderde huizen
 }
 
 // Na een wijziging door de beheerder: beheer wint altijd. Een voorstel dat nu overbodig is verdwijnt,
@@ -120,6 +121,17 @@ function geoCheck(req) {
   return null;
 }
 
+// ---- QR-code per huis: een geheim dat niet in /api/map staat (de huis-id's zijn openbaar) ----
+const secrets = () => (db().houseSecrets ||= {});
+const secretOf = (id) => (secrets()[id] ||= crypto.randomBytes(16).toString('base64url'));
+const houseOfSecret = (q) => {
+  if (typeof q !== 'string' || q.length < 16 || q.length > 64) return null;
+  for (const [id, sec] of Object.entries(secrets())) if (auth.safeEqual(sec, q)) return houseOf(id) || null;
+  return null;
+};
+const qrOnly = () => db().settings?.residentsQrOnly === true;
+const houseTaken = (id) => db().residents.some((r) => r.houseId === id);
+
 // ---- toegangscode voor apparaten zonder GPS (de code wordt in de buurtapp gedeeld) ----
 const CODE_COOKIE = 'sm_code';
 const codeSetting = () => String(db().settings?.residentsCode || '');
@@ -133,6 +145,12 @@ const codeOk = (req) => {
   const c = auth.parseCookies(req.headers.cookie)[CODE_COOKIE];
   return !!c && auth.safeEqual(c, codeToken());
 };
+
+function setCodeCookie(res) {
+  const flags = ['Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${365 * 24 * 3600}`];
+  if (config.secureCookie) flags.push('Secure');
+  res.append('Set-Cookie', `${CODE_COOKIE}=${codeToken()}; ${flags.join('; ')}`);
+}
 
 // Geblokkeerde apparaten (cookie/token) en IP-adressen mogen niet meer wijzigen of een huis kiezen.
 function isBlocked(req) {
@@ -155,6 +173,7 @@ function view(rec, req) {
     enabled: enabled(),
     mode: mode(),
     codeOk: req ? codeOk(req) : true,
+    qrOnly: qrOnly(),
     claim: { houseId: house.id, title: titleOf(house) },
     approved: house.status,
     effective: prop ? prop.to : house.status,
@@ -202,7 +221,8 @@ resident.use((req, res, next) => {
     return res.status(403).json({ error: 'Dit apparaat is geblokkeerd door de beheerder', blocked: true });
   }
   if (req.method !== 'GET' && (req.path === '/claim' || req.path === '/set')) {
-    if (codeOn() && isNonGps(req) && !codeOk(req)) {
+    const viaQr = req.path === '/claim' && !!houseOfSecret(req.body?.q); // een geldige QR vervangt de toegangscode
+    if (codeOn() && isNonGps(req) && !codeOk(req) && !viaQr) {
       return res.status(403).json({ code: 'required', error: 'Voer eerst de toegangscode in (die is gedeeld in de buurtapp).' });
     }
     const bad = geoCheck(req);
@@ -223,7 +243,7 @@ resident.use((req, res, next) => {
 
 resident.get('/me', (req, res) => {
   const rec = currentResident(req);
-  res.json(rec ? view(rec, req) : { enabled: enabled(), mode: mode(), claim: null, codeOk: codeOk(req) });
+  res.json(rec ? view(rec, req) : { enabled: enabled(), mode: mode(), claim: null, codeOk: codeOk(req), qrOnly: qrOnly() });
 });
 
 // Toegangscode voor apparaten zonder GPS: eenmalig invullen, daarna onthoudt dit apparaat het (cookie, 1 jaar).
@@ -234,23 +254,47 @@ resident.post('/code', (req, res) => {
   const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
   if (!auth.safeEqual(code, codeSetting())) { auth.limiter.fail(key); return res.status(403).json({ error: 'Onjuiste code' }); }
   auth.limiter.reset(key);
-  const flags = ['Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${365 * 24 * 3600}`];
-  if (config.secureCookie) flags.push('Secure');
-  res.append('Set-Cookie', `${CODE_COOKIE}=${codeToken()}; ${flags.join('; ')}`);
+  setCodeCookie(res);
   res.json({ ok: true });
 });
 
 // Dit apparaat koppelen aan één huis.
+// Controleer een QR-geheim (met begrenzing op foute pogingen per IP).
+function lookupQr(req, res) {
+  const key = `qr:${req.ip}`;
+  if (auth.limiter.blocked(key, 20)) { res.status(429).json({ error: 'Te veel pogingen, probeer het later opnieuw' }); return null; }
+  const house = houseOfSecret(req.body?.q);
+  if (!house) { auth.limiter.fail(key); res.status(403).json({ error: 'Deze QR-code is ongeldig of vervangen. Vraag de beheerder om een nieuwe.' }); return null; }
+  return house;
+}
+
+// Voor de bevestiging in de pagina: bij welk huis hoort deze QR?
+resident.post('/qr/lookup', (req, res) => {
+  const house = lookupQr(req, res);
+  if (!house) return;
+  res.json({ houseId: house.id, title: titleOf(house), taken: houseTaken(house.id) });
+});
+
+// Dit apparaat koppelen aan één huis: met de QR-code van dat huis (of, als dat niet verplicht is, via de kaart).
 resident.post('/claim', (req, res) => {
   if (currentResident(req)) return res.status(409).json({ error: 'Dit apparaat is al aan een huis gekoppeld' });
-  const house = houseOf(String(req.body?.houseId || ''));
+  const viaQr = typeof req.body?.q === 'string' && req.body.q !== '';
+  let house;
+  if (viaQr) { house = lookupQr(req, res); if (!house) return; }
+  else {
+    if (qrOnly()) return res.status(403).json({ qr: 'required', error: 'Scan de QR-code uit je brief om jouw huis te kiezen.' });
+    house = houseOf(String(req.body?.houseId || ''));
+  }
   if (!house) return res.status(404).json({ error: 'Huis niet gevonden' });
+  // met QR hoort er één apparaat bij een huis; de beheerder kan een koppeling verwijderen
+  if ((viaQr || qrOnly()) && houseTaken(house.id)) return res.status(409).json({ error: 'Dit huis is al aan een ander apparaat gekoppeld. Neem contact op met de beheerder.' });
   if (db().residents.length >= MAX_RESIDENTS) return res.status(503).json({ error: 'Op dit moment zijn er te veel aanmeldingen' });
   const token = crypto.randomBytes(32).toString('base64url');
   const rec = { rid: crypto.randomBytes(6).toString('hex'), tokenHash: sha(token), houseId: house.id, createdAt: new Date().toISOString(), lastActivity: new Date().toISOString(), ip: req.ip, notice: null };
   db().residents.push(rec);
   store.save();
   setCookie(res, token);
+  if (viaQr && codeOn()) setCodeCookie(res); // een geldige QR vervangt de toegangscode
   res.json({ ...view(rec, req), deviceToken: token }); // de app bewaart dit ook lokaal, zodat de koppeling een gewiste cookie overleeft
 });
 
@@ -381,6 +425,20 @@ admin.delete('/blocks/:id', (req, res) => {
   res.json({ removed: before - d.blocked.length });
 });
 
+// ---- QR-codes (voor het afdrukken en per huis) ----
+const qrUrl = (id) => `${config.origin}/?q=${secretOf(id)}`;
+const qrItem = (h) => ({ houseId: h.id, title: titleOf(h), street: h.street || '', number: h.number || '', url: qrUrl(h.id), taken: houseTaken(h.id) });
+admin.get('/qr', (req, res) => { const items = db().houses.map(qrItem); store.save(); res.json(items); });
+admin.post('/qr/rotate-all', (req, res) => { db().houseSecrets = {}; const items = db().houses.map(qrItem); store.save(); res.json(items); });
+admin.post('/qr/:houseId/rotate', (req, res) => {
+  const h = houseOf(req.params.houseId);
+  if (!h) return res.status(404).json({ error: 'Huis niet gevonden' });
+  delete secrets()[h.id];
+  const item = qrItem(h);
+  store.save();
+  res.json(item);
+});
+
 // ---- pushmeldingen: apparaten van de beheerder ----
 admin.get('/push/key', (req, res) => res.json({ publicKey: push.publicKey() }));
 admin.get('/push/devices', (req, res) => res.json(push.devices()));
@@ -394,4 +452,4 @@ admin.post('/push/test', async (req, res) => {
   res.json(r);
 });
 
-module.exports = { resident, admin, prune, reconcile, enabled, mode, geofence, codeOn, GEO_MAX_ACC, GEO_MIN, GEO_MAX, GEO_DEFAULT_RADIUS, appOnly, info, untilMs, DEFAULT_INFO };
+module.exports = { resident, admin, prune, reconcile, enabled, mode, geofence, codeOn, qrOnly, GEO_MAX_ACC, GEO_MIN, GEO_MAX, GEO_DEFAULT_RADIUS, appOnly, info, untilMs, DEFAULT_INFO };

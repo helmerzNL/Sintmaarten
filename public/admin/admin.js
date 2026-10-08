@@ -236,7 +236,7 @@
     if (name === 'security') { $('pk-err').textContent = ''; renderPasskeys().catch((e) => ($('pk-err').textContent = e.message)); }
     if (name === 'backups') renderBackups();
     if (name === 'changes') renderChanges();
-    if (name === 'residents') { renderChanges(); renderPush(); }
+    if (name === 'residents') { renderChanges(); renderPush(); fillQrStreets(); }
     if (name === 'org') fillOrg();
   }
   let versionShown = false;
@@ -392,6 +392,7 @@
     if (sched.until && document.activeElement !== $('res-until')) $('res-until').value = toLocalInput(sched.until);
     $('res-until').disabled = false;
     const cd = data.code || {};
+    $('res-qr-only').checked = !!data.qrOnly;
     $('res-code-on').checked = !!cd.on;
     if (document.activeElement !== $('res-code')) $('res-code').value = cd.code || '';
     const gf = data.geofence || {};
@@ -514,6 +515,71 @@
     toast('Code gekopieerd ✔');
   };
   $('res-code-gen').onclick = () => { $('res-code').value = String(Math.floor(1000 + Math.random() * 9000)); $('res-code').focus(); };
+  // ---------- QR-codes ----------
+  const siteName = async () => (await api('/api/map')).title || 'Onze wijk';
+  async function fillQrStreets() {
+    try {
+      const items = await api('/api/admin/qr');
+      const streets = [...new Set(items.map((i) => i.street).filter(Boolean))].sort(Wijk.natCompare);
+      const cur = $('qr-street').value;
+      $('qr-street').replaceChildren(new Option('Alle straten', ''), ...streets.map((x) => new Option(x, x)));
+      $('qr-street').value = streets.includes(cur) ? cur : '';
+    } catch { /* geen sessie of geen huizen */ }
+  }
+  $('res-qr-only').onchange = async () => {
+    try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ residentsQrOnly: $('res-qr-only').checked }), expectAuth: true }); toast($('res-qr-only').checked ? 'Huis kiezen kan nu alleen met een QR-code' : 'Huis kiezen kan weer via de kaart'); }
+    catch (e) { $('qr-err').textContent = e.message; $('res-qr-only').checked = !$('res-qr-only').checked; }
+  };
+  $('qr-print').onclick = async () => {
+    $('qr-err').textContent = '';
+    try {
+      const street = $('qr-street').value;
+      const items = (await api('/api/admin/qr')).filter((i) => !street || i.street === street);
+      if (!items.length) { $('qr-err').textContent = 'Geen huizen om af te drukken.'; return; }
+      const doc = await Wijk.buildQrPdf({ title: await siteName(), items, logo: org.logo });
+      doc.save(`qr-codes${street ? '-' + street.toLowerCase().replace(/[^a-z0-9]+/g, '-') : ''}.pdf`);
+      toast(`${items.length} QR-code(s) in de PDF ✔`);
+    } catch (e) { $('qr-err').textContent = e.message; }
+  };
+  $('qr-rotate-all').onclick = async () => {
+    if (!confirm('Alle QR-codes vernieuwen? Alle uitgedeelde (en afgedrukte) QR-codes werken dan niet meer.')) return;
+    try { await post('/api/admin/qr/rotate-all', {}, { expectAuth: true }); toast('Alle QR-codes zijn vernieuwd'); }
+    catch (e) { $('qr-err').textContent = e.message; }
+  };
+  let qrItem = null;
+  function showQr(item) {
+    qrItem = item;
+    $('qr-title').textContent = `QR-code ${item.title}`;
+    $('qr-img').src = Wijk.qrDataUrl(item.url, 480);
+    $('qr-link').value = item.url;
+    $('qr-state').textContent = item.taken ? 'Dit huis is al aan een apparaat gekoppeld. Verwijder de koppeling (Instellingen → Bewoners → Apparaten) om opnieuw te kunnen scannen.' : 'Nog aan geen enkel apparaat gekoppeld.';
+    if (!$('qr-dialog').open) $('qr-dialog').showModal();
+  }
+  $('p-qr').onclick = async () => {
+    const h = selected();
+    if (!h) return;
+    try {
+      const item = (await api('/api/admin/qr')).find((i) => i.houseId === h.id);
+      if (!item) { toast('Sla het huis eerst op; daarna is de QR-code beschikbaar.'); return; }
+      showQr(item);
+    } catch (e) { toast(e.message); }
+  };
+  $('qr-x').onclick = () => $('qr-dialog').close();
+  $('qr-copy').onclick = async () => {
+    try { await navigator.clipboard.writeText($('qr-link').value); } catch { $('qr-link').select(); document.execCommand('copy'); }
+    toast('Link gekopieerd ✔');
+  };
+  $('qr-png').onclick = () => {
+    const a = document.createElement('a');
+    a.href = Wijk.qrDataUrl(qrItem.url, 1024); a.download = `qr-${qrItem.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`;
+    document.body.append(a); a.click(); a.remove();
+  };
+  $('qr-rotate').onclick = async () => {
+    if (!qrItem || !confirm(`De QR-code van ${qrItem.title} vernieuwen? De oude code werkt dan niet meer.`)) return;
+    try { showQr(await post(`/api/admin/qr/${encodeURIComponent(qrItem.houseId)}/rotate`, {}, { expectAuth: true })); toast('QR-code vernieuwd'); }
+    catch (e) { toast(e.message); }
+  };
+
   $('res-swap').onchange = async () => {
     try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ residentsSwapAfter: $('res-swap').checked }), expectAuth: true }); toast($('res-swap').checked ? 'Na de einddatum kan nog groen ↔ rood worden gewisseld' : 'Na de einddatum is wijzigen helemaal dicht'); }
     catch (e) { $('chg-err').textContent = e.message; $('res-swap').checked = !$('res-swap').checked; }

@@ -670,6 +670,84 @@ test('beheer heeft een eigen PWA-manifest, icoon en favicon', async () => {
   assert.equal(pub.start_url, '/');
 });
 
+test('QR-code per huis: alleen via QR koppelen (schakelaar), een apparaat per huis, vernieuwen', async () => {
+  const mkh = (id) => ({ id, street: 'Dorpsstraat', number: id.slice(1), status: 'none', points: ptsR });
+  await adminReq('/settings', 'PUT', { residentsEnabled: true, residentsAppOnly: false, residentsOff: false, residentsGeofence: false, residentsCodeOn: false, residentsQrOnly: false });
+  await adminReq('/houses', 'PUT', { houses: [mkh('h1'), mkh('h2')] });
+  for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
+  const WIN = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0';
+  const rq = (path, body, { cookie: ck, dev = 'desktop' } = {}) => j(`/api/resident${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'User-Agent': WIN, ...(dev ? { 'X-Geo-Device': dev } : {}), ...(ck ? { cookie: ck } : {}) }, body: JSON.stringify(body || {}) });
+
+  // admin: QR-lijst met een geheim per huis; geheimen staan nooit in de publieke kaartgegevens
+  const list = await (await adminReq('/qr')).json();
+  assert.deepEqual(list.map((i) => i.houseId).sort(), ['h1', 'h2']);
+  const q1 = new URL(list.find((i) => i.houseId === 'h1').url).searchParams.get('q');
+  const q2 = new URL(list.find((i) => i.houseId === 'h2').url).searchParams.get('q');
+  assert.ok(q1.length >= 16 && q1 !== q2);
+  assert.ok(!JSON.stringify(await (await j('/api/map')).json()).includes(q1));
+  assert.equal((await adminReq('/qr')).status, 200);
+  for (const [m, p] of [['GET', '/qr'], ['POST', '/qr/rotate-all'], ['POST', '/qr/h1/rotate']]) assert.equal((await j(`/api/admin${p}`, { method: m, headers: jsonH(), body: m === 'POST' ? '{}' : undefined })).status, 401, p);
+
+  // lookup: juiste en foute QR
+  assert.equal((await (await rq('/qr/lookup', { q: q1 })).json()).title, 'Dorpsstraat 1');
+  assert.equal((await rq('/qr/lookup', { q: 'x'.repeat(24) })).status, 403);
+
+  // schakelaar uit: de kaart (houseId) werkt nog; QR werkt ook
+  assert.equal((await (await j('/api/map')).json()).qrOnly, false);
+  const viaMap = await rq('/claim', { houseId: 'h2' });
+  assert.equal(viaMap.status, 200);
+  const cMap = viaMap.headers.get('set-cookie').split(';')[0];
+  for (const r of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${r.rid}`, 'DELETE');
+
+  // schakelaar aan: houseId-only wordt geweigerd, QR werkt
+  assert.equal((await adminReq('/settings', 'PUT', { residentsQrOnly: true })).status, 200);
+  assert.equal((await (await j('/api/map')).json()).qrOnly, true);
+  assert.equal((await (await adminReq('/settings')).json()).residentsQrOnly, true);
+  let r = await rq('/claim', { houseId: 'h1' });
+  assert.equal(r.status, 403);
+  assert.equal((await r.json()).qr, 'required');
+  r = await rq('/claim', { q: q1 });
+  assert.equal(r.status, 200);
+  const c1 = r.headers.get('set-cookie').split(';')[0];
+  assert.equal((await r.json()).claim.houseId, 'h1');
+
+  // een apparaat per huis: een tweede apparaat met dezelfde QR wordt geweigerd; ander huis kan wel
+  r = await rq('/claim', { q: q1 });
+  assert.equal(r.status, 409);
+  assert.equal((await (await rq('/qr/lookup', { q: q1 })).json()).taken, true);
+  assert.equal((await rq('/claim', { q: q2 })).status, 200);
+  for (const rr of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${rr.rid}`, 'DELETE');
+
+  // QR vervangt de toegangscode (desktop): zonder QR geen /set zonder code, met QR wel
+  await adminReq('/settings', 'PUT', { residentsCode: '4821', residentsCodeOn: true });
+  r = await rq('/claim', { q: q1 });
+  assert.equal(r.status, 200);
+  const cks = r.headers.getSetCookie().map((x) => x.split(';')[0]).join('; ');
+  assert.match(cks, /sm_code=/);
+  assert.equal((await rq('/set', { status: 'green' }, { cookie: cks })).status, 200);
+  await adminReq('/settings', 'PUT', { residentsCodeOn: false, residentsCode: '' });
+  for (const rr of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${rr.rid}`, 'DELETE');
+
+  // vernieuwen: de oude QR werkt niet meer, de nieuwe wel
+  const rot = await (await adminReq('/qr/h1/rotate', 'POST', {})).json();
+  const q1b = new URL(rot.url).searchParams.get('q');
+  assert.notEqual(q1b, q1);
+  assert.equal((await rq('/claim', { q: q1 })).status, 403);
+  assert.equal((await rq('/claim', { q: q1b })).status, 200);
+  assert.equal((await adminReq('/qr/nope/rotate', 'POST', {})).status, 404);
+  await adminReq('/qr/rotate-all', 'POST', {});
+  assert.equal((await rq('/qr/lookup', { q: q1b })).status, 403);
+
+  // geheimen van verwijderde huizen worden opgeruimd
+  await adminReq('/houses', 'PUT', { houses: [mkh('h2')] });
+  assert.deepEqual((await (await adminReq('/qr')).json()).map((i) => i.houseId), ['h2']);
+
+  // lezen/uit: opruimen
+  await adminReq('/settings', 'PUT', { residentsQrOnly: false });
+  for (const rr of (await (await adminReq('/changes')).json()).residents) await adminReq(`/residents/${rr.rid}`, 'DELETE');
+  void cMap; void c1;
+});
+
 test('bewoners: uitschakelen, beheerrechten en push-registratie', async () => {
   for (const [m, p] of [['GET', '/changes'], ['POST', '/changes/approve-all'], ['DELETE', '/residents/x'], ['GET', '/push/key'], ['POST', '/push/test']]) {
     assert.equal((await j(`/api/admin${p}`, { method: m, headers: jsonH() })).status, 401, p);
