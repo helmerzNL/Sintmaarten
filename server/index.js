@@ -106,6 +106,29 @@ app.get('/manifest.webmanifest', (req, res) => {
   });
 });
 
+// Eigen PWA-manifest voor het beheer: andere naam, icoon en kleur, en alleen het pad /beheer
+app.get('/beheer.webmanifest', (req, res) => {
+  const st = store.db().settings || {};
+  const name = st.appName || siteTitle();
+  res.type('application/manifest+json').json({
+    name: `${name} – Beheer`,
+    short_name: 'Beheer',
+    description: `Beheer van ${name}`,
+    lang: 'nl',
+    id: '/beheer',
+    start_url: '/beheer',
+    scope: '/beheer',
+    display: 'standalone',
+    background_color: '#243456',
+    theme_color: '#243456',
+    icons: [
+      { src: '/icons/admin-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icons/admin-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icons/admin-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+  });
+});
+
 // ---------- auth ----------
 app.get('/api/auth/status', (req, res) => {
   const db = store.db();

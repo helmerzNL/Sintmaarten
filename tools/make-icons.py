@@ -1,9 +1,28 @@
 from PIL import Image, ImageDraw, ImageFilter
 import math
 
-def lantern(size, maskable=False):
+def gear_badge(im, S, k):
+    # tandwiel rechtsonder, op een lichte ronde plaat
+    cx, cy, R = S / 2 + (S * 0.30) * k, S / 2 + (S * 0.30) * k, S * 0.19 * k
+    d = ImageDraw.Draw(im)
+    d.ellipse((cx - R, cy - R, cx + R, cy + R), fill=(255, 255, 255, 255))
+    gold, plate = (214, 150, 20, 255), (255, 255, 255, 255)
+    teeth, ro, ri = 8, R * 0.78, R * 0.56
+    for i in range(teeth):
+        a = 2 * math.pi * i / teeth
+        c, sn = math.cos(a), math.sin(a)
+        w = R * 0.17
+        pts = [(cx + c * ri - sn * w, cy + sn * ri + c * w), (cx + c * ro - sn * w, cy + sn * ro + c * w),
+               (cx + c * ro + sn * w, cy + sn * ro - c * w), (cx + c * ri + sn * w, cy + sn * ri - c * w)]
+        d.polygon(pts, fill=gold)
+    d.ellipse((cx - ri, cy - ri, cx + ri, cy + ri), fill=gold)
+    d.ellipse((cx - R * 0.26, cy - R * 0.26, cx + R * 0.26, cy + R * 0.26), fill=plate)
+    return im
+
+def lantern(size, maskable=False, admin=False):
     S = 1024
-    bg = (31, 111, 74, 255)
+    # beheer: dezelfde lantaarn op een donkerblauwe achtergrond, met een tandwiel als herkenningsteken
+    bg = (36, 52, 86, 255) if admin else (31, 111, 74, 255)
     im = Image.new('RGBA', (S, S), bg if maskable else (0, 0, 0, 0))
     if not maskable:
         m = Image.new('L', (S, S), 0)
@@ -58,6 +77,8 @@ def lantern(size, maskable=False):
         d.polygon([(px, py - r * 1.6), (px + r * .4, py - r * .4), (px + r * 1.6, py), (px + r * .4, py + r * .4),
                    (px, py + r * 1.6), (px - r * .4, py + r * .4), (px - r * 1.6, py), (px - r * .4, py - r * .4)],
                   fill=(255, 236, 160, 255))
+    if admin:
+        im = gear_badge(im, S, k)
     return im.resize((size, size), Image.LANCZOS)
 
 if __name__ == '__main__':
@@ -67,3 +88,9 @@ if __name__ == '__main__':
     lantern(512, True).save(out + 'maskable-512.png')
     lantern(180).save(out + 'apple-touch-icon.png')
     lantern(32).save(out + 'favicon-32.png')
+    # beheer
+    lantern(192, admin=True).save(out + 'admin-192.png')
+    lantern(512, admin=True).save(out + 'admin-512.png')
+    lantern(512, True, admin=True).save(out + 'admin-maskable-512.png')
+    lantern(180, admin=True).save(out + 'admin-apple-touch-icon.png')
+    lantern(32, admin=True).save(out + 'admin-favicon-32.png')
