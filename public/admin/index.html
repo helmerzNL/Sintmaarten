@@ -213,6 +213,11 @@
 
     <section data-panel="backups" class="hidden">
       <p class="muted">Na elke opslagpoging wordt automatisch een backup gemaakt van de layout (huizen en kaartweergave) en de teksten (uitleg en appnaam). Het logo valt buiten de backups. De nieuwste 200 blijven bewaard.</p>
+      <p class="muted">Elke backup bevat de layout (huizen en kaartweergave) én de teksten (uitleg, namen, statusnamen). Geef een backup een korte titel (✎) zodat je ze later makkelijk herkent, bijvoorbeeld "Alles" of "Alleen layout".</p>
+      <div class="row">
+        <input type="text" id="bk-title" maxlength="40" placeholder="Titel voor een nieuwe backup (max. 40 tekens)" aria-label="Titel voor een nieuwe backup">
+        <button id="bk-make">Backup maken</button>
+      </div>
       <div id="bk-list" class="bk-list"></div>
       <p class="error" id="bk-err"></p>
       <div class="row">
