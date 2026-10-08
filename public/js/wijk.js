@@ -353,7 +353,8 @@
 
   // Het QR-kaartje als PNG-data-URL, om te tonen, te downloaden en te delen: links de QR met titel en adres
   // erin verwerkt, rechts logo en uitleg.
-  async function qrCardDataUrl({ title, url, siteTitle, logo }) {
+  async function qrCardDataUrl({ title, url, siteTitle, logo, lang }) {
+    const T = I18n.tFor(lang || I18n.lang);
     const W = 900, H = 580, c = document.createElement('canvas');
     c.width = W; c.height = H;
     const g = c.getContext('2d');
@@ -374,15 +375,16 @@
       ty = 50 + h + 30;
     }
     g.textAlign = 'left'; g.textBaseline = 'top'; g.fillStyle = '#444'; g.font = '30px system-ui, sans-serif';
-    ['Scan deze code met de', 'camera van je telefoon en', 'wijzig in de app de status', 'van jouw huis.'].map((x) => I18n.t(x)).forEach((x, i) => g.fillText(x, rx, ty + i * 44, rw));
+    ['Scan deze code met de', 'camera van je telefoon en', 'wijzig in de app de status', 'van jouw huis.'].map((x) => T.t(x)).forEach((x, i) => g.fillText(x, rx, ty + i * 44, rw));
     g.fillStyle = '#888'; g.font = '22px system-ui, sans-serif'; g.textBaseline = 'alphabetic';
-    g.fillText(I18n.t('Persoonlijke code voor dit huis:'), rx, H - 70, rw);
-    g.fillText(I18n.t('niet delen.'), rx, H - 42, rw);
+    g.fillText(T.t('Persoonlijke code voor dit huis:'), rx, H - 70, rw);
+    g.fillText(T.t('niet delen.'), rx, H - 42, rw);
     return c.toDataURL('image/png');
   }
 
   // Afdrukbare A4 met per huis een kaartje (2 x 4): links de QR (met titel en adres erin verwerkt), rechts logo en uitleg; gesorteerd per straat.
-  async function buildQrPdf({ title, items, logo }) {
+  async function buildQrPdf({ title, items, logo, lang }) {
+    const T = I18n.tFor(lang || I18n.lang);
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const logoImg = logo ? await loadLogo(logo.url) : null;
@@ -406,9 +408,9 @@
         ty = y + 5 + logoImg.h * kk + 6;
       }
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60);
-      doc.text(doc.splitTextToSize(I18n.t('Scan deze code met de camera van je telefoon en wijzig in de app de status van jouw huis.'), rw), rx, ty);
+      doc.text(doc.splitTextToSize(T.t('Scan deze code met de camera van je telefoon en wijzig in de app de status van jouw huis.'), rw), rx, ty);
       doc.setFontSize(7); doc.setTextColor(120);
-      doc.text(doc.splitTextToSize(I18n.t('Persoonlijke code voor dit huis: niet delen.'), rw), rx, y + ch - 8);
+      doc.text(doc.splitTextToSize(T.t('Persoonlijke code voor dit huis: niet delen.'), rw), rx, y + ch - 8);
     }
     return doc;
   }

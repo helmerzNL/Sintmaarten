@@ -106,8 +106,8 @@
     return wrap;
   }
 
-  const SUN = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3 7 7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7"/></g></svg>';
-  const MOON = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z" fill="currentColor"/></svg>';
+  const SUN = window.MDI ? MDI.html('white-balance-sunny') : '';
+  const MOON = window.MDI ? MDI.html('weather-night') : '';
 
   // Zet de vlaggenkeuze (alleen als meertaligheid aan staat) en de licht/donker-knop in een kopbalk.
   function mountPrefs(container) {
@@ -133,16 +133,28 @@
     container.append(b);
   }
 
+  // Vertaler voor een andere taal dan de huidige (bijvoorbeeld voor een QR-kaartje in de taal van de bewoners)
+  const translators = {};
+  function tFor(l) {
+    if (l === lang) return { tr, t };
+    if (!translators[l]) {
+      const d = window.SM_DICT && window.SM_DICT[l];
+      translators[l] = d && window.SMLangCore ? window.SMLangCore.makeTranslator(d) : { tr: (s) => s, t: (tpl, vars) => String(tpl).replace(/\{(\w+)\}/g, (m, n) => (vars && n in vars ? String(vars[n]) : m)) };
+    }
+    return translators[l];
+  }
+
   window.I18n = {
-    LANGS, lang, multi, defaultLang: def, tr, t, picker, flag, mountPrefs,
+    LANGS, lang, multi, defaultLang: def, tr, t, tFor, picker, flag, mountPrefs,
     locale: (LANGS.find((l) => l.code === lang) || LANGS[0]).locale,
     // Gegevens van /api/map in de gekozen taal: de tekst van de beheerder in die taal (als ingevuld), anders de Nederlandse.
-    localize(d) {
-      const own = (lang !== 'nl' && d.translations && d.translations[lang]) || {};
+    localize(d, l = lang) {
+      const T = tFor(l);
+      const own = (l !== 'nl' && d.translations && d.translations[l]) || {};
       const has = (v) => typeof v === 'string' && v.trim();
       const out = { ...d };
       for (const k of ['siteTitle', 'appName', 'appShortName', 'intro', 'residentInfo']) if (has(own[k])) out[k] = own[k];
-      out.title = has(own.siteTitle) ? own.siteTitle : tr(d.title);
+      out.title = has(own.siteTitle) ? own.siteTitle : T.tr(d.title);
       out.labels = { ...(d.labels || {}) };
       for (const k of Object.keys(out.labels)) if (has(own.labels && own.labels[k])) out.labels[k] = own.labels[k];
       return out;
