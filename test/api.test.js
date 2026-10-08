@@ -164,6 +164,28 @@ test('na elke opslagpoging komt er een backup (layout + teksten)', async () => {
   assert.equal(backups.list().length, before + 2);
 });
 
+test('backups: korte titel instellen en handmatig backup maken', async () => {
+  const before = backups.list().length;
+  // handmatig, ook als er niets veranderd is, met een titel (opgeschoond en beperkt tot 40 tekens)
+  const r = await (await j('/api/admin/backups', { method: 'POST', headers: jsonH(cookie), body: JSON.stringify({ title: `  Alleen   layout ${'x'.repeat(60)}` }) })).json();
+  assert.equal(backups.list().length, before + 1);
+  const item = backups.list().find((b) => b.id === r.id);
+  assert.equal(item.title.length, 40);
+  assert.match(item.title, /^Alleen layout x+$/);
+  assert.equal(item.reason, 'Handmatig');
+  // titel wijzigen en wissen
+  const put = (id, title) => j(`/api/admin/backups/${id}/title`, { method: 'PUT', headers: jsonH(cookie), body: JSON.stringify({ title }) });
+  assert.equal((await (await put(r.id, 'Alles')).json()).title, 'Alles');
+  assert.equal(backups.list().find((b) => b.id === r.id).title, 'Alles');
+  assert.equal(backups.read(r.id).houses.length, backups.list().find((b) => b.id === r.id).houses); // inhoud ongewijzigd
+  assert.equal((await (await put(r.id, '')).json()).title, '');
+  assert.equal((await put('1234567890123-abcdef', 'x')).status, 404);
+  assert.equal((await j(`/api/admin/backups/${r.id}/title`, { method: 'PUT', headers: jsonH(cookie), body: '{}' })).status, 400);
+  // alleen met beheersessie
+  assert.equal((await j('/api/admin/backups', { method: 'POST', headers: jsonH(), body: '{}' })).status, 401);
+  assert.equal((await j(`/api/admin/backups/${r.id}/title`, { method: 'PUT', headers: jsonH(), body: '{"title":"x"}' })).status, 401);
+});
+
 test('backups: lijst, terugzetten en verwijderen vereist passkey-bevestiging', async () => {
   assert.equal((await j('/api/admin/backups')).status, 401);
   const list = await (await j('/api/admin/backups', { headers: { cookie } })).json();
