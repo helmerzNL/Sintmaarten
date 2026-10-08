@@ -184,6 +184,53 @@
   }
   applyEditUi();
 
+  // Dubbelklik (muis) op een huis: Bewerken aan en dit huis selecteren. Elders zoomt een dubbelklik gewoon in.
+  const insidePoly = (pt, poly) => {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [yi, xi] = poly[i], [yj, xj] = poly[j];
+      if ((yi > pt.lat) !== (yj > pt.lat) && pt.lng < ((xj - xi) * (pt.lat - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  // Bewerken aan + huis selecteren; false als hier geen huis is of wijzigen niet kan.
+  function editHouseAt(latlng) {
+    const house = data.houses.find((h) => insidePoly(latlng, h.points));
+    const allowed = data.residentsEnabled !== false && (inApp || !data.residentsAppOnly);
+    if (!house || !allowed || !Wijk.selectResidentHouse) return false;
+    map.closePopup();
+    if (!inApp && !$('edit-switch').checked) { $('edit-switch').checked = true; setEditing(true); }
+    Wijk.selectResidentHouse(house.id);
+    return true;
+  }
+  map.doubleClickZoom.disable();
+  map.on('dblclick', (e) => {
+    if (matchMedia('(pointer: fine)').matches && editHouseAt(e.latlng)) return;
+    map.setZoomAround(e.latlng, map.getZoom() + (e.originalEvent.shiftKey ? -1 : 1));
+  });
+
+  // Touchscreen: lang indrukken op een huis doet hetzelfde als dubbelklikken met de muis.
+  {
+    const el = map.getContainer();
+    let timer = null, start = null, swallow = false;
+    const cancel = () => { clearTimeout(timer); timer = null; };
+    el.addEventListener('pointerdown', (e) => {
+      cancel();
+      if (e.pointerType !== 'touch' || !e.isPrimary) return;
+      start = { x: e.clientX, y: e.clientY };
+      timer = setTimeout(() => {
+        timer = null;
+        const r = el.getBoundingClientRect();
+        const latlng = map.containerPointToLatLng([start.x - r.left, start.y - r.top]);
+        if (editHouseAt(latlng)) { swallow = true; setTimeout(() => { swallow = false; }, 800); navigator.vibrate?.(30); }
+      }, 600);
+    });
+    el.addEventListener('pointermove', (e) => { if (timer && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) cancel(); });
+    for (const t of ['pointerup', 'pointercancel']) el.addEventListener(t, cancel);
+    // de klik/het contextmenu dat op het loslaten volgt mag geen popup of selectie veroorzaken
+    for (const t of ['click', 'contextmenu']) el.addEventListener(t, (e) => { if (swallow) { e.preventDefault(); e.stopPropagation(); } }, true);
+  }
+
   // ---------- automatisch verversen (o.a. nadat de beheerder een wijziging goedkeurt) ----------
   const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.logo, d.appName, d.appShortName, d.residentsEnabled, d.residentsAppOnly, d.residentInfo]);
   let lastSig = signature(data);
