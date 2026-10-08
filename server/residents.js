@@ -42,7 +42,7 @@ const mode = () => {
 };
 const enabled = () => mode() === 'open';
 const appOnly = () => (scheduled() ? false : storedAppOnly());
-const DEFAULT_INFO = 'Woon je in de wijk? Dan kun je in deze app zelf de status van jouw huis aanpassen. Tik op "Huis wijzigen", kies jouw huis en geef aan of het wel of niet is bezocht. Een wijziging wordt pas zichtbaar nadat de beheerder die heeft goedgekeurd.';
+const DEFAULT_INFO = 'Woon je in de wijk? Dan kun je in deze app zelf de status van jouw huis aanpassen. Tik op "Mijn huis", kies jouw huis en geef aan of het wel of niet is bezocht. Een wijziging wordt pas zichtbaar nadat de beheerder die heeft goedgekeurd.';
 const DEFAULT_SHARE_TEXT = 'Hallo! Dit is de persoonlijke link om jouw huis ({adres}) te koppelen in de wijkapp. Open de link op je telefoon: {link}';
 // Tekst bij delen via WhatsApp in een taal: de eigen tekst van die taal, anders de standaardtekst in die taal.
 const shareText = (l = defaultLang()) => {
