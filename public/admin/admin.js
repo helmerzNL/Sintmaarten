@@ -500,6 +500,13 @@
   }
   $('res-code-on').onchange = () => saveCode({ residentsCode: $('res-code').value.trim(), residentsCodeOn: $('res-code-on').checked }, () => { $('res-code-on').checked = !$('res-code-on').checked; });
   $('res-code-save').onclick = () => saveCode({ residentsCode: $('res-code').value.trim() });
+  $('res-code-copy').onclick = async () => {
+    const v = $('res-code').value.trim();
+    if (!v) { toast('Er is nog geen code om te kopiëren'); return; }
+    try { await navigator.clipboard.writeText(v); }
+    catch { $('res-code').select(); document.execCommand('copy'); } // reserve zonder clipboard-API (bijv. http)
+    toast('Code gekopieerd ✔');
+  };
   $('res-code-gen').onclick = () => { $('res-code').value = String(Math.floor(1000 + Math.random() * 9000)); $('res-code').focus(); };
   $('res-swap').onchange = async () => {
     try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ residentsSwapAfter: $('res-swap').checked }), expectAuth: true }); toast($('res-swap').checked ? 'Na de einddatum kan nog groen ↔ rood worden gewisseld' : 'Na de einddatum is wijzigen helemaal dicht'); }
