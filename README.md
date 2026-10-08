@@ -55,7 +55,7 @@ Voorbeeld met willekeurige huizen (kaartgegevens © OpenStreetMap-bijdragers).
 
 **Publieke kaart** – met het logo van de vereniging; klik op een huis voor de notitie. Bovenaan staan de knoppen voor de uitleg, de straten en het menu *Meer* (⋯) met de PDF-knoppen.
 
-**Mobiel** – bovenaan alleen het logo, de titel en de schakelaar voor huisnummers; de acties (uitleg, straten, Meer) staan onderaan, met het statusbalkje (groen/rood) er altijd net boven.
+**Mobiel** – bovenaan alleen het logo, de titel, de schakelaars voor huisnummers en bewerken en (rechts) de taalkeuze en de donker/licht-knop; de acties (uitleg, straten, Meer) staan onderaan, met het statusbalkje (groen/rood) er altijd net boven.
 
 **Straten** – met het straat-icoon (🛣️) in de menubalk zet je per straat de huizen op de kaart (en in de PDF) aan of uit. Per straat staat hoeveel huizen **groen** en **rood** zijn, en bovenaan het totaal van de zichtbare straten.
 
@@ -124,6 +124,10 @@ Wil je dat bewoners alleen hun **eigen huis** kunnen koppelen, dan zet je onder 
 - **Donker/licht** – naast de vlag staat een knop (maan/zon) waarmee elke bezoeker wisselt tussen de lichte en de donkere weergave. Standaard volgt de site de instelling van het apparaat; de keuze wordt onthouden. In de donkere weergave **keert het logo automatisch om** (zwart wordt wit) en wordt de kaart wat gedimd. De knop staat altijd in beeld, ook als meertalig uit staat.
 - **Vertalingen toevoegen** – de bron van alle teksten is Nederlands; een woordenboek per taal (`public/js/lang-en.js`, sleutel = Nederlandse tekst, waarde = vertaling; `{naam}` is een variabele) vertaalt de pagina in de browser en de pushmeldingen op de server. De tests (`npm test`) controleren dat elke vertaling dezelfde variabelen heeft.
 
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/instellingen-config-talen.png"><img src="docs/screenshots/instellingen-config-talen.png" width="400" alt="Config: taalbalk met vlaggen"></a><br><sub>Config: taalbalk met vlaggen</sub></td><td align="center" valign="top"><a href="docs/screenshots/publiek-engels-taalmenu.png"><img src="docs/screenshots/publiek-engels-taalmenu.png" width="400" alt="Engelse site met taalmenu"></a><br><sub>Engelse site met taalmenu</sub></td><td align="center" valign="top"><a href="docs/screenshots/mobiel-engels-donker.png"><img src="docs/screenshots/mobiel-engels-donker.png" width="150" alt="Mobiel: Engels en donker"></a><br><sub>Mobiel: Engels en donker</sub></td></tr>
+</table>
+
 ## Het beheer (`/beheer`)
 
 <table>
@@ -152,7 +156,7 @@ Het tandwiel (⚙) in de balk schuift het instellingen-menu in beeld. Het is ing
 
 <table>
 <tr><td align="center" valign="top"><a href="docs/screenshots/instellingen-goedkeuren.png"><img src="docs/screenshots/instellingen-goedkeuren.png" width="270" alt="Goedkeuren"></a><br><sub>Goedkeuren</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-bewoners.png"><img src="docs/screenshots/instellingen-bewoners.png" width="270" alt="Bewoners"></a><br><sub>Bewoners</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-bewoners-apparaten.png"><img src="docs/screenshots/instellingen-bewoners-apparaten.png" width="270" alt="Bewoners: apparaten en meldingen"></a><br><sub>Bewoners: apparaten en meldingen</sub></td></tr>
-<tr><td align="center" valign="top"><a href="docs/screenshots/instellingen-site.png"><img src="docs/screenshots/instellingen-site.png" width="270" alt="Config"></a><br><sub>Config</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-beveiliging.png"><img src="docs/screenshots/instellingen-beveiliging.png" width="270" alt="Beveiliging"></a><br><sub>Beveiliging</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-backups.png"><img src="docs/screenshots/instellingen-backups.png" width="270" alt="Backups"></a><br><sub>Backups</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/instellingen-config.png"><img src="docs/screenshots/instellingen-config.png" width="270" alt="Config"></a><br><sub>Config</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-beveiliging.png"><img src="docs/screenshots/instellingen-beveiliging.png" width="270" alt="Beveiliging"></a><br><sub>Beveiliging</sub></td><td align="center" valign="top"><a href="docs/screenshots/instellingen-backups.png"><img src="docs/screenshots/instellingen-backups.png" width="270" alt="Backups"></a><br><sub>Backups</sub></td></tr>
 </table>
 
 <p align="center"><a href="docs/screenshots/instellingen-mobiel.png"><img src="docs/screenshots/instellingen-mobiel.png" width="220" alt="Instellingen op een telefoon"></a><br><sub>Instellingen op een telefoon</sub></p>
@@ -291,6 +295,7 @@ npm install
 ORIGIN=http://localhost:9888 SETUP_TOKEN=lokaal-test-token-1 npm start
 npm test
 ```
+De screenshots in deze README maak je opnieuw met `node tools/screenshots.js` (Playwright + Chromium en internet voor de kaarttegels; de voorbeeldgegevens staan in `tools/screenshots/`, de gebouwen komen uit OpenStreetMap © OpenStreetMap-bijdragers). Met een of meer woorden erachter maak je alleen de screenshots met die naam, bijvoorbeeld `node tools/screenshots.js qr`.
 
 ## Beveiliging
 Passkeys via WebAuthn (SimpleWebAuthn), sessiecookie `HttpOnly`/`SameSite=Strict`/`Secure`, origin-check op wijzigingen,

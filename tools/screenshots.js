@@ -329,7 +329,7 @@ async function main() {
     });
     const files = await pdfPage(data, 'qr-pdf', 110);
     if (files) {
-      execFileSync('python3', ['-c', `from PIL import Image; im=Image.open(${JSON.stringify(files[0])}); w,h=im.size; im=im.crop((0,0,w,int(h*0.58))); im.save(${JSON.stringify(path.join(OUT, 'qr-pdf.png'))})`]);
+      execFileSync('python3', ['-c', `from PIL import Image; im=Image.open(${JSON.stringify(files[0])}); w,h=im.size; im=im.crop((0,0,w,int(h*0.5))); im.save(${JSON.stringify(path.join(OUT, 'qr-pdf.png'))})`]);
       console.log('  ✓ qr-pdf');
     }
   }
