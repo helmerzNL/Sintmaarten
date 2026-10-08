@@ -1,7 +1,13 @@
 (async () => {
   const $ = (id) => document.getElementById(id);
-  const getData = async () => (await fetch('/api/map', { cache: 'no-cache' })).json();
+  const getData = async () => {
+    const d = await (await fetch('/api/map', { cache: 'no-cache' })).json();
+    d.title = I18n.tr(d.title); // de standaardnaam ("Onze wijk") ook in de PDF in de gekozen taal
+    return d;
+  };
   let data = await getData();
+
+  I18n.mountPrefs($('prefs'));
 
   // ---------- kop, logo en uitleg ----------
   function applyMeta(first) {
@@ -20,21 +26,22 @@
     }
 
     document.body.classList.toggle('simple-ui', data.simpleUi === true); // eenvoudige weergave: geen huisnummers/Bewerken/straten
-    const info = data.residentInfo || ''; // leeg zodra wijzigen door bewoners uit staat
-    $('intro-btn').hidden = !(data.intro || info);
+    const intro = I18n.pick(data.intro, data.introEn);
+    const info = data.residentInfo ? I18n.pick(data.residentInfo, data.residentInfoEn) : ''; // leeg zodra wijzigen door bewoners uit staat
+    $('intro-btn').hidden = !(intro || info);
     $('intro-info').hidden = !info;
     $('intro-info-text').textContent = info;
-    $('intro-text').hidden = !data.intro;
-    if (data.intro || info) {
+    $('intro-text').hidden = !intro;
+    if (intro || info) {
       $('intro-title').textContent = data.title;
-      $('intro-text').textContent = data.intro; // platte tekst; alinea's via CSS
+      $('intro-text').textContent = intro; // platte tekst; alinea's via CSS
       $('intro-btn').onclick = () => $('intro-dialog').showModal();
       $('intro-close').onclick = $('intro-x').onclick = () => $('intro-dialog').close();
       // de eerste keer (of na een wijziging van de tekst) automatisch tonen
       if (first) {
         let seen = '';
         const key = 'sm-intro-seen';
-        const all = data.intro + info;
+        const all = intro + info;
         const hash = String(all.length) + ':' + all.slice(0, 40);
         try { seen = localStorage.getItem(key); } catch {}
         if (seen !== hash) {
@@ -256,7 +263,7 @@
   }
 
   // ---------- automatisch verversen (o.a. nadat de beheerder een wijziging goedkeurt) ----------
-  const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.logo, d.appName, d.appShortName, d.residentsEnabled, d.residentsMode, d.geofence, d.deviceCode, d.qrOnly, d.residentsAppOnly, d.residentInfo, d.simpleUi]);
+  const signature = (d) => JSON.stringify([d.houses, d.labels, d.title, d.intro, d.introEn, d.residentInfoEn, d.multilingual, d.defaultLang, d.logo, d.appName, d.appShortName, d.residentsEnabled, d.residentsMode, d.geofence, d.deviceCode, d.qrOnly, d.residentsAppOnly, d.residentInfo, d.simpleUi]);
   let lastSig = signature(data);
   let busy = false;
   let lastSync = new Date();
@@ -306,7 +313,7 @@
       await refresh(true);
       sync.disabled = false;
       sync.classList.remove('sync-spin');
-      sync.title = `Huizen bijwerken (laatst bijgewerkt ${lastSync.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })})`;
+      sync.title = `Huizen bijwerken (laatst bijgewerkt ${lastSync.toLocaleTimeString(I18n.locale, { hour: '2-digit', minute: '2-digit' })})`;
     };
   }
 
@@ -321,10 +328,10 @@
     pdfButtons.forEach((b) => (b.disabled = true));
     btn.innerHTML = '<span class="ico">⏳</span><span class="lbl">Bezig…</span>';
     try { await fn(); }
-    catch (e) { alert('PDF maken mislukt: ' + e.message); }
+    catch (e) { alert(I18n.tr('PDF maken mislukt: ' + e.message)); }
     finally { btn.innerHTML = html; pdfButtons.forEach((b) => (b.disabled = false)); }
   }
-  const make = () => Wijk.buildPdf({ title: data.title, houses: data.houses.filter((h) => h.status === 'none' || !hidden.has(streetName(h))), view: data.view, intro: data.intro, logo: data.logo, showNumbers: $('num-switch').checked });
+  const make = () => Wijk.buildPdf({ title: data.title, houses: data.houses.filter((h) => h.status === 'none' || !hidden.has(streetName(h))), view: data.view, intro: I18n.pick(data.intro, data.introEn), logo: data.logo, showNumbers: $('num-switch').checked });
 
   $('pdf-dl').onclick = (e) => run(e.currentTarget, async () => (await make()).save(pdfName()));
   $('pdf-view').onclick = (e) => {

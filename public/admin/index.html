@@ -13,6 +13,7 @@
 <link rel="manifest" href="/beheer.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="/icons/admin-favicon-32.png">
 <link rel="apple-touch-icon" href="/icons/admin-apple-touch-icon.png">
+<script src="/js/theme.js?v={{v}}"></script>
 <link rel="stylesheet" href="/vendor/leaflet/leaflet.css?v={{v}}">
 <link rel="stylesheet" href="/css/style.css?v={{v}}">
 </head>
@@ -59,6 +60,7 @@
   <button id="edit-toggle" class="primary" type="button" aria-pressed="false">✏️ Bewerken</button>
   <a class="btn" href="/" target="_blank"><span class="lbl-site">Bekijk site</span><span class="ico-site" aria-hidden="true">↗</span></a>
   <button id="settings-open" class="icon-btn cog" aria-label="Instellingen" title="Instellingen" aria-controls="settings">⚙<span id="cog-badge" class="count-badge cog-badge" hidden>0</span></button>
+  <div class="prefs" id="prefs"></div>
   <button id="logout">Uitloggen</button>
 </header>
 <div class="editor">
@@ -283,6 +285,15 @@
     <!-- ===== Site ===== -->
     <section data-panel="org" class="hidden">
       <div class="set-card">
+        <header class="set-card-head"><h4>Taal</h4><p>De taal van de site, de app en het beheer.</p></header>
+        <div class="set-row">
+          <div class="set-text"><div class="set-title">Meertalig</div><div class="set-hint">Aan: rechtsboven in de menubalk verschijnt een vlag met een uitklapmenu, zodat bezoekers zelf een taal kiezen. Uit: iedereen krijgt de standaardtaal.</div></div>
+          <label class="switch"><input type="checkbox" id="org-multi" role="switch" aria-label="Meertalig"><span class="track" aria-hidden="true"><span class="thumb"></span></span></label>
+        </div>
+        <div class="field"><label>Standaardtaal</label><div id="org-lang-slot"></div><div class="set-hint">Deze taal geldt voor iedereen die niet zelf een taal kiest, en voor iedereen als meertalig uit staat. Eigen teksten (uitleg, infovlak) voer je hieronder per taal in.</div></div>
+      </div>
+
+      <div class="set-card">
         <header class="set-card-head"><h4>Identiteit</h4><p>Logo en naam van de wijkvereniging.</p></header>
         <div class="field"><label>Logo (PNG, JPEG of WebP, max 5 MB)</label>
           <img id="org-logo" class="logo-preview" alt="" hidden>
@@ -318,6 +329,8 @@
         <header class="set-card-head"><h4>Teksten</h4><p>Het infovlak en de uitleg die bezoekers zien (de uitleg staat ook in de PDF).</p></header>
         <div class="field"><label for="org-info">Infovlak voor bewoners</label><textarea id="org-info" rows="4" maxlength="1000" placeholder="Bijvoorbeeld: woon je in de wijk? Pas in de app zelf de status van jouw huis aan."></textarea><div class="set-hint">Valt op bovenin de uitleg; verdwijnt als wijzigen uit staat.</div></div>
         <div class="field"><label for="org-intro">Uitleg</label><textarea id="org-intro" rows="10" maxlength="5000" placeholder="Plak hier de toelichting. Lege regels worden alinea's."></textarea><div class="set-hint"><span id="org-count">0</span> / 5000 tekens</div></div>
+        <div class="field"><label for="org-info-en">Infovlak voor bewoners (Engels, optioneel)</label><textarea id="org-info-en" rows="3" maxlength="1000"></textarea><div class="set-hint">Leeg = de Nederlandse tekst (of de standaardtekst) wordt in het Engels getoond zo goed als dat kan.</div></div>
+        <div class="field"><label for="org-intro-en">Uitleg (Engels, optioneel)</label><textarea id="org-intro-en" rows="6" maxlength="5000"></textarea><div class="set-hint">Leeg = Engelssprekende bezoekers zien de Nederlandse uitleg.</div></div>
         <p class="error" id="org-err"></p>
         <div class="set-actions"><button id="org-save" class="primary">Opslaan</button></div>
       </div>
@@ -369,6 +382,9 @@
 <script src="/vendor/leaflet/leaflet.js?v={{v}}"></script>
 <script src="/vendor/jspdf.js?v={{v}}"></script>
 <script src="/vendor/qrcode.js?v={{v}}"></script>
+<script src="/js/lang-core.js?v={{v}}"></script>
+<script src="/js/lang-en.js?v={{v}}"></script>
+<script src="/js/i18n.js?v={{v}}"></script>
 <script src="/js/wijk.js?v={{v}}"></script>
 <script src="/admin/admin.js?v={{v}}"></script>
 </body>

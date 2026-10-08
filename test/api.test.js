@@ -670,6 +670,31 @@ test('beheer heeft een eigen PWA-manifest, icoon en favicon', async () => {
   assert.equal(pub.start_url, '/');
 });
 
+test('Meertaligheid: standaard uit en Nederlands; instelbaar; taal staat in de pagina en in /api/map', async () => {
+  const m0 = await (await j('/api/map')).json();
+  assert.equal(m0.multilingual, false);
+  assert.equal(m0.defaultLang, 'nl');
+  const page0 = await (await j('/')).text();
+  assert.match(page0, /<html lang="nl">/);
+  assert.match(page0, /<meta name="sm-lang" content="nl">/);
+  assert.equal((await adminReq('/settings', 'PUT', { defaultLang: 'fr' })).status, 400);
+  assert.equal((await adminReq('/settings', 'PUT', { multilingual: true, defaultLang: 'en', introEn: 'Welcome', residentInfoEn: 'Hello residents' })).status, 200);
+  const m1 = await (await j('/api/map')).json();
+  assert.equal(m1.multilingual, true);
+  assert.equal(m1.defaultLang, 'en');
+  assert.equal(m1.introEn, 'Welcome');
+  const page1 = await (await j('/beheer')).text();
+  assert.match(page1, /<html lang="en">/);
+  assert.match(page1, /<meta name="sm-lang" content="en" data-multi="1">/);
+  assert.equal((await (await j('/manifest.webmanifest')).json()).lang, 'en');
+  const st = await (await adminReq('/settings')).json();
+  assert.deepEqual([st.multilingual, st.defaultLang, st.introEn, st.residentInfoEn], [true, 'en', 'Welcome', 'Hello residents']);
+  assert.equal((await adminReq('/settings', 'PUT', { introEn: 'x'.repeat(5001) })).status, 400);
+  // terug naar de standaard
+  assert.equal((await adminReq('/settings', 'PUT', { multilingual: false, defaultLang: 'nl', introEn: '', residentInfoEn: '' })).status, 200);
+  assert.equal((await (await j('/api/map')).json()).defaultLang, 'nl');
+});
+
 test('Tekst bij delen via WhatsApp is instelbaar (standaard, opslaan, te lang, leeg = standaard)', async () => {
   const get = async () => (await (await adminReq('/changes')).json());
   const d0 = await get();

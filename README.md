@@ -1,5 +1,7 @@
 # Sint Maarten – interactieve wijkkaart
 
+🇬🇧 [English version of this README](README.en.md)
+
 Een interactieve kaart van de wijk waarop elk huis **groen**, **rood** of **niet gemarkeerd** is (bijvoorbeeld voor een Sint Maarten-actie: welke huizen willen wel of niet dat er wordt aangebeld). Bezoekers bekijken de kaart in de browser of als app op hun telefoon; de beheerder tekent de huizen en beheert alles in `/beheer`, beveiligd met een **passkey**. Draait als één Docker-container op bijvoorbeeld een NAS: je deployt hem met [`docker-compose.yml`](docker-compose.yml) en een eigen `.env` (kopie van [`.env.example`](.env.example)); zie [Zelf deployen met Docker](#zelf-deployen-met-docker).
 
 ## Inhoud
@@ -7,6 +9,7 @@ Een interactieve kaart van de wijk waarop elk huis **groen**, **rood** of **niet
 - [De website voor bezoekers](#de-website-voor-bezoekers)
 - [Bewoners: huis wijzigen](#bewoners-huis-wijzigen)
 - [Toegang via QR-code](#toegang-via-qr-code-optioneel)
+- [Talen en donkere weergave](#talen-en-donkere-weergave)
 - [Het beheer](#het-beheer-beheer)
 - [Instellingen](#instellingen)
 - [Installeren als app en offline gebruik](#installeren-als-app-en-offline-gebruik)
@@ -21,6 +24,7 @@ Een interactieve kaart van de wijk waarop elk huis **groen**, **rood** of **niet
 - **PDF** (A4 liggend) met kaart, legenda, aantallen, logo, uitleg en een overzicht van de gemarkeerde huizen, inclusief datum en tijd.
 - **Installeerbaar als app (PWA)** met eigen Sint Maarten-icoon en **offline** gebruik.
 - Werkt op telefoon (menubalk onderin, zwevend statusbalkje) en desktop.
+- **Meertalig** (Nederlands en Engels, in te schakelen in het beheer) en een **donkere/lichte weergave** met een knop rechtsboven. Zie [Talen en donkere weergave](#talen-en-donkere-weergave).
 
 **Voor bewoners**
 - Bewoners wijzigen de status van **hun eigen huis** (één huis per apparaat); de beheerder keurt dat goed. Zie [Bewoners: huis wijzigen](#bewoners-huis-wijzigen).
@@ -113,6 +117,13 @@ Wil je dat bewoners alleen hun **eigen huis** kunnen koppelen, dan zet je onder 
 - De koppeling en het voorstel blijven **bewaard na het afsluiten van de app**: ze staan op de server, met een lokale kopie van het token als reserve (voor als de cookie wordt gewist) en van de laatste status (voor als er geen verbinding is). Het eigen huis blijft ook buiten de wijzigmodus zichtbaar (⏳ zolang de wijziging op goedkeuring wacht, daarna 🏠).
 - De app **ververst zichzelf** (elke 30 seconden, en zodra je terugkeert naar de app of weer online bent). Keurt de beheerder een wijziging goed, dan verschijnt die vanzelf op het apparaat, inclusief een melding "Je wijziging is goedgekeurd".
 
+## Talen en donkere weergave
+- **Standaardtaal** – onder *Instellingen → Site → Taal* kies je met een uitklapmenu (met vlaggen) de standaardtaal: 🇳🇱 Nederlands of 🇬🇧 English. Die taal geldt voor de site, de app, de PDF's, het beheer en de pushmeldingen aan de beheerder, **ook als meertalig uit staat**.
+- **Meertalig** – met de schakelaar *Meertalig* (standaard uit) verschijnt rechtsboven in de menubalk een vlag met een uitklapmenu met de ondersteunde talen. De keuze van een bezoeker wordt onthouden in zijn browser en geldt voor die bezoeker (het beheer volgt dezelfde keuze). Staat de schakelaar uit, dan krijgt iedereen de standaardtaal.
+- **Eigen teksten per taal** – de uitleg en het infovlak voer je onder *Instellingen → Site → Teksten* in het Nederlands in, en optioneel ook in het Engels (leeg = Engelssprekende bezoekers zien de Nederlandse tekst; het standaard-infovlak wordt automatisch vertaald). Namen van statussen en de site die je zelf hebt ingevuld worden niet vertaald. In de Engelse weergave heet *Sint Maarten* overal *Halloween*.
+- **Donker/licht** – naast de vlag staat een knop (maan/zon) waarmee elke bezoeker wisselt tussen de lichte en de donkere weergave. Standaard volgt de site de instelling van het apparaat; de keuze wordt onthouden. In de donkere weergave **keert het logo automatisch om** (zwart wordt wit) en wordt de kaart wat gedimd. De knop staat altijd in beeld, ook als meertalig uit staat.
+- **Vertalingen toevoegen** – de bron van alle teksten is Nederlands; een woordenboek per taal (`public/js/lang-en.js`, sleutel = Nederlandse tekst, waarde = vertaling; `{naam}` is een variabele) vertaalt de pagina in de browser en de pushmeldingen op de server. De tests (`npm test`) controleren dat elke vertaling dezelfde variabelen heeft.
+
 ## Het beheer (`/beheer`)
 
 <table>
@@ -155,7 +166,7 @@ Het tandwiel (⚙) in de balk schuift het instellingen-menu in beeld. Het is ing
 - *Apparaten*: aangemelde apparaten, **alfabetisch** op straat en huisnummer (handig zoeken bij veel huizen), met koppeling verwijderen of **blokkeren** (eventueel met IP-adres), en de lijst *Geblokkeerd*.
 - *Meldingen op dit apparaat*: pushmeldingen voor nieuwe wijzigingen.
 
-**Site** – logo, naam van de site en de app, de eenvoudige weergave, de namen van de statussen, het infovlak en de uitleg.
+**Site** – taal (meertalig en standaardtaal), logo, naam van de site en de app, de eenvoudige weergave, de namen van de statussen, het infovlak en de uitleg (ook in het Engels).
 
 **Beveiliging** – passkeys toevoegen/verwijderen en een optioneel wachtwoord (bevestigen met passkey).
 

@@ -12,6 +12,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<script src="/js/theme.js?v={{v}}"></script>
 <link rel="stylesheet" href="/vendor/leaflet/leaflet.css?v={{v}}">
 <link rel="stylesheet" href="/css/style.css?v={{v}}">
 </head>
@@ -39,6 +40,7 @@
     <span class="edit-icon" aria-hidden="true">✏️</span>
   </label>
   </div>
+  <div class="prefs" id="prefs"></div>
   <nav class="actions" aria-label="Acties">
     <button id="intro-btn" hidden aria-label="Uitleg"><span class="ico">ℹ</span><span class="lbl">Uitleg</span></button>
     <button id="house-edit" hidden aria-label="Huis wijzigen"><span class="ico">🏠</span><span class="lbl">Huis wijzigen</span></button>
@@ -118,6 +120,9 @@
 
 <script src="/vendor/leaflet/leaflet.js?v={{v}}"></script>
 <script src="/vendor/jspdf.js?v={{v}}"></script>
+<script src="/js/lang-core.js?v={{v}}"></script>
+<script src="/js/lang-en.js?v={{v}}"></script>
+<script src="/js/i18n.js?v={{v}}"></script>
 <script src="/js/wijk.js?v={{v}}"></script>
 <script src="/js/pwa.js?v={{v}}"></script>
 <script src="/js/resident.js?v={{v}}"></script>
