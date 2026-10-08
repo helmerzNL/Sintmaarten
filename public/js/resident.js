@@ -242,6 +242,20 @@
     drawMine();
 
     Wijk.leaveResident = () => { if (on) leave(); };
+    // Dubbelklik op een huis: wijzigmodus aan en dit huis selecteren (inzoomen; nog geen huis? dan vragen of het van jou is).
+    Wijk.selectResidentHouse = (id) => {
+      const h = byId.get(id);
+      if (!h) return;
+      if (!on) enter();
+      map.fitBounds(L.latLngBounds(h.points).pad(2), { maxZoom: 19 });
+      const layer = layers.get(id);
+      if (layer) layer.bringToFront();
+      tapSelect(h);
+    };
+    function tapSelect(h) {
+      if (!me.claim) return confirmClaim(h);
+      if (h.id !== me.claim.houseId) toast(`Je kunt alleen jouw eigen huis wijzigen (${me.claim.title}).`);
+    }
     btn.onclick = () => (on ? leave() : enter());
     $('claim-no').onclick = () => $('claim-dialog').close('nee');
     $('claim-yes').onclick = () => $('claim-dialog').close('ja');
