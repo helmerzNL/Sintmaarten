@@ -357,14 +357,42 @@
     changed();
 
     Wijk.leaveResident = () => { if (on) leave(); };
+    // Venster om de beheerder een kort bericht te sturen (optioneel met de gescande QR als context).
+    function askMessage(intro, q) {
+      const dlg = $('msg-dialog'), text = $('msg-text'), err = $('msg-error'), cnt = $('msg-count');
+      $('msg-intro').textContent = intro;
+      text.value = ''; err.textContent = ''; cnt.textContent = '0';
+      text.oninput = () => { cnt.textContent = String(text.value.length); };
+      const close = () => { if (dlg.open) dlg.close(); };
+      $('msg-x').onclick = $('msg-cancel').onclick = close;
+      $('msg-form').onsubmit = async (e) => {
+        e.preventDefault();
+        err.textContent = '';
+        $('msg-send').disabled = true;
+        try { await api('/message', { text: text.value, q }); close(); toast('Bericht verstuurd ✔ De beheerder krijgt een melding.'); }
+        catch (e2) { err.textContent = e2.message; }
+        $('msg-send').disabled = false;
+      };
+      dlg.showModal();
+      text.focus();
+    }
     // Gescande QR-code (?q=...): bij welk huis hoort die, bevestigen, koppelen en de wijzigmodus openen.
     Wijk.claimFromQr = async (q) => {
       try { document.getElementById('intro-dialog')?.close(); } catch {}
       if (swap() || mode === 'closed') { toast('Wijzigen is gesloten.'); return; }
-      if (me.claim) { toast(`Dit apparaat is al gekoppeld aan ${me.claim.title}.`); return; }
       let info;
       try { info = await api('/qr/lookup', { q }); } catch (e) { toast(e.message); return; }
-      if (info.taken) { toast('Dit huis is al aan een ander apparaat gekoppeld. Neem contact op met de beheerder.'); return; }
+      // Al gekoppeld (aan dit of een ander huis): geen nieuwe koppeling, wel de mogelijkheid de beheerder een bericht te sturen.
+      if (me.claim) {
+        askMessage(me.claim.houseId === info.houseId
+          ? `Dit apparaat is al gekoppeld aan ${me.claim.title}. Je kunt de beheerder een kort bericht sturen als er iets niet klopt.`
+          : `Je hebt de QR-code van ${info.title} gescand, maar dit apparaat is al gekoppeld aan ${me.claim.title}. Wil je dat de beheerder iets aanpast? Stuur een kort bericht.`, q);
+        return;
+      }
+      if (info.taken) {
+        askMessage(`${info.title} is al aan een ander apparaat gekoppeld (één apparaat per huis). Heb je een nieuwe telefoon of woon je hier? Stuur de beheerder een kort bericht.`, q);
+        return;
+      }
       const dlg = $('claim-dialog');
       $('claim-title').textContent = info.title;
       dlg.returnValue = '';

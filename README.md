@@ -75,6 +75,7 @@ Wil je dat bewoners alleen hun **eigen huis** kunnen koppelen, dan zet je onder 
 - **Uitdelen:** kies *QR-codes afdrukken (PDF)* (alle straten of één straat): een A4 met per huis een kaartje met adres en QR, om bij de bewoners te bezorgen. Bij een geselecteerd huis in de editor staat een knop **QR-code** om de code te tonen, de **link te kopiëren**, als PNG te downloaden of te **vernieuwen**.
 - **Bewoner:** scant de code met de camera van de telefoon, bevestigt "Is dit jouw huis?" en kan daarna het huis wijzigen. In het scherm *Huis wijzigen* staat zonder koppeling alleen de uitleg om te scannen; de kaart en de adreslijst werken dan niet meer voor het kiezen van een huis.
 - **Eén apparaat per huis:** is een huis al gekoppeld, dan weigert de server een tweede apparaat. Verwijder de koppeling (*Instellingen → Bewoners → Apparaten*) om opnieuw te kunnen scannen.
+- **Al gekoppeld, of huis bezet:** scant iemand een QR met een apparaat dat al aan een huis is gekoppeld (of een huis dat al aan een ander apparaat hangt), dan verschijnt een venster om de beheerder een **kort bericht** (max. 300 tekens) te sturen, bijvoorbeeld bij een nieuwe telefoon of een verhuizing. De beheerder krijgt een pushmelding.
 - **Intrekken:** *Vernieuwen* (per huis of alle huizen) maakt de oude QR-codes ongeldig.
 - **Combinatie:** een geldige QR vervangt de toegangscode voor apparaten zonder GPS; de locatiecontrole en de goedkeuring door de beheerder blijven gelden. Schakel je QR-only uit, dan werkt alles weer zoals voorheen (kaart/lijst).
 - **Let op:** een QR is zo veilig als de brief: wie hem fotografeert, kan hem gebruiken (daarom één apparaat per huis, vernieuwen en jouw goedkeuring). Op iPhone opent een gescande link in de browser, niet in de geïnstalleerde app; gebruik je *Alleen in de geïnstalleerde app*, dan moet de bewoner na het scannen de app openen. De geheimen staan in `data/db.json`, niet in de backups.
@@ -131,13 +132,13 @@ Het tandwiel (⚙) in de balk schuift het instellingen-menu in beeld. Het is ing
 
 <p align="center"><a href="docs/screenshots/instellingen-mobiel.png"><img src="docs/screenshots/instellingen-mobiel.png" width="220" alt="Instellingen op een telefoon"></a><br><sub>Instellingen op een telefoon</sub></p>
 
-**Goedkeuren** – de wijzigingen die bewoners voor hun eigen huis hebben aangevraagd. Een rode teller bij het tandwiel en bij de tab toont het aantal; keur ze goed of af, of alles tegelijk.
+**Goedkeuren** – de wijzigingen die bewoners voor hun eigen huis hebben aangevraagd en de **berichten van bewoners**. Rode **badges** met het aantal staan bij het tandwiel, bij de tab en bij elke lijst, in de paginatitel en – in het geïnstalleerde beheer – op het **app-icoon**; ze worden ook bijgewerkt door een pushmelding als de app dicht is. Keur wijzigingen goed of af (of alles tegelijk) en klik *Afgehandeld* bij een bericht om het te verwijderen.
 
 **Bewoners** – alles rond het wijzigen door bewoners:
 - *Wijzigen door bewoners*: aan/uit, en eventueel alleen in de geïnstalleerde app (de schakelaar *Bewerken* verdwijnt dan in de browser en de server weigert wijzigingen zonder de app-kop `X-App-Mode: standalone`).
 - *Planning*: wijzigen automatisch afsluiten op een datum en tijd (met datumkiezer), met eventueel daarna nog groen ↔ rood wisselen.
 - *Toegang*: alleen in de wijk (locatie/geofence) en een toegangscode voor apparaten zonder GPS.
-- *Apparaten*: aangemelde apparaten (koppeling verwijderen of **blokkeren**, eventueel met IP-adres) en de lijst *Geblokkeerd*.
+- *Apparaten*: aangemelde apparaten, **alfabetisch** op straat en huisnummer (handig zoeken bij veel huizen), met koppeling verwijderen of **blokkeren** (eventueel met IP-adres), en de lijst *Geblokkeerd*.
 - *Meldingen op dit apparaat*: pushmeldingen voor nieuwe wijzigingen.
 
 **Site** – logo, naam van de site en de app, de eenvoudige weergave, de namen van de statussen, het infovlak en de uitleg.

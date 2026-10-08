@@ -89,6 +89,17 @@
 
 <div id="house-sheet" class="house-sheet" hidden role="region" aria-label="Huis wijzigen"></div>
 
+<dialog id="msg-dialog" aria-labelledby="msg-title">
+  <form id="msg-form" method="dialog">
+    <div class="intro-head"><h3 id="msg-title">Bericht aan de beheerder</h3><button id="msg-x" class="icon-btn" type="button" aria-label="Sluiten">✕</button></div>
+    <p id="msg-intro"></p>
+    <textarea id="msg-text" rows="4" maxlength="300" placeholder="Bijvoorbeeld: ik ben verhuisd naar dit huis of heb een nieuwe telefoon." aria-label="Je bericht" required></textarea>
+    <p class="muted"><span id="msg-count">0</span> / 300 tekens</p>
+    <p class="error" id="msg-error" role="alert"></p>
+    <p class="row"><button class="primary" type="submit" id="msg-send">Versturen</button><button id="msg-cancel" type="button">Annuleren</button></p>
+  </form>
+</dialog>
+
 <dialog id="claim-dialog" aria-labelledby="claim-q">
   <h3 id="claim-q">Is dit jouw huis?</h3>
   <p><strong id="claim-title"></strong></p>
