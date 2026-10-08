@@ -409,3 +409,6 @@ body.simple-ui #num-switch-wrap, body.simple-ui #edit-switch-wrap, body.simple-u
 .lang-chip { display: inline-flex; vertical-align: middle; margin-left: 8px; }
 .lang-chip[hidden] { display: none; }
 .lang-chip .flag { width: 18px; height: 12px; }
+
+/* smalle laptops: de tekst naast de schakelaars in de kopbalk valt weg (het icoon blijft) zodat de balk op één regel past */
+@media (min-width: 641px) and (max-width: 1420px) { header.bar .bar-switches .switch-text { display: none; } }
