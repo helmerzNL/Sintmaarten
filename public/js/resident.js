@@ -186,8 +186,8 @@
       const h = byId.get(me.claim.houseId);
       if (!h) return;
       mine = L.layerGroup().addTo(map);
-      const poly = L.polygon(h.points, styleFor(h)).addTo(mine);
-      poly.on('click', (e) => { L.DomEvent.stopPropagation(e); enter(); });
+      // niet-interactief: een enkele klik doet hier hetzelfde als bij elk ander huis; wijzigen kan alleen via dubbelklik of lang indrukken
+      const poly = L.polygon(h.points, { ...styleFor(h), interactive: false }).addTo(mine);
       const el = poly.getElement && poly.getElement();
       if (el) el.classList.toggle('pending', !!me.pending);
       const badge = L.marker(Wijk.labelPoint(h.points), {
