@@ -14,6 +14,7 @@ header.bar { /* altijd een lichte balk, ook in donkere modus, zodat het logo goe
   --panel: #ffffff; --text: #1d2a22; --muted: #66756c; --line: #d9e0db; --accent: #1f6f4a; --bg: #f4f6f4;
   color: var(--text); display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 header.bar h1 { font-size: 1.15rem; margin: 0; flex: 1; }
+.bar-switches { display: flex; align-items: center; gap: 12px; }
 .legend { display: flex; gap: 14px; font-size: .9rem; color: var(--muted); }
 .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; background: var(--none); }
 .dot.green { background: var(--green); } .dot.red { background: var(--red); }
@@ -150,8 +151,16 @@ dialog { max-height: 92vh; overflow-y: auto; }
 /* mobiel: onderaan de acties, bovenaan alleen logo, titel en de schakelaar */
 @media (max-width: 640px) {
   body { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }
-  header.bar { flex-wrap: nowrap; gap: 10px; }
-  header.bar h1 { flex: 1; min-width: 0; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  header.bar { flex-wrap: wrap; gap: 4px 8px; padding: 6px 12px; }
+  /* titel: schaalt mee met de schermbreedte en mag over twee regels lopen in plaats van afgekapt te worden */
+  header.bar h1 { flex: 1 1 8rem; min-width: 8rem; font-size: clamp(.85rem, 4.4vw, 1.1rem); line-height: 1.15; overflow: hidden; overflow-wrap: anywhere; hyphens: auto;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .logo { height: 30px; max-width: 22vw; }
+  /* compacte schakelaars; passen ze niet naast de titel, dan komen ze rechts op een tweede regel */
+  header.bar .switch .track { width: 34px; height: 20px; }
+  header.bar .switch .thumb { width: 16px; height: 16px; }
+  header.bar .switch input:checked + .track .thumb { transform: translateX(14px); }
+  .bar-switches { margin-left: auto; gap: 8px; }
   .switch-text { display: none; }
   #offline { position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 1200; white-space: nowrap; box-shadow: var(--shadow); }
   .legend { position: fixed; left: 8px; bottom: calc(104px + env(safe-area-inset-bottom)); z-index: 1200; gap: 10px;

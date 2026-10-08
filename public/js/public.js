@@ -177,10 +177,21 @@
   }
   // De beheerder kan Bewerken in de browser uitzetten (alleen de geïnstalleerde app mag dan wijzigen).
   $('edit-switch').onchange = () => setEditing($('edit-switch').checked);
+  // Bewerken staat standaard aan (de keuze van de bezoeker om het uit te zetten wordt onthouden).
+  const EDIT_KEY = 'sm-edit-off';
+  const editPref = () => { try { return localStorage.getItem(EDIT_KEY) !== '1'; } catch { return true; } };
+  let editDefaulted = false;
+  $('edit-switch').addEventListener('change', () => { try { localStorage.setItem(EDIT_KEY, $('edit-switch').checked ? '0' : '1'); } catch {} });
   function applyEditUi() {
     const allowed = data.residentsEnabled !== false && !inApp && !data.residentsAppOnly && !Wijk.residentNoAccess?.();
     $('edit-switch-wrap').hidden = !allowed;
-    if (!allowed && $('edit-switch').checked) { $('edit-switch').checked = false; setEditing(false); }
+    if (!allowed) {
+      editDefaulted = false;
+      if ($('edit-switch').checked) { $('edit-switch').checked = false; setEditing(false); }
+    } else if (!editDefaulted) {
+      editDefaulted = true;
+      if (editPref()) { $('edit-switch').checked = true; setEditing(true); }
+    }
   }
   applyEditUi();
   window.addEventListener('sm-resident', () => { applyEditUi(); if (inApp) $('house-edit').hidden = !!Wijk.residentNoAccess?.(); });
