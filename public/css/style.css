@@ -105,7 +105,9 @@ header.bar h1 { min-width: 8rem; }
 .logo-preview { max-height: 80px; max-width: 100%; display: block; margin: 8px 0; background: repeating-conic-gradient(#ddd 0 25%, #fff 0 50%) 0 0 / 14px 14px; }
 
 dialog h4, .drawer h4 { margin: 18px 0 6px; }
-dialog { max-height: 92vh; overflow-y: auto; }
+dialog { max-height: 92vh; max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
+/* kleine telefoons: de uitleg scrolt als geheel, zodat kop met sluitknop en de Sluiten-knop altijd bereikbaar blijven */
+@media (max-width: 640px) { #intro-dialog .intro-text { max-height: none; overflow: visible; } }
 /* pinch-zoom alleen op de kaart */
 .viewport, .viewport .leaflet-container { touch-action: none; }
 
